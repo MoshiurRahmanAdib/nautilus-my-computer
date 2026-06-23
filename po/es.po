@@ -221,3 +221,34 @@ msgstr ""
 
 msgid "Reset"
 msgstr ""
+
+#——————————————————————————————
+# Panel - Preferred Folders
+#——————————————————————————————
+
+msgid "Documents"
+msgstr "Documentos"
+
+msgid "Downloads"
+msgstr "Descargas"
+
+msgid "Music"
+msgstr "Música"
+
+msgid "Videos"
+msgstr "Vídeos"
+
+msgid "Pictures"
+msgstr "Imágenes"
+
+msgid "Preferred Folders"
+msgstr "Carpetas preferidas"
+
+msgid "Show the Preferred Folders group at the top of the view"
+msgstr "Mostrar el grupo de carpetas preferidas en la parte superior de la vista"
+
+msgid "Add to Preferred"
+msgstr "Añadir a preferidas"
+
+msgid "Remove from Preferred"
+msgstr "Quitar de preferidas"

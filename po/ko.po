@@ -223,3 +223,34 @@ msgstr ""
 
 msgid "Reset"
 msgstr ""
+
+#——————————————————————————————
+# Panel - Preferred Folders
+#——————————————————————————————
+
+msgid "Documents"
+msgstr "문서"
+
+msgid "Downloads"
+msgstr "다운로드"
+
+msgid "Music"
+msgstr "음악"
+
+msgid "Videos"
+msgstr "동영상"
+
+msgid "Pictures"
+msgstr "사진"
+
+msgid "Preferred Folders"
+msgstr "기본 폴더"
+
+msgid "Show the Preferred Folders group at the top of the view"
+msgstr "보기 상단에 기본 폴더 그룹 표시"
+
+msgid "Add to Preferred"
+msgstr "기본 폴더에 추가"
+
+msgid "Remove from Preferred"
+msgstr "기본 폴더에서 제거"

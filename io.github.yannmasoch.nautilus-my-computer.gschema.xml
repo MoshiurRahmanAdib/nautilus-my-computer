@@ -110,5 +110,17 @@
       <description>Map of bookmark URI to chosen symbolic icon name. Only customized bookmarks are stored.</description>
     </key>
 
+    <key name="visibility-preferred-folders" enum="io.github.yannmasoch.nautilus-my-computer.visibility">
+      <default>'visible'</default>
+      <summary>Preferred Folders group visibility</summary>
+      <description>How the Preferred Folders group is displayed: visible or hidden</description>
+    </key>
+
+    <key name="preferred-folders" type="as">
+      <default>['home', 'recent', 'starred', 'network', 'documents', 'downloads', 'music', 'videos', 'pictures']</default>
+      <summary>Preferred Folders list</summary>
+      <description>Ordered list of quick-access folders shown in the Preferred Folders group. Entries are either logical tokens (home, recent, starred, network, documents, downloads, music, videos, pictures) or raw folder URIs added by the user. Intended for distro-level customization via .gschema.override.</description>
+    </key>
+
   </schema>
 </schemalist>

@@ -136,6 +136,10 @@ _STALE_RELEASE_FRAMES = 2  # keep detached panel generations alive across this m
 _FLOW_COLS_GRID = 8  # max columns in grid (FlowBox) view
 _CARD_WIDTH = 240  # fixed grid-card width (px); labels ellipsize within it
 _LIST_BAR_MAX_WIDTH = 240  # max width (px) of the usage bar at the end of a list-view row
+_DISK_CARD_SPACING = 16  # disk card FlowBox column spacing (px)
+
+_FOLDER_FLOW_COLS_GRID = 12  # narrower folder cards fit more columns than disk cards
+_FOLDER_CARD_SPACING = 16  # folder card FlowBox column spacing (px)
 
 _ICON_PICKER_COLS = 6  # bookmark icon-picker grid: visible columns
 _ICON_PICKER_ROWS = 5  # bookmark icon-picker grid: visible rows before scrolling
@@ -487,6 +491,27 @@ def _disk_context_menu(ext, win, m) -> ContextualMenu:
     return ContextualMenu(items)
 
 
+def _folder_context_menu(ext, win, pf) -> ContextualMenu:
+    """Preferred-folder card menu: open actions, remove from group, properties."""
+    items = _open_actions(ext, win, pf.nav_uri)
+    items.append(
+        MenuItem(
+            _("Remove from Preferred"),
+            action=lambda: ext._do_remove_preferred_folder(pf, win),
+            section=1,
+        )
+    )
+    items.append(
+        MenuItem(
+            _("Properties"),
+            action=lambda: ext._do_properties(pf.nav_uri, win),
+            shortcut="<Alt>Return",
+            section=2,
+        )
+    )
+    return ContextualMenu(items)
+
+
 @dataclasses.dataclass
 class MountInfo:
     """Typed representation of a single mounted/unmounted storage entry."""
@@ -554,6 +579,15 @@ def _gicon_renders(gicon) -> bool:
             return True
         return any(theme.has_icon(n) for n in gicon.get_names())
     return True
+
+
+def _icon_name_renders(icon_name: str) -> bool:
+    """True if icon_name resolves in the current icon theme."""
+    try:
+        theme = Gtk.IconTheme.get_for_display(Gdk.Display.get_default())
+    except Exception:
+        return True
+    return theme.has_icon(icon_name)
 
 
 def _read_os_name() -> str:
@@ -742,11 +776,18 @@ _GROUP_SPEC: list[tuple[str, str, str | None]] = [
 
 
 @dataclasses.dataclass
-class DiskGroup:
+class PanelGroup:
+    """A rendered group on the Computer view: a heading + a grid/list of cards.
+
+    kind selects the card builder used in _populate(): "disk" for MountInfo
+    items (the existing disk groups), "folder" for PreferredFolder items.
+    """
+
     key: str
     label: str
     visible: bool = True
     merged: bool = False
+    kind: str = "disk"
     items: list = dataclasses.field(default_factory=list)
 
     def add_item(self, m) -> None:
@@ -756,7 +797,146 @@ class DiskGroup:
         self.items.sort(key=key_func, reverse=reverse)
 
 
+@dataclasses.dataclass
+class PreferredFolder:
+    """Typed representation of one Preferred Folders card. Parallel to MountInfo,
+    but with no mount/usage state -- folders are always navigable."""
+
+    key: str  # logical token (e.g. "home") or raw URI for user-added folders
+    display_name: str
+    nav_uri: str
+    icon_name: str = "folder"
+    gio_icon: object | None = None
+
+    # Right-click menu factory menu(ext, win, pf) -> ContextualMenu (built at show-time).
+    menu: object = _folder_context_menu
+
+
+# Maps a logical token to its translatable label, symbolic icon, and a way to
+# resolve the URI: either a zero-arg callable (fixed locations) or a
+# GLib.UserDirectory enum value (resolved via GLib.get_user_special_dir).
+_PREFERRED_TOKENS: dict[str, dict] = {
+    "home": {
+        "label": _("Home"),
+        "icon": "user-home",
+        "uri": lambda: GLib.filename_to_uri(GLib.get_home_dir(), None),
+    },
+    "recent": {
+        "label": _("Recent"),
+        "icon": "folder",
+        "uri": lambda: "recent:///",
+    },
+    "starred": {
+        "label": _("Starred"),
+        "icon": "folder",
+        "uri": lambda: "starred:///",
+    },
+    "network": {
+        "label": _("Network"),
+        "icon": "folder",
+        "uri": lambda: "x-network-view:///",
+    },
+    "documents": {
+        "label": _("Documents"),
+        "icon": "folder-documents",
+        "special_dir": GLib.UserDirectory.DIRECTORY_DOCUMENTS,
+    },
+    "downloads": {
+        "label": _("Downloads"),
+        "icon": "folder-download",
+        "special_dir": GLib.UserDirectory.DIRECTORY_DOWNLOAD,
+    },
+    "music": {
+        "label": _("Music"),
+        "icon": "folder-music",
+        "special_dir": GLib.UserDirectory.DIRECTORY_MUSIC,
+    },
+    "videos": {
+        "label": _("Videos"),
+        "icon": "folder-videos",
+        "special_dir": GLib.UserDirectory.DIRECTORY_VIDEOS,
+    },
+    "pictures": {
+        "label": _("Pictures"),
+        "icon": "folder-pictures",
+        "special_dir": GLib.UserDirectory.DIRECTORY_PICTURES,
+    },
+}
+
+_DEFAULT_PREFERRED_FOLDERS: list[str] = [
+    "home",
+    "recent",
+    "starred",
+    "network",
+    "documents",
+    "downloads",
+    "music",
+    "videos",
+    "pictures",
+]
+
+
+def _load_preferred_folders(gsettings) -> list[PreferredFolder]:
+    """Resolve the ordered preferred-folders list into PreferredFolder objects.
+
+    Entries are either logical tokens (resolved via _PREFERRED_TOKENS) or raw
+    URIs added by the user via "Add to Preferred" (resolved via Gio.File).
+    """
+    if gsettings is not None:
+        entries = list(gsettings.get_value("preferred-folders").unpack())
+    else:
+        entries = list(_DEFAULT_PREFERRED_FOLDERS)
+
+    folders: list[PreferredFolder] = []
+    for entry in entries:
+        token = _PREFERRED_TOKENS.get(entry)
+        if token is not None:
+            special_dir = token.get("special_dir")
+            if special_dir is not None:
+                path = GLib.get_user_special_dir(special_dir)
+                if not path:
+                    continue
+                uri = GLib.filename_to_uri(path, None)
+            else:
+                uri = token["uri"]()
+            folders.append(
+                PreferredFolder(
+                    key=entry,
+                    display_name=token["label"],
+                    nav_uri=uri,
+                    icon_name=token["icon"],
+                )
+            )
+            continue
+
+        # Raw URI added by the user via "Add to Preferred"
+        uri = entry
+        gfile = Gio.File.new_for_uri(uri)
+        try:
+            info = gfile.query_info(
+                "standard::display-name,standard::icon",
+                Gio.FileQueryInfoFlags.NONE,
+                None,
+            )
+            display_name = info.get_display_name() or gfile.get_basename() or uri
+            gio_icon = info.get_icon()
+        except GLib.Error:
+            display_name = gfile.get_basename() or uri
+            gio_icon = None
+        folders.append(
+            PreferredFolder(
+                key=uri,
+                display_name=display_name,
+                nav_uri=uri,
+                icon_name="folder",
+                gio_icon=gio_icon,
+            )
+        )
+    return folders
+
+
 _disk_data: dict[str, MountInfo] = {}
+_folder_data: dict[str, "PreferredFolder"] = {}
 _network_places: list[MountInfo] = []  # populated async from network:///
 
 _CSS = b"""
@@ -1195,16 +1375,18 @@ def _refresh(mounts: list[MountInfo]) -> bool:
     return changed
 
 
-_ZOOM_TO_PX = {"small": 48, "standard": 64, "large": 96, "x-large": 128}
+_DISK_ICON_SIZE = 64  # disk cards aren't native grid cells; keep our own fixed icon size
+
+_ZOOM_TO_PX = {"small": 48, "small-plus": 64, "medium": 96, "large": 168, "extra-large": 256}
 
 
 def _nautilus_icon_size() -> int:
     try:
         settings = Gio.Settings.new("org.gnome.nautilus.icon-view")
         zoom = settings.get_string("default-zoom-level")
-        return _ZOOM_TO_PX.get(zoom, 64)
+        return _ZOOM_TO_PX.get(zoom, 96)
     except Exception:
-        return 64
+        return 96
 
 
 def _all_widgets(widget):
@@ -1560,6 +1742,7 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
 
             if DEBUG_COMPUTER_BUTTON_ACTIVE:
                 self._inject_sidebar_link(win)
+            self._attach_pathbar_menu_watch(win)
             self._on_title_changed(win, None)
 
             if DEBUG_SELFTEST and not getattr(self, "_selftest_started", False):
@@ -1742,6 +1925,8 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
             self._schedule_live_refresh()
         elif key.startswith("visibility-"):
             # Grouping change only -- no rescan needed, just re-render
+            self._repopulate_visible()
+        elif key == "preferred-folders":
             self._repopulate_visible()
         elif key.startswith("sidebar-show-"):
             # Sidebar place toggle -- re-apply native row visibility in every window.
@@ -2330,17 +2515,17 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
                 return m.total
             return (m.display_name or "").lower()
 
-        # Build DiskGroup objects, reading visibility state from gsettings
-        groups: dict[str, DiskGroup] = {}
+        # Build PanelGroup objects, reading visibility state from gsettings
+        groups: dict[str, PanelGroup] = {}
         for gkey, glabel, gskey in _GROUP_SPEC:
             if gskey is None:
                 # "On this Computer" is the merge target -- always visible, never merged
-                groups[gkey] = DiskGroup(key=gkey, label=_(glabel), visible=True, merged=False)
+                groups[gkey] = PanelGroup(key=gkey, label=_(glabel), visible=True, merged=False)
                 continue
             vis_str = self._gsettings.get_string(gskey) if self._gsettings else "visible"
             visible = vis_str != "hidden"
             merged = vis_str == "merged"
-            groups[gkey] = DiskGroup(key=gkey, label=_(glabel), visible=visible, merged=merged)
+            groups[gkey] = PanelGroup(key=gkey, label=_(glabel), visible=visible, merged=merged)
 
         # Classify each mount into its group
         for m in _disk_data.values():
@@ -2387,6 +2572,53 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         size_group = Gtk.SizeGroup(mode=Gtk.SizeGroupMode.HORIZONTAL)
         is_list = self._view_mode == "list-view"
 
+        # Preferred Folders group (issue #30): rendered above the disk groups
+        show_folders = (
+            self._gsettings.get_string("visibility-preferred-folders") != "hidden"
+            if self._gsettings
+            else True
+        )
+        if show_folders:
+            folders = _load_preferred_folders(self._gsettings)
+            _folder_data.clear()
+            _folder_data.update({pf.key: pf for pf in folders})
+            if folders:
+                heading = Gtk.Label()
+                heading.set_label(_("Preferred Folders"))
+                heading.set_xalign(0.0)
+                heading.get_style_context().add_class("heading")
+                heading.set_margin_top(12)
+                heading.set_margin_start(6)
+                grid_box.append(heading)
+
+                container = Gtk.FlowBox()
+                container.set_homogeneous(True)
+                container.set_max_children_per_line(1 if is_list else _FOLDER_FLOW_COLS_GRID)
+                container.set_column_spacing(_FOLDER_CARD_SPACING)
+                container.set_row_spacing(6)
+                container.set_margin_bottom(12)
+                container.set_selection_mode(Gtk.SelectionMode.SINGLE)
+                container.set_activate_on_single_click(self._click_policy == "single")
+                container.set_hexpand(True)
+                container.set_valign(Gtk.Align.START)
+
+                container.connect("child-activated", self._on_card_activated, win)
+                container.connect("selected-children-changed", self._on_flow_selection_changed, win)
+                section_flows.append(container)
+
+                folder_size_group = Gtk.SizeGroup(mode=Gtk.SizeGroupMode.HORIZONTAL)
+                for pf in folders:
+                    if is_list:
+                        card = self._build_folder_row(pf, win)
+                    else:
+                        card = self._build_folder_card(pf, win)
+                    folder_size_group.add_widget(card)
+                    container.append(card)
+
+                grid_box.append(container)
+        else:
+            _folder_data.clear()
+
         for gkey, _glabel, _gskey in _GROUP_SPEC:
             group = groups[gkey]
             # "local" is the merge target: render it whenever it has its own items
@@ -2432,7 +2664,7 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
             container = Gtk.FlowBox()
             container.set_homogeneous(True)
             container.set_max_children_per_line(1 if is_list else _FLOW_COLS_GRID)
-            container.set_column_spacing(16)
+            container.set_column_spacing(_DISK_CARD_SPACING)
             container.set_row_spacing(6)
             container.set_margin_bottom(12)
             container.set_selection_mode(Gtk.SelectionMode.SINGLE)
@@ -2546,7 +2778,7 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         card.set_focus_on_click(True)
 
         icon = Gtk.Image()
-        icon.set_pixel_size(_nautilus_icon_size())
+        icon.set_pixel_size(_DISK_ICON_SIZE)
         icon.set_valign(Gtk.Align.CENTER)
         icon.set_margin_end(12)
         if _gicon_renders(m.gio_icon):
@@ -2608,7 +2840,7 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         card.set_hexpand(True)
 
         icon = Gtk.Image()
-        icon.set_pixel_size(_nautilus_icon_size() // 2)
+        icon.set_pixel_size(_DISK_ICON_SIZE // 2)
         icon.set_valign(Gtk.Align.CENTER)
         if _gicon_renders(m.gio_icon):
             icon.set_from_gicon(m.gio_icon)
@@ -2647,6 +2879,115 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         card.append(bar)
 
         self._finish_card(card, m, group_key, win, nav_uri, bar, sub_lbl, has_size, card_widgets)
+        return card
+
+    def _finish_folder_card(self, card: Gtk.Widget, pf: "PreferredFolder", win: Gtk.Window) -> None:
+        """Tag and wire up controllers shared by both folder card layouts."""
+        card.set_tooltip_text(pf.display_name)
+        card._folder_key = pf.key
+        card._nav_uri = pf.nav_uri
+
+        right_click = Gtk.GestureClick()
+        right_click.set_button(3)
+        right_click.connect("pressed", self._on_disk_right_clicked, win, card)
+        card.add_controller(right_click)
+
+        key_ctrl = Gtk.EventControllerKey()
+        key_ctrl.connect("key-pressed", self._on_row_key_pressed, win, card)
+        card.add_controller(key_ctrl)
+
+        drop = Gtk.DropTarget.new(Gdk.FileList, Gdk.DragAction.COPY | Gdk.DragAction.MOVE)
+        drop.connect("motion", self._on_drop_motion)
+        drop.connect(
+            "drop",
+            lambda target, value, x, y, pf=pf, win=win: self._drop_files_to_destination(
+                target, value, pf.nav_uri, win
+            ),
+        )
+        card.add_controller(drop)
+
+    def _build_folder_card(self, pf: "PreferredFolder", win: Gtk.Window) -> Gtk.Widget:
+        """Grid-view folder card: native-Nautilus look, icon on top, name below."""
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        card.get_style_context().add_class("nautilus-view-cell")
+        card.set_margin_start(6)
+        card.set_margin_end(6)
+        card.set_margin_top(6)
+        card.set_margin_bottom(6)
+        card.set_focusable(True)
+        card.set_focus_on_click(True)
+
+        icon = Gtk.Image()
+        icon.set_pixel_size(_nautilus_icon_size())
+        icon.set_halign(Gtk.Align.CENTER)
+        if _gicon_renders(pf.gio_icon):
+            icon.set_from_gicon(pf.gio_icon)
+        elif _icon_name_renders(pf.icon_name):
+            icon.set_from_icon_name(pf.icon_name)
+        else:
+            icon.set_from_icon_name("folder")
+        card.append(icon)
+
+        emblems_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        emblems_box.set_halign(Gtk.Align.END)
+        emblems_box.set_margin_start(2)
+        emblems_box.get_style_context().add_class("dim-label")
+        card.append(emblems_box)
+
+        labels_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        labels_box.get_style_context().add_class("icon-ui-labels-box")
+        name_lbl = Gtk.Label(label=pf.display_name)
+        name_lbl.set_justify(Gtk.Justification.CENTER)
+        name_lbl.set_halign(Gtk.Align.CENTER)
+        name_lbl.set_wrap(True)
+        name_lbl.set_wrap_mode(Pango.WrapMode.WORD_CHAR)
+        name_lbl.set_lines(3)
+        name_lbl.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
+        labels_box.append(name_lbl)
+        card.append(labels_box)
+
+        self._finish_folder_card(card, pf, win)
+        return card
+
+    def _build_folder_row(self, pf: "PreferredFolder", win: Gtk.Window) -> Gtk.Widget:
+        """List-view folder row: icon (half size) + name, single line."""
+        card = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        card.get_style_context().add_class("nautilus-view-cell")
+        card.set_margin_start(6)
+        card.set_margin_end(6)
+        card.set_margin_top(6)
+        card.set_margin_bottom(6)
+        card.set_focusable(True)
+        card.set_focus_on_click(True)
+        card.set_hexpand(True)
+
+        icon = Gtk.Image()
+        icon.set_pixel_size(_nautilus_icon_size() // 2)
+        icon.set_valign(Gtk.Align.CENTER)
+        if _gicon_renders(pf.gio_icon):
+            icon.set_from_gicon(pf.gio_icon)
+        elif _icon_name_renders(pf.icon_name):
+            icon.set_from_icon_name(pf.icon_name)
+        else:
+            icon.set_from_icon_name("folder")
+        card.append(icon)
+
+        emblems_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        emblems_box.set_halign(Gtk.Align.END)
+        emblems_box.set_margin_start(2)
+        emblems_box.get_style_context().add_class("dim-label")
+        card.append(emblems_box)
+
+        labels_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        labels_box.get_style_context().add_class("icon-ui-labels-box")
+        name_lbl = Gtk.Label(label=pf.display_name)
+        name_lbl.set_xalign(0.0)
+        name_lbl.set_ellipsize(Pango.EllipsizeMode.END)
+        name_lbl.set_valign(Gtk.Align.CENTER)
+        labels_box.append(name_lbl)
+        card.append(labels_box)
+
+        self._finish_folder_card(card, pf, win)
         return card
 
     def _on_card_activated(self, _flow_box, child: Gtk.FlowBoxChild, win: Gtk.Window) -> None:
@@ -2934,13 +3275,22 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
 
     def _on_disk_right_clicked(self, gesture, _n, x, y, win: Gtk.Window, row: Gtk.Box) -> None:
         mount_key = getattr(row, "_mount_key", None)
-        m = _disk_data.get(mount_key) if mount_key else None
+        folder_key = getattr(row, "_folder_key", None)
         gesture.set_state(Gtk.EventSequenceState.CLAIMED)
 
-        if not m or not callable(m.menu):
+        if mount_key:
+            m = _disk_data.get(mount_key)
+            if not m or not callable(m.menu):
+                return
+            ctx_menu = m.menu(self, win, m)
+        elif folder_key:
+            pf = _folder_data.get(folder_key)
+            if not pf or not callable(pf.menu):
+                return
+            ctx_menu = pf.menu(self, win, pf)
+        else:
             return
 
-        ctx_menu = m.menu(self, win, m)
         popover = ctx_menu.build_popover(row, "diskrow")
         rect = Gdk.Rectangle()
         rect.x, rect.y, rect.width, rect.height = int(x), int(y), 1, 1
@@ -3184,6 +3534,26 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
 
         _vis_map = ["visible", "merged", "hidden"]
         _vis_labels = [_("Visible"), _("Merged"), _("Hidden")]
+        _folders_vis_map = ["visible", "hidden"]
+        _folders_vis_labels = [_("Visible"), _("Hidden")]
+
+        folders_combo = Adw.ComboRow()
+        folders_combo.set_title(_("Preferred Folders"))
+        folders_combo.set_model(Gtk.StringList.new(_folders_vis_labels))
+        current_folders_vis = self._gsettings.get_string("visibility-preferred-folders")
+        folders_combo.set_selected(
+            _folders_vis_map.index(current_folders_vis)
+            if current_folders_vis in _folders_vis_map
+            else 0
+        )
+
+        def _on_folders_vis_changed(c, _param):
+            idx = c.get_selected()
+            if 0 <= idx < len(_folders_vis_map):
+                self._gsettings.set_string("visibility-preferred-folders", _folders_vis_map[idx])
+
+        folders_combo.connect("notify::selected", _on_folders_vis_changed)
+        vis_group.add(folders_combo)
 
         for gkey, glabel, gskey in _GROUP_SPEC:
             if gskey is None:
@@ -3773,6 +4143,31 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         if icons.pop(uri.rstrip("/"), None) is not None:
             self._gsettings.set_value("custom-bookmark-icons", GLib.Variant("a{ss}", icons))
 
+    # ── Preferred Folders (issue #30) ───────────────────────────────────────────
+
+    def _get_preferred_folders(self) -> list:
+        """Raw ordered list of tokens/URIs, straight from gsettings."""
+        if not self._gsettings:
+            return list(_DEFAULT_PREFERRED_FOLDERS)
+        return list(self._gsettings.get_value("preferred-folders").unpack())
+
+    def _add_preferred_folder(self, uri: str) -> None:
+        if not self._gsettings:
+            return
+        entries = self._get_preferred_folders()
+        uri = uri.rstrip("/")
+        if uri not in entries:
+            entries.append(uri)
+            self._gsettings.set_value("preferred-folders", GLib.Variant("as", entries))
+
+    def _do_remove_preferred_folder(self, pf: "PreferredFolder", win: Gtk.Window) -> None:
+        if not self._gsettings:
+            return
+        entries = self._get_preferred_folders()
+        if pf.key in entries:
+            entries.remove(pf.key)
+            self._gsettings.set_value("preferred-folders", GLib.Variant("as", entries))
+
     def _apply_icon_to_row(self, row, icon_name: str) -> None:
         """Apply `icon_name` to a bookmark row, both the displayed widget and
         the row's "start-icon" property.
@@ -3920,6 +4315,87 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         popover._mc_injected = True
         _log(f"_inject_change_icon_item: added Change Icon to native menu uri={uri}")
         return GLib.SOURCE_REMOVE
+
+    # ── "Add to Preferred" injection (issue #30) ────────────────────────────
+
+    def _find_pathbar_menu_button(self, win: Gtk.Window):
+        """Find the NautilusPathBar's "Current Folder Menu" button -- the sole
+        Gtk.MenuButton inside NautilusPathBar (icon "view-more-symbolic"). Its
+        popover is bound to the same GMenu shared with the background context
+        menu, which contains "Add to _Bookmarks" (slot.bookmark-current-directory)."""
+        pathbar = _find_widget(win, class_name="NautilusPathBar", site="_find_pathbar_menu_button")
+        if pathbar is None:
+            return None
+        for w in _all_widgets(pathbar):
+            if isinstance(w, Gtk.MenuButton):
+                return w
+        return None
+
+    def _attach_pathbar_menu_watch(self, win: Gtk.Window) -> None:
+        """Watch the pathbar's Current Folder Menu button so we can inject
+        "Add to Preferred" into its native menu the first time it opens."""
+        btn = self._find_pathbar_menu_button(win)
+        if btn is None:
+            _log("_attach_pathbar_menu_watch: pathbar menu button not found")
+            return
+        btn.connect("notify::active", self._on_pathbar_menu_active, win)
+        _log("_attach_pathbar_menu_watch: attached")
+
+    def _on_pathbar_menu_active(self, btn: Gtk.MenuButton, _param, win: Gtk.Window) -> None:
+        if not btn.get_active():
+            return
+        GLib.idle_add(self._inject_add_preferred_item, btn, win)
+
+    def _inject_add_preferred_item(self, btn: Gtk.MenuButton, win: Gtk.Window) -> bool:
+        popover = btn.get_popover()
+        if popover is None:
+            return GLib.SOURCE_REMOVE
+        if getattr(popover, "_mc_pref_injected", False):
+            return GLib.SOURCE_REMOVE
+        model = popover.get_menu_model()
+        if not isinstance(model, Gio.Menu):
+            _log(f"_inject_add_preferred_item: model is {type(model).__name__}, not Gio.Menu")
+            return GLib.SOURCE_REMOVE
+
+        section = _menu_section_with_action(model, "slot.bookmark-current-directory")
+        if not isinstance(section, Gio.Menu):
+            _log(
+                "_inject_add_preferred_item: Add to Bookmarks section not found, using own section"
+            )
+            section = Gio.Menu()
+            model.append_section(None, section)
+        section.append(_("Add to Preferred"), "mcpref.add-current")
+
+        ag = Gio.SimpleActionGroup()
+        act = Gio.SimpleAction.new("add-current", None)
+        act.connect("activate", lambda *_a: self._do_add_preferred_current(win))
+        ag.add_action(act)
+        popover.insert_action_group("mcpref", ag)
+        popover._mc_pref_injected = True
+        _log("_inject_add_preferred_item: added Add to Preferred to native menu")
+        return GLib.SOURCE_REMOVE
+
+    def _do_add_preferred_current(self, win: Gtk.Window) -> None:
+        uri = None
+        for w in _all_widgets(win):
+            if "Slot" not in type(w).__name__:
+                continue
+            try:
+                loc = w.get_property("location")
+            except TypeError:
+                continue
+            if loc is None:
+                continue
+            try:
+                if w.get_property("active"):
+                    uri = loc.get_uri()
+                    break
+            except TypeError:
+                pass
+            uri = loc.get_uri()
+        if uri:
+            self._add_preferred_folder(uri)
+            _log(f"_do_add_preferred_current: added {uri}")
 
     def _open_bookmark_icon_picker(self, uri: str, label: str, row) -> None:
         """Searchable symbolic-icon grid for a bookmark. Matches native Rename's
