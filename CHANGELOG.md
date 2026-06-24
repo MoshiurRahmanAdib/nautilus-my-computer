@@ -4,6 +4,26 @@ All notable changes to this project are documented here.
 
 ---
 
+## v0.9.1
+The "Open With…" row now does something.
+
+### Added
+- "Open With…" on local folder and disk cards now opens an app chooser
+  matching native Nautilus's own picker (search, Recommended/Other Apps),
+  attached to the Nautilus window, instead of always being greyed out
+
+### Changed
+- Preferred Folders card spacing increased from 16px to 24px between columns
+
+### Fixed
+- Turkish translation for "Open With…" was missing; added
+
+### Docs
+- README now documents the Preferred Folders group (added in v0.9.0), with a
+  new screenshot and settings/feature list entries
+  
+---
+
 ## v0.9.0
 One-click access to your everyday folders, right from the Computer view.
 

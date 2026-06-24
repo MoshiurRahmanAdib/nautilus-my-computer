@@ -54,7 +54,7 @@ msgid "Open in New Window"
 msgstr "Yeni Pencerede Aç"
 
 msgid "Open With…"
-msgstr ""
+msgstr "Birlikte Aç…"
 
 msgid "Mount"
 msgstr "Bağla"

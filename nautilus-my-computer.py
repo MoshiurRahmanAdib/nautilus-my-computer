@@ -82,7 +82,7 @@ DETACH_SETTINGS_WINDOW = False  # testing toggle: True opens settings as a stand
 
 # ── Extension metadata (keep in sync with pyproject.toml) ────────────────────
 EXT_NAME = "My Computer for Nautilus"
-EXT_VERSION = "0.9.0"
+EXT_VERSION = "0.9.1"
 EXT_AUTHOR = "Yann Masoch"
 EXT_LICENSE = "MIT"
 EXT_GITHUB = "https://github.com/yannmasoch/nautilus-my-computer"
@@ -139,7 +139,7 @@ _LIST_BAR_MAX_WIDTH = 240  # max width (px) of the usage bar at the end of a lis
 _DISK_CARD_SPACING = 16  # disk card FlowBox column spacing (px)
 
 _FOLDER_FLOW_COLS_GRID = 12  # narrower folder cards fit more columns than disk cards
-_FOLDER_CARD_SPACING = 16  # folder card FlowBox column spacing (px)
+_FOLDER_CARD_SPACING = 24  # folder card FlowBox column spacing (px)
 
 _ICON_PICKER_COLS = 6  # bookmark icon-picker grid: visible columns
 _ICON_PICKER_ROWS = 5  # bookmark icon-picker grid: visible rows before scrolling
@@ -345,15 +345,14 @@ def _open_actions(
             shortcut="<Shift>Return",
         ),
     ]
-    # "Open With…" would route through the system app chooser (XDG Desktop Portal
-    # OpenURI with "ask"), but properly parenting that modal needs reliable
-    # Wayland xdg_foreign export/release plus an X11 fallback, which isn't solid
-    # yet (see tasks/lessons.md). Shown greyed out as a visible placeholder rather
-    # than silently omitted, so it's clear the feature is planned, not missing.
-    # Never shown on special places (recent://, trash://, computer://, network,
-    # network mounts) — like native Nautilus, those have no app handler anyway.
+    # Routes through the system app chooser (XDG Desktop Portal OpenURI with
+    # "ask"), see _do_open_with(). Never shown on special places (recent://,
+    # trash://, computer://, network, network mounts) — like native Nautilus,
+    # those have no app handler anyway.
     if not is_special_place and uri.startswith("file://"):
-        submenu.append(MenuItem(_("Open With…"), enabled=False, section=1))
+        submenu.append(
+            MenuItem(_("Open With…"), action=lambda: ext._do_open_with(uri, win), section=1)
+        )
     return [MenuItem(_("Open"), submenu=submenu)]
 
 
@@ -509,11 +508,13 @@ def _disk_context_menu(ext, win, m) -> ContextualMenu:
                 shortcut="<Shift>Return",
             ),
         ]
-        # Greyed-out placeholder, see _open_actions() above. Only local mounts would
-        # ever resolve in the system app chooser; network mounts (smb://, sftp://)
-        # have no app handler, so omit it there entirely, like native Nautilus.
+        # See _do_open_with() / _open_actions() above. Only local mounts would ever
+        # resolve in the system app chooser; network mounts (smb://, sftp://) have
+        # no app handler, so omit it there entirely, like native Nautilus.
         if nav_uri.startswith("file://"):
-            open_submenu.append(MenuItem(_("Open With…"), enabled=False, section=1))
+            open_submenu.append(
+                MenuItem(_("Open With…"), action=lambda: ext._do_open_with(nav_uri, win), section=1)
+            )
     else:
         open_submenu = [
             MenuItem(
@@ -3401,6 +3402,186 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
             pass
 
         _call({})
+
+    def _do_open_with(self, nav_uri: str, win: Gtk.Window) -> None:
+        """Show an app chooser for nav_uri as an in-window sheet (Adw.Dialog),
+        matching how native Nautilus presents its own "Open With…" - a custom
+        AdwDialog compiled into the nautilus binary, with no public API we
+        could call directly. Built directly from Gio.AppInfo rather than
+        Gtk.AppChooserDialog: that stock widget is a Gtk.Dialog (always a
+        separate top-level window, never an attached sheet), and its
+        "View All Apps…" / "Find New Apps…" extras plus collapsed search
+        toggle are private template internals with no supported way to
+        customize or remove. Used by the "Open With…" card menu item; only
+        ever called for local file:// URIs, always folders in this extension,
+        so content type is hardcoded to inode/directory."""
+        if not nav_uri.startswith("file://"):
+            return
+
+        content_type = "inode/directory"
+        recommended = list(Gio.AppInfo.get_recommended_for_type(content_type))
+        recommended_ids = {info.get_id() for info in recommended}
+        other = [
+            info
+            for info in Gio.AppInfo.get_all()
+            if info.get_id() not in recommended_ids and info.should_show()
+        ]
+        recommended.sort(key=lambda i: i.get_display_name().lower())
+        other.sort(key=lambda i: i.get_display_name().lower())
+
+        file_name = Gio.File.new_for_uri(nav_uri).get_basename() or nav_uri
+
+        dialog = Adw.Dialog()
+        dialog.set_title(_("Open Folder"))
+        dialog.set_content_width(420)
+        dialog.set_content_height(560)
+
+        toolbar_view = Adw.ToolbarView()
+        dialog.set_child(toolbar_view)
+
+        header = Adw.HeaderBar()
+        header.set_show_start_title_buttons(False)
+        header.set_show_end_title_buttons(False)
+        cancel_button = Gtk.Button(label=_("Cancel"))
+        cancel_button.connect("clicked", lambda *_a: dialog.close())
+        header.pack_start(cancel_button)
+        open_button = Gtk.Button(label=_("Open"))
+        open_button.add_css_class("suggested-action")
+        open_button.set_sensitive(False)
+        header.pack_end(open_button)
+        toolbar_view.add_top_bar(header)
+
+        # Search entry as its own toolbar row (native Nautilus: an Adw.Bin with
+        # the "toolbar" style class), not inside the margined content box - this
+        # is what makes it span edge-to-edge, aligned with the header buttons.
+        search_bin = Adw.Bin()
+        search_bin.add_css_class("toolbar")
+        search_entry = Gtk.SearchEntry()
+        search_entry.set_hexpand(True)
+        search_bin.set_child(search_entry)
+        toolbar_view.add_top_bar(search_bin)
+
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        content.set_margin_start(18)
+        content.set_margin_end(18)
+        content.set_margin_top(18)
+        content.set_margin_bottom(18)
+        toolbar_view.set_content(content)
+
+        description = Gtk.Label(wrap=True, justify=Gtk.Justification.CENTER)
+        description.set_markup(
+            _("Choose an app to open <b>%s</b>") % GLib.markup_escape_text(file_name)
+        )
+        content.append(description)
+
+        # has-frame gives the native rounded-corner/bordered look (matches
+        # NautilusAppChooserWidget's ScrolledWindow); the listbox itself stays
+        # unstyled so rows render without the .boxed-list per-row separators.
+        scroller = Gtk.ScrolledWindow()
+        scroller.set_has_frame(True)
+        scroller.set_vexpand(True)
+        scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        content.append(scroller)
+
+        listbox = Gtk.ListBox()
+        listbox.set_selection_mode(Gtk.SelectionMode.SINGLE)
+        listbox.set_activate_on_single_click(False)
+        scroller.set_child(listbox)
+
+        def _make_header_row(text: str, *, first: bool) -> Gtk.ListBoxRow:
+            row = Gtk.ListBoxRow()
+            row.set_selectable(False)
+            row.set_activatable(False)
+            label = Gtk.Label(label=text, xalign=0.0)
+            label.add_css_class("heading")
+            label.set_margin_start(6)
+            label.set_margin_top(6 if first else 16)
+            label.set_margin_bottom(6)
+            row.set_child(label)
+            return row
+
+        def _make_app_row(info: Gio.AppInfo) -> Gtk.ListBoxRow:
+            row = Gtk.ListBoxRow()
+            box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+            box.set_margin_top(6)
+            box.set_margin_bottom(6)
+            box.set_margin_start(6)
+            box.set_margin_end(6)
+            icon = info.get_icon()
+            image = (
+                Gtk.Image.new_from_gicon(icon)
+                if icon
+                else Gtk.Image.new_from_icon_name("application-x-executable-symbolic")
+            )
+            image.set_pixel_size(32)
+            box.append(image)
+            label = Gtk.Label(label=info.get_display_name(), xalign=0.0)
+            box.append(label)
+            row.set_child(box)
+            row._app_info = info
+            return row
+
+        def _populate(filter_text: str = "") -> None:
+            child = listbox.get_first_child()
+            while child:
+                nxt = child.get_next_sibling()
+                listbox.remove(child)
+                child = nxt
+            filt = filter_text.strip().lower()
+            first_app_row = None
+            is_first_group = True
+            for title, apps in ((_("Recommended Apps"), recommended), (_("Other Apps"), other)):
+                matches = [a for a in apps if not filt or filt in a.get_display_name().lower()]
+                if not matches:
+                    continue
+                listbox.append(_make_header_row(title, first=is_first_group))
+                is_first_group = False
+                for info in matches:
+                    app_row = _make_app_row(info)
+                    listbox.append(app_row)
+                    if first_app_row is None:
+                        first_app_row = app_row
+            if first_app_row is not None:
+                listbox.select_row(first_app_row)
+            else:
+                empty = Gtk.ListBoxRow()
+                empty.set_selectable(False)
+                empty.set_activatable(False)
+                label = Gtk.Label(label=_("No applications found."))
+                label.add_css_class("dim-label")
+                label.set_margin_top(24)
+                label.set_margin_bottom(24)
+                empty.set_child(label)
+                listbox.append(empty)
+
+        def _selected_app_info():
+            row = listbox.get_selected_row()
+            return getattr(row, "_app_info", None) if row else None
+
+        def _launch_and_close() -> None:
+            info = _selected_app_info()
+            dialog.close()
+            if info:
+                try:
+                    info.launch_uris([nav_uri], None)
+                except GLib.Error as e:
+                    _log(f"Open With launch failed: {e}")
+
+        search_entry.connect("search-changed", lambda e: _populate(e.get_text()))
+        search_entry.connect("activate", lambda *_a: _launch_and_close())
+        listbox.connect(
+            "row-selected",
+            lambda _lb, row: open_button.set_sensitive(getattr(row, "_app_info", None) is not None),
+        )
+        listbox.connect(
+            "row-activated",
+            lambda _lb, row: _launch_and_close() if getattr(row, "_app_info", None) else None,
+        )
+        open_button.connect("clicked", lambda *_a: _launch_and_close())
+
+        _populate()
+        dialog.present(win)
+        search_entry.grab_focus()
 
     def _on_panel_clicked(self, _gesture, _n, _x, _y, win: Gtk.Window) -> None:
         state = self._windows.get(win)

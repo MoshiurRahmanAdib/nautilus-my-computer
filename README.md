@@ -36,6 +36,14 @@ Computer sits at the top of the GNOME Files sidebar, click to open the panel and
 
 ![Computer button](assets/images/computer-button.png)
 
+### Preferred Folders
+
+A "Preferred Folders" group sits at the top of the Computer view, giving you one-click access to your everyday folders without digging through the sidebar.
+
+This group can be hidden if you'd rather not see it. And add or remove any folders as you want.
+
+![Preferred Folders](assets/images/preferred-folders.png)
+
 ### Settings page
 
 My Computer Settings let you:
@@ -44,6 +52,7 @@ My Computer Settings let you:
 - Show or hide system partitions (root, boot, EFI, swap)
 - Control the visibility of each group: visible, hidden, or merged into On this Computer
 - Choose which sidebar locations are shown: Home, Recent, Starred, Network, Trash
+- Choose which folders appear in Preferred Folders, and hide the row entirely
 - Customize the disk usage bar color to match your style
 
 ![Settings Page](assets/images/settings-page.png)
@@ -129,6 +138,7 @@ My Computer is compatible with almost all custom GTK themes.
 - **Groups visibility:** choose which storage groups are visible, hidden, or merged into one flat list.
 - **Sidebar visibility:** choose which sidebar locations are shown: Home, Recent, Starred, Network, and Trash.
 - **Custom bookmark icons:** right-click any bookmark to pick a custom symbolic icon from a searchable picker, persisted across restarts.
+- **Preferred Folders:** one-click cards for your everyday folders at the top of the Computer panel, customizable via Settings or the "..." menu's "Add to Preferred" item.
   
 ## Tested on
 
