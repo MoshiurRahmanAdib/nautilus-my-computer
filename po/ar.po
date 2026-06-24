@@ -54,6 +54,9 @@ msgstr "افتح في علامة تبويب جديدة"
 msgid "Open in New Window"
 msgstr "افتح في نافذة جديدة"
 
+msgid "Open With…"
+msgstr "افتح باستخدام…"
+
 msgid "Mount"
 msgstr "ضم"
 

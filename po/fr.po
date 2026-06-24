@@ -54,6 +54,9 @@ msgstr "Ouvrir dans un nouvel onglet"
 msgid "Open in New Window"
 msgstr "Ouvrir dans une nouvelle fenêtre"
 
+msgid "Open With…"
+msgstr "Ouvrir avec…"
+
 msgid "Mount"
 msgstr "Monter"
 

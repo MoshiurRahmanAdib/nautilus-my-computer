@@ -55,6 +55,9 @@ msgstr "Megnyitás új lapon"
 msgid "Open in New Window"
 msgstr "Megnyitás új ablakban"
 
+msgid "Open With…"
+msgstr "Megnyitás ezzel…"
+
 msgid "Mount"
 msgstr "Csatolás"
 

@@ -54,6 +54,9 @@ msgstr "Obrir en una pestanya nova"
 msgid "Open in New Window"
 msgstr "Obrir en una finestra nova"
 
+msgid "Open With…"
+msgstr "Obre amb…"
+
 msgid "Mount"
 msgstr "Muntar"
 

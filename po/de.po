@@ -54,6 +54,9 @@ msgstr "In neuem Tab öffnen"
 msgid "Open in New Window"
 msgstr "In neuem Fenster öffnen"
 
+msgid "Open With…"
+msgstr "Öffnen mit…"
+
 msgid "Mount"
 msgstr "Einhängen"
 

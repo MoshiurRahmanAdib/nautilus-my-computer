@@ -54,6 +54,9 @@ msgstr "Открыть в новой вкладке"
 msgid "Open in New Window"
 msgstr "Открыть в новом окне"
 
+msgid "Open With…"
+msgstr "Открыть с помощью…"
+
 msgid "Mount"
 msgstr "Присоединить"
 

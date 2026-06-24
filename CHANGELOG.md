@@ -4,6 +4,20 @@ All notable changes to this project are documented here.
 
 ---
 
+## v0.9.0
+One-click access to your everyday folders, right from the Computer view.
+
+### Added
+- A new "Preferred Folders" group at the top of the Computer panel, with
+  cards for Home, Recent, Starred, Network, Documents, Downloads, Music,
+  Videos, and Pictures, so you can jump straight to them without digging
+  through the sidebar (issue #30)
+- This group can be hidden if you'd rather not see it, and power users
+  (or distributions shipping their own defaults) can customize which
+  folders appear and in what order
+
+---
+
 ## v0.8.4
 Correct root disk detection on OSTree/bootc systems.
 

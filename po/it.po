@@ -54,6 +54,9 @@ msgstr "Apri in una nuova scheda"
 msgid "Open in New Window"
 msgstr "Apri in una nuova finestra"
 
+msgid "Open With…"
+msgstr "Apri con…"
+
 msgid "Mount"
 msgstr "Monta"
 

@@ -53,6 +53,9 @@ msgstr "Yeni Sekmede Aç"
 msgid "Open in New Window"
 msgstr "Yeni Pencerede Aç"
 
+msgid "Open With…"
+msgstr ""
+
 msgid "Mount"
 msgstr "Bağla"
 

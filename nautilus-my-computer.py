@@ -82,7 +82,7 @@ DETACH_SETTINGS_WINDOW = False  # testing toggle: True opens settings as a stand
 
 # ── Extension metadata (keep in sync with pyproject.toml) ────────────────────
 EXT_NAME = "My Computer for Nautilus"
-EXT_VERSION = "0.8.4"
+EXT_VERSION = "0.9.0"
 EXT_AUTHOR = "Yann Masoch"
 EXT_LICENSE = "MIT"
 EXT_GITHUB = "https://github.com/yannmasoch/nautilus-my-computer"
@@ -246,6 +246,7 @@ class MenuItem:
     section: int = 0  # consecutive items sharing a number group together; gaps draw separators
     enabled: bool = True  # rendered greyed out when False
     visible: bool = True  # omitted from the menu entirely when False
+    submenu: list = None  # list[MenuItem]; when set, renders as a native submenu (back arrow)
 
 
 @dataclasses.dataclass
@@ -261,30 +262,41 @@ class ContextualMenu:
     def build_popover(self, parent: Gtk.Widget, prefix: str) -> Gtk.PopoverMenu:
         model = Gio.Menu()
         ag = Gio.SimpleActionGroup()
-        section_menu = None
-        current_section = None
         counter = 0
 
-        for it in self.items:
-            if not it.visible:
-                continue
-            if section_menu is None or it.section != current_section:
-                section_menu = Gio.Menu()
-                model.append_section(None, section_menu)
-                current_section = it.section
+        def add_items(items: list, target_menu: Gio.Menu) -> None:
+            nonlocal counter
+            section_menu = None
+            current_section = None
 
-            action_name = f"item{counter}"
-            counter += 1
-            menu_item = Gio.MenuItem.new(it.label, f"{prefix}.{action_name}")
-            if it.shortcut:
-                menu_item.set_attribute_value("accel", GLib.Variant("s", it.shortcut))
-            section_menu.append_item(menu_item)
+            for it in items:
+                if not it.visible:
+                    continue
+                if section_menu is None or it.section != current_section:
+                    section_menu = Gio.Menu()
+                    target_menu.append_section(None, section_menu)
+                    current_section = it.section
 
-            act = Gio.SimpleAction.new(action_name, None)
-            act.set_enabled(it.enabled)
-            if callable(it.action):
-                act.connect("activate", lambda *_a, cb=it.action: cb())
-            ag.add_action(act)
+                if it.submenu:
+                    sub_model = Gio.Menu()
+                    add_items(it.submenu, sub_model)
+                    section_menu.append_item(Gio.MenuItem.new_submenu(it.label, sub_model))
+                    continue
+
+                action_name = f"item{counter}"
+                counter += 1
+                menu_item = Gio.MenuItem.new(it.label, f"{prefix}.{action_name}")
+                if it.shortcut:
+                    menu_item.set_attribute_value("accel", GLib.Variant("s", it.shortcut))
+                section_menu.append_item(menu_item)
+
+                act = Gio.SimpleAction.new(action_name, None)
+                act.set_enabled(it.enabled)
+                if callable(it.action):
+                    act.connect("activate", lambda *_a, cb=it.action: cb())
+                ag.add_action(act)
+
+        add_items(self.items, model)
 
         popover = Gtk.PopoverMenu.new_from_model(model)
         popover.set_has_arrow(False)
@@ -310,11 +322,59 @@ class PlaceEntry:
 
 
 def _open_actions(ext, win, uri: str, open_enabled: bool = True) -> list:
-    """The three open actions shared by every place row (section 0)."""
+    """The three open actions for folder/disk cards, collapsed into a single native
+    "Open" submenu (back arrow), matching native Nautilus folder right-click. Same
+    shortcuts as the disk card menu (Return / Ctrl+Return / Shift+Return)."""
+    submenu = [
+        MenuItem(
+            _("Open"),
+            action=lambda: ext._do_open(uri, win),
+            shortcut="Return",
+            enabled=open_enabled,
+        ),
+        MenuItem(
+            _("Open in New Tab"),
+            action=lambda: ext._do_open_tab(uri, win),
+            shortcut="<Control>Return",
+        ),
+        MenuItem(
+            _("Open in New Window"),
+            action=lambda: ext._do_open_window(uri),
+            shortcut="<Shift>Return",
+        ),
+    ]
+    # "Open With…" would route through the system app chooser (XDG Desktop Portal
+    # OpenURI with "ask"), but properly parenting that modal needs reliable
+    # Wayland xdg_foreign export/release plus an X11 fallback, which isn't solid
+    # yet (see tasks/lessons.md). Shown greyed out as a visible placeholder rather
+    # than silently omitted, so it's clear the feature is planned, not missing.
+    # Never shown on special places (recent://, trash://, computer://, network,
+    # network mounts) — like native Nautilus, those have no app handler anyway.
+    if uri.startswith("file://"):
+        submenu.append(MenuItem(_("Open With…"), enabled=False, section=1))
+    return [MenuItem(_("Open"), submenu=submenu)]
+
+
+def _open_actions_flat(ext, win, uri: str, open_enabled: bool = True) -> list:
+    """Flat (non-submenu) open actions for the Computer sidebar row. The sidebar
+    list is a fixed set of places, not folder-like cards, so unlike
+    _open_actions() it keeps Open / Open in New Tab / Open in New Window as
+    top-level items, matching GtkPlacesSidebar's native flat context menu. No
+    shortcuts shown here, unlike the folder/disk card submenu."""
     return [
-        MenuItem(_("Open"), action=lambda: ext._do_open(uri, win), enabled=open_enabled),
-        MenuItem(_("Open in New Tab"), action=lambda: ext._do_open_tab(uri, win)),
-        MenuItem(_("Open in New Window"), action=lambda: ext._do_open_window(uri)),
+        MenuItem(
+            _("Open"),
+            action=lambda: ext._do_open(uri, win),
+            enabled=open_enabled,
+        ),
+        MenuItem(
+            _("Open in New Tab"),
+            action=lambda: ext._do_open_tab(uri, win),
+        ),
+        MenuItem(
+            _("Open in New Window"),
+            action=lambda: ext._do_open_window(uri),
+        ),
     ]
 
 
@@ -323,7 +383,7 @@ def _computer_context_menu(ext, win, entry: PlaceEntry) -> ContextualMenu:
     uri = entry.uri
     on_computer = ext._windows.get(win, {}).get("visible_view") == VIEW_DISKINFO
     return ContextualMenu(
-        _open_actions(ext, win, uri, open_enabled=not on_computer)
+        _open_actions_flat(ext, win, uri, open_enabled=not on_computer)
         + [MenuItem(MENU_ITEM_LABEL, action=lambda: ext._launch_prefs(win), section=1)]
     )
 
@@ -431,9 +491,10 @@ def _disk_context_menu(ext, win, m) -> ContextualMenu:
         if unix_dev:
             device = unix_dev
 
-    # Section 0: open actions (all disks). Mounted -> navigate; unmounted -> mount then open.
+    # Section 0: open actions (all disks), collapsed into a single native "Open"
+    # submenu. Mounted -> navigate; unmounted -> mount then open.
     if is_mounted and nav_uri:
-        items = [
+        open_submenu = [
             MenuItem(_("Open"), action=lambda: ext._do_open(nav_uri, win), shortcut="Return"),
             MenuItem(
                 _("Open in New Tab"),
@@ -446,8 +507,13 @@ def _disk_context_menu(ext, win, m) -> ContextualMenu:
                 shortcut="<Shift>Return",
             ),
         ]
+        # Greyed-out placeholder, see _open_actions() above. Only local mounts would
+        # ever resolve in the system app chooser; network mounts (smb://, sftp://)
+        # have no app handler, so omit it there entirely, like native Nautilus.
+        if nav_uri.startswith("file://"):
+            open_submenu.append(MenuItem(_("Open With…"), enabled=False, section=1))
     else:
-        items = [
+        open_submenu = [
             MenuItem(
                 _("Open"),
                 action=lambda: ext._do_mount_then_open(m, win, "current"),
@@ -464,6 +530,7 @@ def _disk_context_menu(ext, win, m) -> ContextualMenu:
                 shortcut="<Shift>Return",
             ),
         ]
+    items = [MenuItem(_("Open"), submenu=open_submenu)]
 
     # Section 1: mount / unmount / eject + format (non-protected only).
     if not _is_protected_mount(m):
@@ -865,9 +932,6 @@ _PREFERRED_TOKENS: dict[str, dict] = {
 
 _DEFAULT_PREFERRED_FOLDERS: list[str] = [
     "home",
-    "recent",
-    "starred",
-    "network",
     "documents",
     "downloads",
     "music",
@@ -1440,6 +1504,18 @@ def _menu_section_with_action(model, action_name):
             av = section.get_item_attribute_value(j, "action", str_type)
             if av is not None and av.get_string() == action_name:
                 return section
+    return None
+
+
+def _menu_item_index(section, action_name):
+    """Return the index of the item bound to `action_name` within `section`,
+    or None. Used to insert right after a specific native item (e.g. directly
+    below "Add to Bookmarks") instead of appending to the end of the section."""
+    str_type = GLib.VariantType.new("s")
+    for j in range(section.get_n_items()):
+        av = section.get_item_attribute_value(j, "action", str_type)
+        if av is not None and av.get_string() == action_name:
+            return j
     return None
 
 
@@ -2604,6 +2680,7 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
 
                 container.connect("child-activated", self._on_card_activated, win)
                 container.connect("selected-children-changed", self._on_flow_selection_changed, win)
+                self._attach_flow_shortcuts(container, win)
                 section_flows.append(container)
 
                 folder_size_group = Gtk.SizeGroup(mode=Gtk.SizeGroupMode.HORIZONTAL)
@@ -2675,6 +2752,7 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
 
             container.connect("child-activated", self._on_card_activated, win)
             container.connect("selected-children-changed", self._on_flow_selection_changed, win)
+            self._attach_flow_shortcuts(container, win)
             section_flows.append(container)
 
             for m, origin_key in render_items:
@@ -2750,10 +2828,6 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         right_click.set_button(3)
         right_click.connect("pressed", self._on_disk_right_clicked, win, card)
         card.add_controller(right_click)
-
-        key_ctrl = Gtk.EventControllerKey()
-        key_ctrl.connect("key-pressed", self._on_row_key_pressed, win, card)
-        card.add_controller(key_ctrl)
 
         if m.is_mounted and (m.mountpoint or m.nav_uri):
             drop = Gtk.DropTarget.new(Gdk.FileList, Gdk.DragAction.COPY | Gdk.DragAction.MOVE)
@@ -2883,7 +2957,6 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
 
     def _finish_folder_card(self, card: Gtk.Widget, pf: "PreferredFolder", win: Gtk.Window) -> None:
         """Tag and wire up controllers shared by both folder card layouts."""
-        card.set_tooltip_text(pf.display_name)
         card._folder_key = pf.key
         card._nav_uri = pf.nav_uri
 
@@ -2891,10 +2964,6 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         right_click.set_button(3)
         right_click.connect("pressed", self._on_disk_right_clicked, win, card)
         card.add_controller(right_click)
-
-        key_ctrl = Gtk.EventControllerKey()
-        key_ctrl.connect("key-pressed", self._on_row_key_pressed, win, card)
-        card.add_controller(key_ctrl)
 
         drop = Gtk.DropTarget.new(Gdk.FileList, Gdk.DragAction.COPY | Gdk.DragAction.MOVE)
         drop.connect("motion", self._on_drop_motion)
@@ -3098,33 +3167,55 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
 
     # ── Callbacks ─────────────────────────────────────────────────────────────
 
-    def _on_row_key_pressed(
-        self, ctrl, keyval, keycode, state, win: Gtk.Window, row: Gtk.Box
-    ) -> bool:
-        if keyval not in (Gdk.KEY_Return, Gdk.KEY_KP_Enter, Gdk.KEY_ISO_Enter):
+    def _attach_flow_shortcuts(self, flow_box: Gtk.FlowBox, win: Gtk.Window) -> None:
+        """Declarative Ctrl/Shift/Alt+Return shortcuts for the focused card,
+        mirroring how native Nautilus wires a Gtk.ShortcutController onto its
+        grid cells, rather than hand-parsing modifier bits off a raw key event.
+
+        Must live on the FlowBox itself, not the card: FlowBoxChild (not our
+        card widget) is the actual keyboard focus target, and GTK's shortcut
+        search walks up from the focused widget through its ancestors -- the
+        FlowBox is one, the card is not. Plain Return is left alone here; it
+        already works natively via FlowBox's own "child-activated" binding
+        (see _on_card_activated), so duplicating it would be redundant.
+        """
+        controller = Gtk.ShortcutController()
+        controller.set_scope(Gtk.ShortcutScope.LOCAL)
+        for accel, kind in (
+            ("<Control>Return", "tab"),
+            ("<Shift>Return", "window"),
+            ("<Alt>Return", "properties"),
+        ):
+            trigger = Gtk.ShortcutTrigger.parse_string(accel)
+            action = Gtk.CallbackAction.new(
+                lambda w, _args, win=win, kind=kind: self._activate_focused_card(w, win, kind)
+            )
+            controller.add_shortcut(Gtk.Shortcut.new(trigger, action))
+        flow_box.add_controller(controller)
+
+    def _activate_focused_card(self, flow_box: Gtk.FlowBox, win: Gtk.Window, kind: str) -> bool:
+        focus_child = flow_box.get_focus_child()
+        if focus_child is None:
             return False
+        row = focus_child.get_child()
+        if row is None:
+            return False
+
         mount_key = getattr(row, "_mount_key", None)
         m = _disk_data.get(mount_key) if mount_key else None
         nav_uri = getattr(row, "_nav_uri", "")
         is_mounted = m.is_mounted if m else True
-        ctrl_held = bool(state & Gdk.ModifierType.CONTROL_MASK)
-        shift_held = bool(state & Gdk.ModifierType.SHIFT_MASK)
-        alt_held = bool(state & Gdk.ModifierType.ALT_MASK)
+        if not is_mounted:
+            return False
 
-        if alt_held and not ctrl_held and not shift_held:
-            if is_mounted and nav_uri:
-                self._do_properties(nav_uri, win)
-        elif ctrl_held and not shift_held and not alt_held:
-            if is_mounted:
-                self._do_open_tab(nav_uri, win)
-        elif shift_held and not ctrl_held and not alt_held:
-            if is_mounted:
-                self._do_open_window(nav_uri)
-        else:
-            if not is_mounted:
-                self._do_mount(m, win)
-            else:
-                self._do_open(nav_uri, win)
+        if kind == "tab":
+            self._do_open_tab(nav_uri, win)
+        elif kind == "window":
+            self._do_open_window(nav_uri)
+        elif kind == "properties":
+            if not nav_uri:
+                return False
+            self._do_properties(nav_uri, win)
         return True
 
     def _on_drop_motion(self, target: Gtk.DropTarget, x: float, y: float) -> Gdk.DragAction:
@@ -4148,8 +4239,21 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
             return
         entries = self._get_preferred_folders()
         uri = uri.rstrip("/")
+        # The current user's home dir must store as the "home" token, not a raw
+        # URI, so it keeps the translated "Home" label (and the right icon)
+        # instead of GVfs' display-name for that path, which is the username
+        # (e.g. "yann"), not "Home". Other users' home directories under /home/
+        # are unaffected and keep their own real folder name, since this only
+        # matches the current user's own home directory URI.
+        home_uri = GLib.filename_to_uri(GLib.get_home_dir(), None).rstrip("/")
+        if uri == home_uri:
+            uri = "home"
         if uri not in entries:
-            entries.append(uri)
+            # Home always leads, since there's no manual reordering UI yet.
+            if uri == "home":
+                entries.insert(0, uri)
+            else:
+                entries.append(uri)
             self._gsettings.set_value("preferred-folders", GLib.Variant("as", entries))
 
     def _do_remove_preferred_folder(self, pf: "PreferredFolder", win: Gtk.Window) -> None:
@@ -4325,7 +4429,8 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
 
     def _attach_pathbar_menu_watch(self, win: Gtk.Window) -> None:
         """Watch the pathbar's Current Folder Menu button so we can inject
-        "Add to Preferred" into its native menu the first time it opens."""
+        "Add to Preferred" / "Remove from Preferred" into its native menu
+        every time it opens."""
         btn = self._find_pathbar_menu_button(win)
         if btn is None:
             _log("_attach_pathbar_menu_watch: pathbar menu button not found")
@@ -4336,38 +4441,11 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
     def _on_pathbar_menu_active(self, btn: Gtk.MenuButton, _param, win: Gtk.Window) -> None:
         if not btn.get_active():
             return
-        GLib.idle_add(self._inject_add_preferred_item, btn, win)
+        GLib.idle_add(self._inject_preferred_menu_item, btn, win)
 
-    def _inject_add_preferred_item(self, btn: Gtk.MenuButton, win: Gtk.Window) -> bool:
-        popover = btn.get_popover()
-        if popover is None:
-            return GLib.SOURCE_REMOVE
-        if getattr(popover, "_mc_pref_injected", False):
-            return GLib.SOURCE_REMOVE
-        model = popover.get_menu_model()
-        if not isinstance(model, Gio.Menu):
-            _log(f"_inject_add_preferred_item: model is {type(model).__name__}, not Gio.Menu")
-            return GLib.SOURCE_REMOVE
-
-        section = _menu_section_with_action(model, "slot.bookmark-current-directory")
-        if not isinstance(section, Gio.Menu):
-            _log(
-                "_inject_add_preferred_item: Add to Bookmarks section not found, using own section"
-            )
-            section = Gio.Menu()
-            model.append_section(None, section)
-        section.append(_("Add to Preferred"), "mcpref.add-current")
-
-        ag = Gio.SimpleActionGroup()
-        act = Gio.SimpleAction.new("add-current", None)
-        act.connect("activate", lambda *_a: self._do_add_preferred_current(win))
-        ag.add_action(act)
-        popover.insert_action_group("mcpref", ag)
-        popover._mc_pref_injected = True
-        _log("_inject_add_preferred_item: added Add to Preferred to native menu")
-        return GLib.SOURCE_REMOVE
-
-    def _do_add_preferred_current(self, win: Gtk.Window) -> None:
+    def _get_active_slot_uri(self, win: Gtk.Window) -> str | None:
+        """URI of the currently active Nautilus slot (the folder shown in the
+        view), or None if it can't be determined."""
         uri = None
         for w in _all_widgets(win):
             if "Slot" not in type(w).__name__:
@@ -4385,9 +4463,82 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
             except TypeError:
                 pass
             uri = loc.get_uri()
+        return uri
+
+    def _inject_preferred_menu_item(self, btn: Gtk.MenuButton, win: Gtk.Window) -> bool:
+        """Insert "Add to Preferred" / "Remove from Preferred" directly below
+        "Add to Bookmarks" in the pathbar's Current Folder Menu, mirroring how
+        that native item flips to "Remove from Bookmarks" when the folder is
+        already bookmarked. Re-evaluated on every open since the button and
+        its popover persist across navigations while the current folder (and
+        whether it's preferred) can change between opens."""
+        popover = btn.get_popover()
+        if popover is None:
+            return GLib.SOURCE_REMOVE
+        model = popover.get_menu_model()
+        if not isinstance(model, Gio.Menu):
+            _log(f"_inject_preferred_menu_item: model is {type(model).__name__}, not Gio.Menu")
+            return GLib.SOURCE_REMOVE
+
+        # Undo the previous injection (item or, in the fallback case, the
+        # whole standalone section) before re-evaluating against the folder
+        # now shown, so repeated opens don't accumulate stale items/sections.
+        prev_section = getattr(popover, "_mc_pref_section", None)
+        prev_index = getattr(popover, "_mc_pref_index", None)
+        prev_was_fallback = getattr(popover, "_mc_pref_was_fallback", False)
+        if prev_section is not None and prev_index is not None:
+            if prev_was_fallback:
+                for i in range(model.get_n_items()):
+                    if model.get_item_link(i, Gio.MENU_LINK_SECTION) is prev_section:
+                        model.remove(i)
+                        break
+            else:
+                prev_section.remove(prev_index)
+
+        section = _menu_section_with_action(model, "slot.bookmark-current-directory")
+        is_fallback = not isinstance(section, Gio.Menu)
+        if is_fallback:
+            _log(
+                "_inject_preferred_menu_item: Add to Bookmarks section not found, using own section"
+            )
+            section = Gio.Menu()
+            model.append_section(None, section)
+
+        uri = self._get_active_slot_uri(win)
+        pf = None
         if uri:
+            norm = uri.rstrip("/")
+            for folder in _load_preferred_folders(self._gsettings):
+                if folder.nav_uri.rstrip("/") == norm:
+                    pf = folder
+                    break
+
+        label = _("Remove from Preferred") if pf is not None else _("Add to Preferred")
+        bookmark_index = _menu_item_index(section, "slot.bookmark-current-directory")
+        insert_at = section.get_n_items() if bookmark_index is None else bookmark_index + 1
+        section.insert(insert_at, label, "mcpref.toggle-current")
+
+        ag = Gio.SimpleActionGroup()
+        act = Gio.SimpleAction.new("toggle-current", None)
+        act.connect("activate", lambda *_a: self._do_toggle_preferred_current(win, uri, pf))
+        ag.add_action(act)
+        popover.insert_action_group("mcpref", ag)
+
+        popover._mc_pref_section = section
+        popover._mc_pref_index = insert_at
+        popover._mc_pref_was_fallback = is_fallback
+        _log(f"_inject_preferred_menu_item: added '{label}' to native menu")
+        return GLib.SOURCE_REMOVE
+
+    def _do_toggle_preferred_current(
+        self, win: Gtk.Window, uri: str | None, pf: "PreferredFolder | None"
+    ) -> None:
+        if pf is not None:
+            self._do_remove_preferred_folder(pf, win)
+            _log(f"_do_toggle_preferred_current: removed {pf.key}")
+        elif uri:
             self._add_preferred_folder(uri)
-            _log(f"_do_add_preferred_current: added {uri}")
+            _log(f"_do_toggle_preferred_current: added {uri}")
 
     def _open_bookmark_icon_picker(self, uri: str, label: str, row) -> None:
         """Searchable symbolic-icon grid for a bookmark. Matches native Rename's
