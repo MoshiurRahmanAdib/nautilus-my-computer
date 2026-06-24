@@ -321,7 +321,9 @@ class PlaceEntry:
     droppable: bool = False  # accepts file drops (copy/move destination)
 
 
-def _open_actions(ext, win, uri: str, open_enabled: bool = True) -> list:
+def _open_actions(
+    ext, win, uri: str, open_enabled: bool = True, is_special_place: bool = False
+) -> list:
     """The three open actions for folder/disk cards, collapsed into a single native
     "Open" submenu (back arrow), matching native Nautilus folder right-click. Same
     shortcuts as the disk card menu (Return / Ctrl+Return / Shift+Return)."""
@@ -350,7 +352,7 @@ def _open_actions(ext, win, uri: str, open_enabled: bool = True) -> list:
     # than silently omitted, so it's clear the feature is planned, not missing.
     # Never shown on special places (recent://, trash://, computer://, network,
     # network mounts) — like native Nautilus, those have no app handler anyway.
-    if uri.startswith("file://"):
+    if not is_special_place and uri.startswith("file://"):
         submenu.append(MenuItem(_("Open With…"), enabled=False, section=1))
     return [MenuItem(_("Open"), submenu=submenu)]
 
@@ -560,7 +562,7 @@ def _disk_context_menu(ext, win, m) -> ContextualMenu:
 
 def _folder_context_menu(ext, win, pf) -> ContextualMenu:
     """Preferred-folder card menu: open actions, remove from group, properties."""
-    items = _open_actions(ext, win, pf.nav_uri)
+    items = _open_actions(ext, win, pf.nav_uri, is_special_place=pf.is_special_place)
     items.append(
         MenuItem(
             _("Remove from Preferred"),
@@ -874,6 +876,7 @@ class PreferredFolder:
     nav_uri: str
     icon_name: str = "folder"
     gio_icon: object | None = None
+    is_special_place: bool = False  # True for recent:///, starred:///, x-network-view:///
 
     # Right-click menu factory menu(ext, win, pf) -> ContextualMenu (built at show-time).
     menu: object = _folder_context_menu
@@ -969,31 +972,23 @@ def _load_preferred_folders(gsettings) -> list[PreferredFolder]:
                     display_name=token["label"],
                     nav_uri=uri,
                     icon_name=token["icon"],
+                    is_special_place=not uri.startswith("file://"),
                 )
             )
             continue
 
-        # Raw URI added by the user via "Add to Preferred"
+        # Raw URI added by the user via "Add to Preferred". Display-name/icon are
+        # resolved with a free, zero-I/O fallback here; the real metadata is fetched
+        # asynchronously by the caller (see _refresh_folder_metadata_async) so a slow
+        # or unreachable URI never blocks panel population or menu opening.
         uri = entry
         gfile = Gio.File.new_for_uri(uri)
-        try:
-            info = gfile.query_info(
-                "standard::display-name,standard::icon",
-                Gio.FileQueryInfoFlags.NONE,
-                None,
-            )
-            display_name = info.get_display_name() or gfile.get_basename() or uri
-            gio_icon = info.get_icon()
-        except GLib.Error:
-            display_name = gfile.get_basename() or uri
-            gio_icon = None
         folders.append(
             PreferredFolder(
                 key=uri,
-                display_name=display_name,
+                display_name=gfile.get_basename() or uri,
                 nav_uri=uri,
                 icon_name="folder",
-                gio_icon=gio_icon,
             )
         )
     return folders
@@ -1661,6 +1656,7 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         self._local_poll_stop: threading.Event | None = None
         self._net_poll_timer_id: int | None = None
         self._net_poll_cancellable: Gio.Cancellable | None = None
+        self._folder_refresh_cancellable = Gio.Cancellable()
 
         self._sort_column: str = "name"
         self._sort_reverse: bool = False
@@ -2461,7 +2457,8 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
             "initial_title": None,
             "start_on_computer": self._start_on_disks,
             "awaiting_disks": False,
-            "selected_key": None,
+            "selected_mount_key": None,
+            "selected_folder_key": None,
             "header_motion": None,  # Gtk.EventControllerMotion on the header bar
             "native_hide_model": None,  # observe_children() model of native listbox
             "native_hide_handler": None,  # items-changed handler id on that model
@@ -2582,6 +2579,7 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         grid_box = self._new_grid_box()
         section_flows: list[Gtk.FlowBox] = []
         card_widgets = {}
+        folder_card_widgets = {}
 
         col = self._sort_column
         rev = self._sort_reverse
@@ -2658,6 +2656,9 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
             folders = _load_preferred_folders(self._gsettings)
             _folder_data.clear()
             _folder_data.update({pf.key: pf for pf in folders})
+            for pf in folders:
+                if pf.key not in _PREFERRED_TOKENS:
+                    self._refresh_folder_metadata_async(pf)
             if folders:
                 heading = Gtk.Label()
                 heading.set_label(_("Preferred Folders"))
@@ -2686,9 +2687,9 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
                 folder_size_group = Gtk.SizeGroup(mode=Gtk.SizeGroupMode.HORIZONTAL)
                 for pf in folders:
                     if is_list:
-                        card = self._build_folder_row(pf, win)
+                        card = self._build_folder_row(pf, win, folder_card_widgets)
                     else:
-                        card = self._build_folder_card(pf, win)
+                        card = self._build_folder_card(pf, win, folder_card_widgets)
                     folder_size_group.add_widget(card)
                     container.append(card)
 
@@ -2772,6 +2773,7 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         state["grid_box"] = grid_box
         state["section_flows"] = section_flows
         state["card_widgets"] = card_widgets
+        state["folder_card_widgets"] = folder_card_widgets
         state["grid_host"].set_child(grid_box)
         if old_grid_box is not None:
             self._queue_stale_generation_release(state, old_grid_box)
@@ -2955,10 +2957,57 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         self._finish_card(card, m, group_key, win, nav_uri, bar, sub_lbl, has_size, card_widgets)
         return card
 
-    def _finish_folder_card(self, card: Gtk.Widget, pf: "PreferredFolder", win: Gtk.Window) -> None:
+    def _refresh_folder_metadata_async(self, pf: "PreferredFolder") -> None:
+        """Resolve real display-name/icon for a raw-URI preferred folder without blocking,
+        then patch any rendered cards in place via the folder_card_widgets registry."""
+        gfile = Gio.File.new_for_uri(pf.nav_uri)
+        gfile.query_info_async(
+            "standard::display-name,standard::icon",
+            Gio.FileQueryInfoFlags.NONE,
+            GLib.PRIORITY_DEFAULT,
+            self._folder_refresh_cancellable,
+            self._on_folder_metadata_ready,
+            pf.key,
+        )
+
+    def _on_folder_metadata_ready(
+        self, gfile: Gio.File, result: Gio.AsyncResult, folder_key: str
+    ) -> None:
+        try:
+            info = gfile.query_info_finish(result)
+        except GLib.Error:
+            return
+        pf = _folder_data.get(folder_key)
+        if pf is None:
+            return
+        display_name = info.get_display_name() or pf.display_name
+        gio_icon = info.get_icon()
+        _folder_data[folder_key] = dataclasses.replace(
+            pf, display_name=display_name, gio_icon=gio_icon
+        )
+        for state in self._windows.values():
+            entry = state.get("folder_card_widgets", {}).get(folder_key)
+            if entry is None:
+                continue
+            icon_widget, label_widget = entry
+            if icon_widget is not None and _gicon_renders(gio_icon):
+                icon_widget.set_from_gicon(gio_icon)
+            if label_widget is not None:
+                label_widget.set_label(display_name)
+
+    def _finish_folder_card(
+        self,
+        card: Gtk.Widget,
+        pf: "PreferredFolder",
+        win: Gtk.Window,
+        icon: Gtk.Image,
+        name_lbl: Gtk.Label,
+        folder_card_widgets: dict,
+    ) -> None:
         """Tag and wire up controllers shared by both folder card layouts."""
         card._folder_key = pf.key
         card._nav_uri = pf.nav_uri
+        folder_card_widgets[pf.key] = (icon, name_lbl)
 
         right_click = Gtk.GestureClick()
         right_click.set_button(3)
@@ -2975,7 +3024,9 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         )
         card.add_controller(drop)
 
-    def _build_folder_card(self, pf: "PreferredFolder", win: Gtk.Window) -> Gtk.Widget:
+    def _build_folder_card(
+        self, pf: "PreferredFolder", win: Gtk.Window, folder_card_widgets: dict
+    ) -> Gtk.Widget:
         """Grid-view folder card: native-Nautilus look, icon on top, name below."""
         card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
         card.get_style_context().add_class("nautilus-view-cell")
@@ -3011,10 +3062,12 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         labels_box.append(name_lbl)
         card.append(labels_box)
 
-        self._finish_folder_card(card, pf, win)
+        self._finish_folder_card(card, pf, win, icon, name_lbl, folder_card_widgets)
         return card
 
-    def _build_folder_row(self, pf: "PreferredFolder", win: Gtk.Window) -> Gtk.Widget:
+    def _build_folder_row(
+        self, pf: "PreferredFolder", win: Gtk.Window, folder_card_widgets: dict
+    ) -> Gtk.Widget:
         """List-view folder row: icon (half size) + name, single line."""
         card = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=2)
         card.get_style_context().add_class("nautilus-view-cell")
@@ -3048,7 +3101,7 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         labels_box.append(name_lbl)
         card.append(labels_box)
 
-        self._finish_folder_card(card, pf, win)
+        self._finish_folder_card(card, pf, win, icon, name_lbl, folder_card_widgets)
         return card
 
     def _on_card_activated(self, _flow_box, child: Gtk.FlowBoxChild, win: Gtk.Window) -> None:
@@ -3070,9 +3123,11 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         selected = flow_box.get_selected_children()
         if selected:
             card = selected[0].get_child()
-            state["selected_key"] = getattr(card, "_mount_key", None)
+            state["selected_mount_key"] = getattr(card, "_mount_key", None)
+            state["selected_folder_key"] = getattr(card, "_folder_key", None)
         else:
-            state["selected_key"] = None
+            state["selected_mount_key"] = None
+            state["selected_folder_key"] = None
             return
         state["_deselecting"] = True
         for other_flow in state.get("section_flows", []):
@@ -3149,7 +3204,8 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
                 for flow in state.get("section_flows", []):
                     flow.unselect_all()
                 state["_deselecting"] = False
-                state["selected_key"] = None
+                state["selected_mount_key"] = None
+                state["selected_folder_key"] = None
             # Re-derive our sidebar highlight from the aggregate native selection
             # rather than blindly unselecting. The Computer row is selected
             # manually on entry (no live native row to mirror), so on exit nothing
@@ -3354,7 +3410,8 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         for flow in state.get("section_flows", []):
             flow.unselect_all()
         state["_deselecting"] = False
-        state["selected_key"] = None
+        state["selected_mount_key"] = None
+        state["selected_folder_key"] = None
 
     def _on_disk_right_clicked(self, gesture, _n, x, y, win: Gtk.Window, row: Gtk.Box) -> None:
         mount_key = getattr(row, "_mount_key", None)
