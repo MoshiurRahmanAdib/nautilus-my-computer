@@ -2908,12 +2908,8 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
 
     def _build_folder_card(self, pf: "PreferredFolder", win: Gtk.Window) -> Gtk.Widget:
         """Grid-view folder card: native-Nautilus look, icon on top, name below."""
-        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
         card.get_style_context().add_class("nautilus-view-cell")
-        card.set_margin_start(6)
-        card.set_margin_end(6)
-        card.set_margin_top(6)
-        card.set_margin_bottom(6)
         card.set_focusable(True)
         card.set_focus_on_click(True)
 
@@ -2951,12 +2947,8 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
 
     def _build_folder_row(self, pf: "PreferredFolder", win: Gtk.Window) -> Gtk.Widget:
         """List-view folder row: icon (half size) + name, single line."""
-        card = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        card = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=2)
         card.get_style_context().add_class("nautilus-view-cell")
-        card.set_margin_start(6)
-        card.set_margin_end(6)
-        card.set_margin_top(6)
-        card.set_margin_bottom(6)
         card.set_focusable(True)
         card.set_focus_on_click(True)
         card.set_hexpand(True)
