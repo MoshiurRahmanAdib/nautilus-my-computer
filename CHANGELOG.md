@@ -4,6 +4,40 @@ All notable changes to this project are documented here.
 
 ---
 
+## v0.10.0
+Preferred Folders can now be reordered by drag-and-drop, plus a big internal refactor.
+
+### Added
+- Drag-and-drop reordering for Preferred Folders cards, with a live preview
+  of the landing slot as you drag; the new order is persisted to GSettings
+  on drop
+- Hidden-file detection for disk and folder cards (`.hidden-file` CSS class),
+  matching native Nautilus behavior
+- Live rename tracking for Preferred Folders via `Gio.FileMonitor` on parent
+  directories, auto-correcting stale GSettings URIs when a folder is renamed
+  on disk
+
+### Changed
+- Folder card grid layout is now compact (single-line label, 42px icon) and
+  always shown as a grid, closer to native Nautilus folder cells
+- Preferred Folders menu items renamed from "Add/Remove from Preferred" to
+  "Pin to My Computer" / "Unpin from My Computer" across all surfaces (card,
+  file view, pathbar menu)
+- Removed the duplicate "Add/Remove from Bookmarks" item from the folder
+  card right-click menu (kept only in the native file-view menu)
+
+### Internal
+- Split the monolithic entry file into `nautilus_my_computer/main.py` (app
+  state and Nautilus integration), `common.py` (stateless helpers),
+  `widgets.py` (`MyComputerDiskCard`/`MyComputerFolderCard`/
+  `MyComputerCardSection`), and per-surface target modules (`bookmarks.py`,
+  `preferred_folders.py`, `file_view_menu.py`); no behavior change
+- Installer now handles the `nautilus_my_computer/` package directory as a
+  distinct unit from the entry shim, and reads the local version from
+  `nautilus_my_computer/__init__.py`
+
+---
+
 ## v0.9.1
 The "Open With…" row now does something.
 
