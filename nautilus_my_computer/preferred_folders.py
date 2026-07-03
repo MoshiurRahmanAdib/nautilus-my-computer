@@ -118,17 +118,17 @@ PREFERRED_TOKENS: dict[str, dict] = {
     },
     "recent": {
         "label": _("Recent"),
-        "icon": "folder",
+        "icon": "folder-temp",
         "uri": lambda: "recent:///",
     },
     "starred": {
         "label": _("Starred"),
-        "icon": "folder",
+        "icon": "folder-favorites",
         "uri": lambda: "starred:///",
     },
     "network": {
         "label": _("Network"),
-        "icon": "folder",
+        "icon": "folder-html",
         "uri": lambda: "x-network-view:///",
     },
     "documents": {
@@ -160,11 +160,14 @@ PREFERRED_TOKENS: dict[str, dict] = {
 
 DEFAULT_PREFERRED_FOLDERS: list[str] = [
     "home",
+    "recent",
+    "starred",
     "documents",
     "downloads",
     "music",
     "videos",
     "pictures",
+    "network",
 ]
 
 

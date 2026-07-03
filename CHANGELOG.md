@@ -4,6 +4,23 @@ All notable changes to this project are documented here.
 
 ---
 
+## v0.10.1
+Sidebar and Preferred Folders polish.
+
+### Added
+- Recent and Starred now appear by default in Preferred Folders, right
+  after Home, with Network added at the end, each with a proper icon
+- Switching your icon theme now updates disk and folder card icons
+  immediately, no more restarting Nautilus to see the change
+
+### Fixed
+- The sidebar separator line between the Computer row and your other
+  places no longer disappears when every native place is hidden
+- The drag gutter on folder cards now matches Nautilus's native hover
+  highlight instead of looking out of place while dragging
+
+---
+
 ## v0.10.0
 Preferred Folders can now be reordered by drag-and-drop, plus a big internal refactor.
 

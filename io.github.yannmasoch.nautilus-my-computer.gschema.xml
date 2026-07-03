@@ -117,7 +117,7 @@
     </key>
 
     <key name="preferred-folders" type="as">
-      <default>['home', 'documents', 'downloads', 'music', 'videos', 'pictures']</default>
+      <default>['home', 'recent', 'starred', 'documents', 'downloads', 'music', 'videos', 'pictures', 'network']</default>
       <summary>Preferred Folders list</summary>
       <description>Ordered list of quick-access folders shown in the Preferred Folders group. Entries are either logical tokens (home, recent, starred, network, documents, downloads, music, videos, pictures) or raw folder URIs added by the user. Intended for distro-level customization via .gschema.override.</description>
     </key>

@@ -10,10 +10,8 @@ from __future__ import annotations
 
 import dataclasses
 import os
-import re
 import subprocess
 import threading
-import time
 
 import gi
 
@@ -25,31 +23,11 @@ gi.require_version("GObject", "2.0")
 gi.require_version("Gtk", "4.0")
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, Nautilus, Pango
 
-from nautilus_my_computer import bookmarks, file_view_menu, preferred_folders
-from nautilus_my_computer.common import (
-    _CARD_WIDTH,
-    _DISK_CARD_ROW_SPACING,
-    _DISK_CARD_SPACING,
-    _FLOW_COLS_GRID,
-    _FOLDER_CARD_ROW_SPACING,
-    _FOLDER_CARD_SPACING,
-    _FOLDER_FLOW_COLS_GRID,
-    _,
-    _all_widgets,
-    _find_widget,
-    _folder_card_width,
-    _log,
-    _pin_icon,
-    _uri_is_hidden,
-)
+from nautilus_my_computer import bookmarks, file_view_menu, my_computer_view, preferred_folders
+from nautilus_my_computer.common import _, _all_widgets, _find_widget, _log, _pin_icon
+from nautilus_my_computer.my_computer_view import _GROUP_SPEC, DISKS_URI, VIEW_DISKINFO
 from nautilus_my_computer.preferred_folders import PreferredFolder
-from nautilus_my_computer.widgets import (
-    MyComputerCardSection,
-    MyComputerContextualMenu,
-    MyComputerDiskCard,
-    MyComputerFolderCard,
-    MyComputerMenuItem,
-)
+from nautilus_my_computer.widgets import MyComputerContextualMenu, MyComputerMenuItem
 
 
 # ── Per-site injection toggles (debugging) ────────────────────────────────────
@@ -88,14 +66,12 @@ DETACH_SETTINGS_WINDOW = False  # testing toggle: True opens settings as a stand
 
 # ── Extension metadata (keep in sync with pyproject.toml) ────────────────────
 EXT_NAME = "My Computer for Nautilus"
-EXT_VERSION = "0.10.0"
+EXT_VERSION = "0.10.1"
 EXT_AUTHOR = "Yann Masoch"
 EXT_LICENSE = "MIT"
 EXT_GITHUB = "https://github.com/yannmasoch/nautilus-my-computer"
 
 
-DISKS_URI = "computer:///"
-_DISKS_FILE = Gio.File.new_for_uri(DISKS_URI)
 COMPUTER_LABEL = _("Computer")
 COMPUTER_ICON = "computer-symbolic"  # icon used in sidebar and path bar
 MENU_ITEM_LABEL = _("My Computer Settings")
@@ -103,10 +79,7 @@ PREFS_WIN_TITLE = _("My Computer Settings")
 SCHEMA_ID = "io.github.yannmasoch.nautilus-my-computer"
 
 VIEW_FILES = "files"  # visible_view token — files view (Overlay base)
-VIEW_DISKINFO = "diskinfo"  # visible_view token — our panel (Overlay child)
 
-METADATA_SORT_BY = "metadata::nautilus-icon-view-sort-by"
-METADATA_SORT_REVERSED = "metadata::nautilus-icon-view-sort-reversed"
 
 DBUS_FILE_MANAGER = "org.freedesktop.FileManager1"
 DBUS_PATH_FILE_MANAGER = "/org/freedesktop/FileManager1"
@@ -114,23 +87,10 @@ DBUS_PATH_FILE_MANAGER = "/org/freedesktop/FileManager1"
 # All updates are event-driven (VolumeMonitor signals, /proc/mounts POLLPRI,
 # GSettings changed, Gio.FileMonitor, Gtk.Application window-added). The values
 # below are one-shot retry/debounce intervals, not continuous poll periods.
-_REFRESH_DEBOUNCE_MS = 300  # coalesce rapid mount/unmount/plug events
 _WIN_INIT_RETRY_MS = 20  # retry interval while waiting for NautilusWindow widget tree
 _WIN_INIT_MAX_ATTEMPTS = 100  # ~2 s budget waiting for the first view load to settle
 _NAV_RETRY_MS = 60  # retry interval while navigating to computer:///
 _TAB_WAIT_MS = 50  # retry interval while waiting for a new tab slot
-_USAGE_GATE_MS = 1000  # idle cadence: try a statvfs sweep this often, skip while disk is busy
-_USAGE_POLL_FAST_MS = 250  # fast cadence while writes are buffered (Dirty+Writeback elevated)
-_USAGE_BUSY_RATIO = (
-    0.50  # io_ticks delta / interval above this == disk busy → skip statvfs (avoid I/O contention)
-)
-
-_DIRTY_ACTIVE_THRESHOLD = (
-    4 * 1000 * 1000
-)  # /proc/meminfo Dirty+Writeback ≥ this → poll fast (above resting journal noise ~1–2 MB)
-_USAGE_POLL_NETWORK_MS = 5000  # async D-Bus usage poll interval for GVfs/network mounts
-_SORT_POLL_MS = 250  # gvfs sort-metadata poll cadence (only while header is hovered)
-_STALE_RELEASE_FRAMES = 2  # keep detached panel generations alive across this many frame ticks
 
 
 # Resolve the display name Nautilus shows in the title bar when at DISKS_URI,
@@ -158,46 +118,7 @@ def _is_unsettled_title(title: str) -> bool:
     return not title or title == _LOADING_TITLE
 
 
-REAL_FSTYPES = {
-    "ext4",
-    "ext3",
-    "ext2",
-    "xfs",
-    "btrfs",
-    "f2fs",
-    "ntfs",
-    "ntfs3",
-    "vfat",
-    "exfat",
-    "zfs",
-    "reiserfs",
-    "apfs",
-    "erofs",
-    "fuseblk",
-}
-
-NETWORK_FSTYPES = {
-    "nfs",
-    "nfs4",
-    "cifs",
-    "smb",
-    "smb2",
-    "smbfs",
-    "fuse",
-    "fuse.sshfs",
-    "fuse.rclone",
-    "fuse.s3fs",
-    "fuse.davfs2",
-    "davfs",
-    "sshfs",
-    "ftpfs",
-    "gvfsd-fuse",
-}
-
-OPTICAL_FSTYPES = {"iso9660", "udf"}
-
 # Mountpoint prefixes that indicate removable / external media
-EXTERNAL_PREFIXES = ("/media/", "/run/media/", "/mnt/")
 
 # Sidebar place URIs that never accept a file drop, mirroring Nautilus'
 # check_valid_drop_target (recent:/// is hardcoded invalid) and its
@@ -353,428 +274,30 @@ def _place_is_visible(entry: PlaceEntry, gsettings) -> bool:
     return gsettings.get_boolean(gskey)
 
 
-def _disk_context_menu(ext, win, m) -> MyComputerContextualMenu:
-    """Build a disk card's right-click menu from live mount state.
-
-    Same three-section layout as before: open actions, then mount/eject/unmount +
-    format (skipped for protected system/home mounts), then Properties (mounted
-    only). Unmounted disks mount first, then open in the requested target.
-    """
-    nav_uri = m.nav_uri or (Gio.File.new_for_path(m.mountpoint).get_uri() if m.mountpoint else "")
-    is_mounted = m.is_mounted
-    device = m.device or ""
-    if not device.startswith("/dev/") and m.gio_volume:
-        unix_dev = m.gio_volume.get_identifier(Gio.VOLUME_IDENTIFIER_KIND_UNIX_DEVICE)
-        if unix_dev:
-            device = unix_dev
-
-    # Section 0: open actions (all disks), collapsed into a single native "Open"
-    # submenu. Mounted -> navigate; unmounted -> mount then open.
-    if is_mounted and nav_uri:
-        open_submenu = [
-            MyComputerMenuItem(
-                _("Open"), action=lambda: ext._do_open(nav_uri, win), shortcut="Return"
-            ),
-            MyComputerMenuItem(
-                _("Open in New Tab"),
-                action=lambda: ext._do_open_tab(nav_uri, win),
-                shortcut="<Control>Return",
-            ),
-            MyComputerMenuItem(
-                _("Open in New Window"),
-                action=lambda: ext._do_open_window(nav_uri),
-                shortcut="<Shift>Return",
-            ),
-        ]
-        # See _do_open_with() / _open_actions() above. Only local mounts would ever
-        # resolve in the system app chooser; network mounts (smb://, sftp://) have
-        # no app handler, so omit it there entirely, like native Nautilus.
-        if nav_uri.startswith("file://"):
-            open_submenu.append(
-                MyComputerMenuItem(
-                    _("Open With…"), action=lambda: ext._do_open_with(nav_uri, win), section=1
-                )
-            )
-    else:
-        open_submenu = [
-            MyComputerMenuItem(
-                _("Open"),
-                action=lambda: ext._do_mount_then_open(m, win, "current"),
-                shortcut="Return",
-            ),
-            MyComputerMenuItem(
-                _("Open in New Tab"),
-                action=lambda: ext._do_mount_then_open(m, win, "tab"),
-                shortcut="<Control>Return",
-            ),
-            MyComputerMenuItem(
-                _("Open in New Window"),
-                action=lambda: ext._do_mount_then_open(m, win, "window"),
-                shortcut="<Shift>Return",
-            ),
-        ]
-    items = [MyComputerMenuItem(_("Open"), submenu=open_submenu)]
-
-    # Section 1: mount / unmount / eject + format (non-protected only).
-    if not _is_protected_mount(m):
-        if not is_mounted:
-            if m.can_mount:
-                items.append(
-                    MyComputerMenuItem(_("Mount"), action=lambda: ext._do_mount(m, win), section=1)
-                )
-        elif m.can_eject:
-            items.append(MyComputerMenuItem(_("Eject"), action=lambda: ext._do_eject(m), section=1))
-        elif m.can_unmount:
-            items.append(
-                MyComputerMenuItem(_("Unmount"), action=lambda: ext._do_unmount(m), section=1)
-            )
-        if device.startswith("/dev/"):
-            items.append(
-                MyComputerMenuItem(_("Format…"), action=lambda: ext._do_format(device), section=1)
-            )
-
-    # Section 2: properties (mounted disks only).
-    if is_mounted and nav_uri:
-        items.append(
-            MyComputerMenuItem(
-                _("Properties"),
-                action=lambda: ext._do_properties(nav_uri, win),
-                shortcut="<Alt>Return",
-                section=2,
-            )
-        )
-
-    return MyComputerContextualMenu(items)
-
-
-@dataclasses.dataclass
-class MountInfo:
-    """Typed representation of a single mounted/unmounted storage entry."""
-
-    # Stable identity
-    key: str  # "uuid:<uuid>" when UUID is known; otherwise device path or URI
-    uuid: str | None  # filesystem UUID from /dev/disk/by-uuid (None for GVfs/unmounted)
-
-    # Device info
-    device: str  # /dev/sda1 or GVfs URI
-    mountpoint: str  # local path or GVfs URI (empty for unmounted)
-    fstype: str  # "ext4", "gvfs", "unmounted", "network-place", …
-    opts: set  # mount options from /proc/mounts
-
-    # Navigation
-    nav_uri: str  # file:///… or smb://… (empty for unmounted)
-    display_name: str  # user-facing label
-
-    # Usage (updated by poll workers via dataclasses.replace)
-    total: int
-    free: int
-
-    # GIO handles
-    gio_icon: object | None = None
-    gio_mount: object | None = None
-    gio_volume: object | None = None
-
-    # Flags
-    is_gio: bool = False
-    is_mounted: bool = True
-    is_removable: bool = False
-    can_eject: bool = False
-    can_mount: bool = False
-    can_unmount: bool = False
-    is_network_place: bool = False
-    is_hidden: bool = False  # standard::is-hidden on the mount root, local mounts only
-
-    # Right-click menu factory menu(ext, win, m) -> MyComputerContextualMenu (built at show-time).
-    menu: object = _disk_context_menu
-
-    @property
-    def used(self) -> int:
-        return self.total - self.free
-
-    @property
-    def percent(self) -> float:
-        return round(self.used / self.total * 100, 1) if self.total > 0 else 0.0
-
-
-_MOUNT_ESCAPE_RE = re.compile(r"\\([0-7]{3})")
-
-
-def _unescape_mount_field(s: str) -> str:
-    """Decode octal escapes written by the kernel in /proc/mounts (space=\\040, etc.)."""
-    return _MOUNT_ESCAPE_RE.sub(lambda m: chr(int(m.group(1), 8)), s)
-
-
-def _read_os_name() -> str:
-    try:
-        with open("/etc/os-release") as f:
-            for line in f:
-                if line.startswith("PRETTY_NAME="):
-                    return line.split("=", 1)[1].strip().strip('"')
-    except OSError:
-        pass
-    return ""
-
-
-def _is_ostree_booted() -> bool:
-    """True on OSTree/image-based systems, including bootc distributions."""
-    return os.path.exists("/run/ostree-booted")
-
-
-def _is_ostree_implementation_mount(mountpoint: str) -> bool:
-    """True for implementation mounts that should not be shown as drives."""
-    if not _is_ostree_booted():
-        return False
-    return mountpoint in ("/etc", "/var", "/sysroot") or mountpoint.startswith("/sysroot/")
-
-
-def _statvfs_usage(path: str) -> tuple[int, int] | None:
-    """Return total/free bytes for a path, or None when unavailable."""
-    try:
-        st = os.statvfs(path)
-    except OSError:
-        return None
-    return st.f_blocks * st.f_frsize, st.f_bavail * st.f_frsize
-
-
-def _root_usage() -> tuple[int, int] | None:
-    """Return user-meaningful root capacity.
-
-    On OSTree/bootc systems, / may be the small immutable image view. Prefer
-    the writable/backing deployment filesystem for the displayed root card
-    while still navigating to /.
-    """
-    if _is_ostree_booted():
-        candidates = [_statvfs_usage(path) for path in ("/var", "/sysroot") if os.path.exists(path)]
-        candidates = [usage for usage in candidates if usage is not None]
-        if candidates:
-            return max(candidates, key=lambda usage: usage[0])
-    return _statvfs_usage("/")
-
-
-def _root_mount_info() -> MountInfo | None:
-    """Build a canonical root entry when /proc/mounts does not expose one cleanly."""
-    usage = _root_usage()
-    if usage is None:
-        return None
-    total, free = usage
-    return MountInfo(
-        key="path:/",
-        uuid=None,
-        device="/",
-        mountpoint="/",
-        fstype="rootfs",
-        opts=set(),
-        total=total,
-        free=free,
-        display_name=_read_os_name() or "/",
-        nav_uri=Gio.File.new_for_path("/").get_uri(),
-    )
-
-
-def _build_uuid_map() -> dict[str, str]:
-    """Return {real_device_path: uuid_string} from /dev/disk/by-uuid."""
-    result: dict[str, str] = {}
-    by_uuid = "/dev/disk/by-uuid"
-    if not os.path.isdir(by_uuid):
-        return result
-    try:
-        for entry in os.scandir(by_uuid):
-            if entry.is_symlink():
-                try:
-                    result[os.path.realpath(entry.path)] = entry.name
-                except OSError:
-                    pass
-    except OSError:
-        pass
-    return result
-
-
-def _is_system_mount(m: MountInfo) -> bool:
-    """True for root, boot, EFI, and swap - mounts that belong to the System group."""
-    return (
-        m.mountpoint == "/" or m.mountpoint in ("/boot", "/boot/efi", "/efi") or m.fstype == "swap"
-    )
-
-
-def _is_protected_mount(m: MountInfo) -> bool:
-    """True if Unmount/Eject/Format should be hidden for this mount.
-
-    Used only for context-menu action gating, not display grouping - unlike
-    _is_system_mount, a protected mount may still appear under "On this Computer".
-    Backed by Gio.unix_mount_is_system_internal(), the same heuristic GNOME uses,
-    so it covers most system mounts across distros without a hardcoded list. Two
-    cases it can miss, kept as an explicit fallback: a per-user /home/<user> mount
-    (e.g. encrypted home) which the signal doesn't flag but is still home; and the
-    EFI System Partition, which some distros mount without marking it internal.
-    """
-    if m.is_gio or not m.mountpoint.startswith("/"):
-        return False
-    if m.mountpoint == "/home" or m.mountpoint.startswith("/home/"):
-        return True
-    if m.mountpoint in ("/boot/efi", "/efi"):
-        return True
-    entry = Gio.unix_mount_at(m.mountpoint)
-    if isinstance(entry, tuple):
-        entry = entry[0]
-    return bool(entry and Gio.unix_mount_is_system_internal(entry))
-
-
-def _classify_mount(m: MountInfo) -> str:
-    """Return 'system', 'local', 'removable', 'disc', or 'network' for a mount entry."""
-    # Unmounted volumes are never part of the running system.
-    # Removable (USB, optical) -> "Removable"; others -> "On this Computer"
-    if not m.is_mounted:
-        return "removable" if m.is_removable else "local"
-
-    # GVfs mounts -- phones/cameras (MTP, PTP) go to removable; rest are network
-    if m.is_gio:
-        if m.nav_uri.startswith(("mtp://", "gphoto2://", "afc://", "obex://")):
-            return "removable"
-        return "network"
-
-    # Removable-media paths: check path before fstype so USB drives (including live Linux
-    # USBs with iso9660 partitions) are not misclassified as discs. Exception: loop-mounted
-    # ISO images also land under /run/media/ but their device is /dev/loopN -- those are discs.
-    if any(m.mountpoint.startswith(p) for p in EXTERNAL_PREFIXES):
-        if m.fstype in OPTICAL_FSTYPES and m.device.startswith("/dev/loop"):
-            return "disc"
-        return "removable" if m.is_removable else "local"
-
-    # Optical filesystems not under external paths -> physical disc or image
-    if m.fstype in OPTICAL_FSTYPES:
-        return "disc"
-
-    # x-gvfs-show fstab entries and known network fstypes -> network
-    if "x-gvfs-show" in m.opts or m.fstype in NETWORK_FSTYPES or m.fstype.startswith("fuse"):
-        return "network"
-
-    # Root, boot/EFI, swap -> System group
-    if _is_system_mount(m):
-        return "system"
-
-    return "local"
-
-
-def _get_local_mount_tier(m: MountInfo) -> tuple[int, str]:
-    """Return (tier, name) for hierarchical sorting within 'local' group.
-    Tier: 0=root, 1=system partitions, 2=mounted, 3=unmounted
-    Used by 'sort by type' mode."""
-    name = (m.display_name or "").lower()
-    if m.mountpoint == "/":
-        return (0, name)
-    if m.mountpoint in ("/boot", "/boot/efi", "/efi") or m.fstype == "swap":
-        return (1, name)
-    if m.is_mounted:
-        return (2, name)
-    return (3, name)
-
-
-# Ordered group spec: (key, display_label, gsettings_key)
-# "local" is the merge target for other groups -- always visible, no gsettings key
-_GROUP_SPEC: list[tuple[str, str, str | None]] = [
-    ("system", "System", "visibility-system"),
-    ("local", "On this Computer", None),
-    ("removable", "Removable", "visibility-removable"),
-    ("disc", "Disc", "visibility-disc"),
-    ("network", "Network", "visibility-network"),
-]
-
-
-@dataclasses.dataclass
-class PanelGroup:
-    """A rendered group on the Computer view: a heading + a grid/list of cards.
-
-    kind selects the card builder used in _populate(): "disk" for MountInfo
-    items (the existing disk groups), "folder" for PreferredFolder items.
-    """
-
-    key: str
-    label: str
-    visible: bool = True
-    merged: bool = False
-    kind: str = "disk"
-    items: list = dataclasses.field(default_factory=list)
-
-    def add_item(self, m) -> None:
-        self.items.append(m)
-
-    def sort_items(self, key_func, reverse: bool = False) -> None:
-        self.items.sort(key=key_func, reverse=reverse)
-
-
-_disk_data: dict[str, MountInfo] = {}
-_folder_data: dict[str, "PreferredFolder"] = {}
-_network_places: list[MountInfo] = []  # populated async from network:///
-
-_CSS = b"""
-* {
-    /* Mirrors Nautilus's own --accent-bg-color override from its bundled style.css
-       (.nautilus-grid-view gridview rule). Theme-safe: GTK themes load at priority
-       200 (THEME), this loads at 600 (APPLICATION) - themes cannot override it.
-       Only user stylesheets at priority 800 (USER) can, which is correct behavior. */
-    --diskinfo-selection-grey: #959595;
-}
-.diskinfo-panel {
-}
-.diskinfo-panel flowbox {
-    --accent-bg-color: var(--diskinfo-selection-grey);
-    padding: 0;
-    margin: 0;
-}
-.mc-icon-grid {
-    --accent-bg-color: var(--diskinfo-selection-grey);
-}
-.diskinfo-subtext {
-    color: @insensitive_fg_color;
-}
-.unmounted {
-    opacity: 0.5;
-}
-.vanilla-diskinfo-view-hidden > * {
-    opacity: 0;
-}
-/* For testing/debugging: shows injected panel outline vs native sidebar. */
-.debug {
-    background: red;
-}
-.debug-gap {
-    margin: 0;
-    padding: 0;
-}
-/* Zero the theme's default flowboxchild padding/margin so all card spacing is
-   controlled by our own widgets (col/row spacing on the FlowBox, margins on
-   the card itself) instead of fighting the theme's built-in wrapper inset. */
-.diskinfo-panel flowboxchild {
-    padding: 0;
-    margin: 0;
-}
-/* Folder cards already show the reorder via live drag-move (see
-   _wire_reorder_preview), so the native drop-target border is redundant.
-   Mirrors Nautilus's own .nautilus-list-view .nautilus-view-cell:drop(active)
-   reset (style.css), just scoped to our panel's grid cells instead. */
-.diskinfo-panel .nautilus-view-cell:drop(active) {
-    box-shadow: none;
-}
-/* Folder cards own their gutters via widget spacing/FlowBox spacing, so strip
-   Nautilus's native cell inset from that card class only. */
-.diskinfo-panel .mc-folder-card {
-    padding: 0;
-    margin: 0;
-}
-/* Reusable highlight for any card type. Applied programmatically (e.g. on
-   the dragged folder card during reorder) to show the current landing slot.
-   alpha(@window_fg_color, 0.07) is Adwaita's hover overlay: subtle dark tint
-   in light mode, subtle white tint in dark mode -- matches the hover bg on
-   activatable grid/list rows. Border-radius matches .nautilus-view-cell (12px). */
-.mc-selected {
-    background-color: alpha(@window_fg_color, 0.07);
-    border-radius: 12px;
-}
-"""
-
 # Seam between the separate My Computer listbox and Nautilus' native list
 # directly below it. Both carry .navigation-sidebar (theme base padding 6px); the
 # + combinator zeroes the touching edges so the two lists read as one column.
+# boundary_separator (sidebar_my_computer_boundary_separator) sits between them
+# in the widget tree at all times, but GTK's CSS sibling matching skips it for
+# "+" purposes while it is hidden (the common case: at least one native place
+# still visible) - so BOTH rules below are needed, not just one:
+#   - my_computer_listbox + native_listbox: matches while the separator is
+#     hidden (GTK treats my_computer_listbox as native_listbox's effective
+#     predecessor).
+#   - boundary_separator + native_listbox: matches once the separator becomes
+#     visible (every native place hidden - see _apply_native_place_visibility),
+#     since it then IS the structural predecessor.
+# Without the first rule, hiding it back to "some places visible" reopens the
+# gap this seam is meant to close.
+#
+# wrapper also carries .navigation-sidebar (added in code, see
+# _inject_separate_computer_row) purely so libadwaita's own
+# ".navigation-sidebar > separator { margin: 6px; }" rule (org.gnome.Adwaita
+# gtk.css) applies to boundary_separator - the same rule that already spaces
+# Nautilus's native row-header separators, so we do not hardcode that margin
+# ourselves. wrapper's own top/bottom .navigation-sidebar padding is redundant
+# (my_computer_listbox/native_listbox already manage their own) and is zeroed
+# below.
 _CSS_SIDEBAR = b"""
 #sidebar_my_computer_listbox.navigation-sidebar {
     padding-bottom: 0;
@@ -782,10 +305,19 @@ _CSS_SIDEBAR = b"""
 #sidebar_my_computer_listbox.navigation-sidebar + .navigation-sidebar {
     padding-top: 0;
 }
+#sidebar_my_computer_boundary_separator + .navigation-sidebar {
+    padding-top: 0;
+}
+#sidebar_my_computer_wrapper.navigation-sidebar {
+    padding-top: 0;
+    padding-bottom: 0;
+}
 """
 
 
-def _apply_native_place_visibility(native_listbox: Gtk.ListBox, gsettings) -> None:
+def _apply_native_place_visibility(
+    native_listbox: Gtk.ListBox, gsettings, boundary_separator: Gtk.Separator | None = None
+) -> None:
     """Show/hide native sidebar place rows per the user's sidebar-show-* settings.
 
     We do NOT mimic native rows anymore. Home/Recent/Starred/Network/Trash stay
@@ -810,6 +342,7 @@ def _apply_native_place_visibility(native_listbox: Gtk.ListBox, gsettings) -> No
     # uri -> should-be-visible, for the togglable native places.
     want_visible = {p.uri: _place_is_visible(p, gsettings) for p in NATIVE_PLACES}
     hidden = 0
+    any_place_visible = False
     idx = 0
     while (row := native_listbox.get_row_at_index(idx)) is not None:
         try:
@@ -820,67 +353,27 @@ def _apply_native_place_visibility(native_listbox: Gtk.ListBox, gsettings) -> No
             visible = want_visible[uri]
             if row.get_visible() != visible:
                 row.set_visible(visible)
-            if not visible:
+            if visible:
+                any_place_visible = True
+            else:
                 hidden += 1
         idx += 1
     _log(f"_apply_native_place_visibility: {hidden} native place row(s) hidden by setting")
 
-
-def _read_io_busy() -> tuple:
-    """Return (io_ticks_ms, ios_in_progress) summed over physical block devices.
-
-    Reads /proc/diskstats — a pure procfs read with no filesystem/journal
-    involvement, so unlike statvfs it never blocks or contends with an in-flight
-    file operation. Used purely as a disk-busy gate: while the disk has I/O in
-    flight we must NOT call statvfs (statvfs blocks for seconds under ext4 journal
-    load and contends with the very operation in progress — confirmed cause of
-    sluggish copy/delete when the panel was visible). io_ticks counts wall-time the
-    device had at least one request in flight; its delta over an interval gives the
-    busy fraction. ios_in_progress is the instantaneous queue depth.
-
-    Note: this is NOT the previously-removed diskstats *estimation* approach — we
-    never derive free space from it, only gate when it is safe to call statvfs."""
-    ticks = inflight = 0
-    try:
-        with open("/proc/diskstats") as f:
-            for line in f:
-                p = line.split()
-                if len(p) < 14:
-                    continue
-                name = p[2]
-                if name.startswith(("loop", "ram", "zram", "dm-", "sr")):
-                    continue
-                try:
-                    inflight += int(p[11])  # field 12: I/Os currently in progress
-                    ticks += int(p[12])  # field 13: ms spent doing I/Os (io_ticks)
-                except ValueError:
-                    continue
-    except OSError:
-        pass
-    return ticks, inflight
-
-
-def _read_dirty_bytes() -> int:
-    """Return Dirty + Writeback bytes from /proc/meminfo (a pure procfs read).
-
-    This is the one *forward* signal for an in-progress file operation: it rises
-    while writes are buffered in the page cache, *before* the kernel flushes them
-    to the device (the moment statvfs/diskstats finally change). It is used ONLY
-    as a cadence hint — poll faster while it is elevated, and force one definitive
-    sweep when it drains (the flush). It is global (not per-device), so it must
-    NEVER be used to estimate or display free space — only to time statvfs."""
-    dirty = writeback = 0
-    try:
-        with open("/proc/meminfo") as f:
-            for line in f:
-                if line.startswith("Dirty:"):
-                    dirty = int(line.split()[1]) * 1024  # reported in KiB
-                elif line.startswith("Writeback:"):
-                    writeback = int(line.split()[1]) * 1024
-                    break  # Writeback follows Dirty in /proc/meminfo; both seen
-    except (OSError, ValueError, IndexError):
-        pass
-    return dirty + writeback
+    # Our "Computer" row lives in its own listbox, stacked above native_listbox
+    # in the wrapper - Nautilus's own section-boundary separator (drawn as a
+    # row header inside native_listbox, between the native places and
+    # Bookmarks/Other Locations) has no idea Computer exists, so it only ever
+    # separates native content from native content. That's fine while at
+    # least one native place row is visible (the native separator still
+    # appears further down, between that place and Bookmarks). But when every
+    # togglable native place is hidden, Nautilus's own separator vanishes too
+    # (nothing native left above Bookmarks to separate from), leaving Computer
+    # touching Bookmarks with no line at all. boundary_separator is a
+    # standing Gtk.Separator between the two listboxes in the wrapper that
+    # covers exactly that gap; only ever shown in this one case.
+    if boundary_separator is not None:
+        boundary_separator.set_visible(not any_place_visible)
 
 
 def _get_gsettings() -> Gio.Settings | None:
@@ -888,316 +381,6 @@ def _get_gsettings() -> Gio.Settings | None:
         return Gio.Settings.new(SCHEMA_ID)
     except Exception:
         return None
-
-
-def _scan_mounts(show_system_partitions: bool = False) -> list[MountInfo]:
-    mounts: list[MountInfo] = []
-    seen: set[str] = set()
-    uuid_map = _build_uuid_map()
-    has_root = False
-
-    # Build mountpoint → Gio.Icon / Gio.Mount from VolumeMonitor so we can
-    # attach the real hardware icon and GIO handle to each /proc/mounts entry.
-    # Also build a UUID fallback for mounts whose root path doesn't match the
-    # /proc/mounts mountpoint (e.g. root on LUKS/dm-crypt).
-    icon_by_path: dict[str, Gio.Icon] = {}
-    mount_by_path: dict[str, object] = {}
-    mount_by_uuid: dict[str, object] = {}
-    try:
-        vm = Gio.VolumeMonitor.get()
-        for gm in vm.get_mounts():
-            root = gm.get_root()
-            path = root.get_path()
-            if path:
-                icon_by_path[path] = gm.get_icon()
-                mount_by_path[path] = gm
-            vol = gm.get_volume()
-            if vol:
-                uid = vol.get_identifier(Gio.VOLUME_IDENTIFIER_KIND_UUID)
-                if uid:
-                    mount_by_uuid[uid] = gm
-    except Exception:
-        pass
-
-    try:
-        with open("/proc/mounts") as f:
-            for line in f:
-                parts = line.split()
-                if len(parts) < 4:
-                    continue
-                device = _unescape_mount_field(parts[0])
-                mountpoint = _unescape_mount_field(parts[1])
-                fstype, options = parts[2], parts[3]
-                opts = set(options.split(","))
-                if _is_ostree_implementation_mount(mountpoint):
-                    continue
-                gvfs_show = "x-gvfs-show" in opts
-                is_external = any(mountpoint.startswith(p) for p in EXTERNAL_PREFIXES)
-                if (
-                    fstype not in REAL_FSTYPES
-                    and not gvfs_show
-                    and not is_external
-                    and mountpoint != "/"
-                ) or device in seen:
-                    continue
-                if not show_system_partitions and mountpoint in ("/boot", "/boot/efi", "/efi"):
-                    continue
-                seen.add(device)
-                try:
-                    usage = _root_usage() if mountpoint == "/" else _statvfs_usage(mountpoint)
-                    if usage is None:
-                        continue
-                    total, free = usage
-                    real_dev = os.path.realpath(device)
-                    uuid = uuid_map.get(real_dev)
-                    gio_mount = mount_by_path.get(mountpoint) or (
-                        mount_by_uuid.get(uuid) if uuid else None
-                    )
-                    name = (
-                        (gio_mount.get_name() if gio_mount else None)
-                        or (mountpoint == "/" and _read_os_name())
-                        or os.path.basename(mountpoint)
-                        or "/"
-                    )
-                    gio_volume = gio_mount.get_volume() if gio_mount else None
-                    gio_drive = gio_volume.get_drive() if gio_volume else None
-                    key = f"uuid:{uuid}" if uuid else device
-                    if mountpoint == "/":
-                        has_root = True
-                    nav_uri = Gio.File.new_for_path(mountpoint).get_uri()
-                    mounts.append(
-                        MountInfo(
-                            key=key,
-                            uuid=uuid,
-                            device=device,
-                            mountpoint=mountpoint,
-                            fstype=fstype,
-                            opts=opts,
-                            total=total,
-                            free=free,
-                            display_name=name,
-                            nav_uri=nav_uri,
-                            is_hidden=_uri_is_hidden(nav_uri),
-                            gio_icon=icon_by_path.get(mountpoint),
-                            gio_mount=gio_mount,
-                            gio_volume=gio_volume,
-                            is_removable=gio_drive.is_removable() if gio_drive else False,
-                            can_eject=bool(
-                                (gio_volume and gio_volume.can_eject())
-                                or (gio_mount and gio_mount.can_eject())
-                                or (gio_drive and gio_drive.can_eject())
-                            ),
-                            can_unmount=bool(gio_mount and gio_mount.can_unmount()),
-                        )
-                    )
-                except OSError:
-                    pass
-    except OSError:
-        pass
-    if not has_root:
-        root = _root_mount_info()
-        if root is not None:
-            mounts.insert(0, root)
-    return mounts
-
-
-def _scan_gio_mounts() -> list[MountInfo]:
-    """Enumerate GVfs/network mounts via Gio.VolumeMonitor.
-
-    Returns mounts that are NOT file:// (those are already covered by
-    _scan_mounts via /proc/mounts), e.g. smb://, sftp://, mtp://, dav://.
-    """
-    results: list[MountInfo] = []
-    try:
-        vm = Gio.VolumeMonitor.get()
-        for mount in vm.get_mounts():
-            root = mount.get_root()
-            uri = root.get_uri()
-
-            # Skip regular local filesystems — already in /proc/mounts
-            if uri.startswith("file://"):
-                continue
-            # Skip virtual/meta locations
-            if uri.startswith(("trash://", "recent://", "burn://")):
-                continue
-
-            name = mount.get_name() or uri
-            local_path = root.get_path()  # FUSE path, may be None
-
-            total = free = 0
-            if local_path:
-                try:
-                    st = os.statvfs(local_path)
-                    total = st.f_blocks * st.f_frsize
-                    free = st.f_bavail * st.f_frsize
-                except OSError:
-                    pass
-
-            gio_volume = mount.get_volume()
-            gio_drive = gio_volume.get_drive() if gio_volume else None
-            # Only stat via the local FUSE path -- query_info() on the bare GVfs URI
-            # would hit the network synchronously and could block this scan.
-            is_hidden = (
-                _uri_is_hidden(Gio.File.new_for_path(local_path).get_uri()) if local_path else False
-            )
-            results.append(
-                MountInfo(
-                    key=uri,
-                    uuid=None,
-                    device=uri,
-                    mountpoint=local_path or uri,
-                    fstype="gvfs",
-                    opts=set(),
-                    total=total,
-                    free=free,
-                    display_name=name,
-                    nav_uri=uri,
-                    is_hidden=is_hidden,
-                    is_gio=True,
-                    gio_icon=mount.get_icon(),
-                    gio_mount=mount,
-                    gio_volume=gio_volume,
-                    is_removable=gio_drive.is_removable() if gio_drive else False,
-                    can_eject=bool(
-                        (gio_volume and gio_volume.can_eject())
-                        or mount.can_eject()
-                        or (gio_drive and gio_drive.can_eject())
-                    ),
-                    can_unmount=bool(mount.can_unmount()),
-                )
-            )
-    except Exception:
-        pass
-    return results
-
-
-def _scan_gio_volumes() -> list[MountInfo]:
-    """Enumerate Gio volumes that are connected but not yet mounted.
-
-    Volumes already mounted are covered by _scan_mounts / _scan_gio_mounts,
-    so we skip them here to avoid duplicates.
-    """
-    results: list[MountInfo] = []
-    try:
-        vm = Gio.VolumeMonitor.get()
-        for volume in vm.get_volumes():
-            if volume.get_mount() is not None:
-                continue  # already mounted — covered elsewhere
-            name = volume.get_name() or "Unknown Device"
-            drive = volume.get_drive()
-            is_removable = drive.is_removable() if drive else True
-            results.append(
-                MountInfo(
-                    key=f"vol:{name}",
-                    uuid=None,
-                    device=f"vol:{name}",
-                    mountpoint="",
-                    fstype="unmounted",
-                    opts=set(),
-                    total=0,
-                    free=0,
-                    display_name=name,
-                    nav_uri="",
-                    is_mounted=False,
-                    is_removable=is_removable,
-                    gio_icon=volume.get_icon(),
-                    gio_volume=volume,
-                    can_eject=bool(volume.can_eject() or (drive and drive.can_eject())),
-                    can_mount=bool(volume.can_mount()),
-                )
-            )
-    except Exception:
-        pass
-    return results
-
-
-def _refresh_network_places(on_done=None) -> None:
-    """Enumerate network:/// in a background thread.
-
-    GVfs returns both recent ("Previous") and discovered ("Available on
-    Current Network") entries.  Calls on_done() on the main thread when
-    finished so the caller can repopulate the view.
-    """
-
-    def _worker():
-        global _network_places
-        results: list[MountInfo] = []
-        try:
-            gfile = Gio.File.new_for_uri("network:///")
-            enumerator = gfile.enumerate_children(
-                "standard::name,standard::display-name,standard::icon,standard::target-uri",
-                Gio.FileQueryInfoFlags.NONE,
-                None,
-            )
-            while True:
-                info = enumerator.next_file(None)
-                if info is None:
-                    break
-                name = info.get_display_name() or info.get_name()
-                icon = info.get_icon()
-                target = info.get_attribute_string("standard::target-uri") or ""
-                nav_uri = target or gfile.get_child(info.get_name()).get_uri()
-                if not nav_uri or nav_uri.startswith("network:///"):
-                    if not target:
-                        continue
-                results.append(
-                    MountInfo(
-                        key=f"netplace:{nav_uri}",
-                        uuid=None,
-                        device=nav_uri,
-                        mountpoint=nav_uri,
-                        fstype="network-place",
-                        opts=set(),
-                        total=0,
-                        free=0,
-                        display_name=name,
-                        nav_uri=nav_uri,
-                        gio_icon=icon,
-                        is_network_place=True,
-                    )
-                )
-            enumerator.close(None)
-        except Exception as e:
-            _log(f"network:/// enumerate: {e}")
-        _network_places = results
-        if on_done:
-            GLib.idle_add(on_done)
-
-    threading.Thread(target=_worker, daemon=True).start()
-
-
-def _refresh(mounts: list[MountInfo]) -> bool:
-    global _disk_data
-    new_data = {m.key: m for m in mounts}
-    changed = new_data != _disk_data
-    _disk_data = new_data
-    return changed
-
-
-def _window_is_at_disks(win) -> bool:
-    """True if the window's active slot is currently showing DISKS_URI.
-
-    Reads the NautilusWindowSlot "location" GFile property on demand. No
-    persistent signal, no set_child (safe re: issue #11). Prefers the active
-    slot so tabs are handled; falls back to the first slot with a location.
-    """
-    fallback = None
-    for w in _all_widgets(win):
-        if "Slot" not in type(w).__name__:
-            continue
-        try:
-            loc = w.get_property("location")
-        except TypeError:
-            continue
-        if loc is None:
-            continue
-        try:
-            if w.get_property("active"):
-                return loc.equal(_DISKS_FILE)
-        except TypeError:
-            pass
-        fallback = loc
-    return fallback is not None and fallback.equal(_DISKS_FILE)
 
 
 def _is_nautilus_window(win: Gtk.Window) -> bool:
@@ -1267,41 +450,58 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         else:
             self._start_on_disks = False
 
-        _show_sys_parts = (
-            self._gsettings.get_boolean("show-system-partitions") if self._gsettings else False
-        )
-        _refresh(_scan_mounts(_show_sys_parts) + _scan_gio_mounts() + _scan_gio_volumes())
-
-        # Watch /proc/mounts at the kernel level — POLLPRI fires on any
-        # mount/unmount regardless of how it happened (udisks, manual, FUSE…)
-        try:
-            self._mounts_file = open("/proc/mounts", "r")
-            GLib.io_add_watch(
-                self._mounts_file,
-                GLib.PRIORITY_DEFAULT,
-                GLib.IOCondition.ERR | GLib.IOCondition.PRI,
-                self._on_proc_mounts_changed,
-            )
-        except OSError:
-            self._mounts_file = None
-
-        # VolumeMonitor signals — catch drive plug/unplug and GVfs events
-        self._volume_monitor = Gio.VolumeMonitor.get()
-        for sig in (
-            "mount-added",
-            "mount-removed",
-            "volume-added",
-            "volume-removed",
-            "drive-connected",
-            "drive-disconnected",
-            "drive-changed",
-        ):
-            self._volume_monitor.connect(sig, self._on_disk_event)
-
-        # Kick off async network:/// discovery immediately
-        _refresh_network_places(on_done=self._do_live_refresh)
-
+        my_computer_view.init_data_watchers(self)
         GLib.idle_add(self._late_init)
+
+    # ── My Computer view delegation ─────────────────────────────────────────────
+    # Thin wrappers so external code (widgets.py, signal connections elsewhere in
+    # this file) can keep calling ext._method(...) while the implementation lives
+    # in my_computer_view.py. See CLAUDE.md "Project structure".
+
+    def _populate(self, win: Gtk.Window) -> None:
+        my_computer_view._populate(self, win)
+
+    def _build_panel(self, win: Gtk.Window) -> tuple:
+        return my_computer_view._build_panel(self, win)
+
+    def _apply_bar_color(self) -> None:
+        my_computer_view._apply_bar_color(self)
+
+    def _read_sort_metadata(self) -> bool:
+        return my_computer_view._read_sort_metadata(self)
+
+    def _attach_sort_button_watch(self, nautilus_win: Gtk.Window) -> None:
+        my_computer_view._attach_sort_button_watch(self, nautilus_win)
+
+    def _read_view_mode(self) -> None:
+        my_computer_view._read_view_mode(self)
+
+    def _watch_view_mode(self) -> None:
+        my_computer_view._watch_view_mode(self)
+
+    def _schedule_live_refresh(self) -> None:
+        my_computer_view._schedule_live_refresh(self)
+
+    def _repopulate_visible(self) -> bool:
+        return my_computer_view._repopulate_visible(self)
+
+    def _ensure_usage_poll_running(self) -> None:
+        my_computer_view._ensure_usage_poll_running(self)
+
+    def _stop_usage_poll_if_idle(self) -> None:
+        my_computer_view._stop_usage_poll_if_idle(self)
+
+    def _on_card_activated(self, flow_box, child: Gtk.FlowBoxChild, win: Gtk.Window) -> None:
+        my_computer_view._on_card_activated(self, flow_box, child, win)
+
+    def _on_flow_selection_changed(self, flow_box: Gtk.FlowBox, win: Gtk.Window) -> None:
+        my_computer_view._on_flow_selection_changed(self, flow_box, win)
+
+    def _attach_flow_shortcuts(self, flow_box: Gtk.FlowBox, win: Gtk.Window) -> None:
+        my_computer_view._attach_flow_shortcuts(self, flow_box, win)
+
+    def _on_card_right_clicked(self, gesture, n, x, y, win: Gtk.Window, row: Gtk.Box) -> None:
+        my_computer_view._on_card_right_clicked(self, gesture, n, x, y, win, row)
 
     # ── Initialisation ────────────────────────────────────────────────────────
 
@@ -1373,7 +573,7 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
 
     def _init_window(self, win: Gtk.Window) -> bool:
         css = Gtk.CssProvider()
-        css.load_from_data(_CSS)
+        css.load_from_data(my_computer_view._CSS)
         display = win.get_display()
         Gtk.StyleContext.add_provider_for_display(
             display,
@@ -1618,346 +818,9 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
             self._fix_pathbar_icon(win)
         return GLib.SOURCE_REMOVE
 
-    def _apply_bar_color(self) -> None:
-        if not self._gsettings or self._bar_css_display is None:
-            return
-        mode = self._gsettings.get_string("color-mode")
-        if mode == "flat":
-            color = self._gsettings.get_string("custom-color")
-            css = f".diskinfo-bar block.filled {{ background: {color}; }}".encode()
-        elif mode == "gradient":
-            c1 = self._gsettings.get_string("custom-gradient-color-1")
-            c2 = self._gsettings.get_string("custom-gradient-color-2")
-            # Use CSS :dir() so GTK resolves direction per-widget at render time.
-            # Gradient spans the filled area directly — no background-size trickery,
-            # which is unreliable on older GTK4 (e.g. Ubuntu 22.04 / GTK 4.6.x).
-            css = (
-                f".diskinfo-bar:dir(ltr) block.filled {{"
-                f" background: linear-gradient(to right, {c1} 20%, {c2} 100%); }}"
-                f".diskinfo-bar:dir(rtl) block.filled {{"
-                f" background: linear-gradient(to left, {c1} 20%, {c2} 100%); }}"
-            ).encode()
-        else:
-            css = b".diskinfo-bar block.filled { background: @accent_bg_color; }"
-        self._bar_css_provider.load_from_data(css)
-        Gtk.StyleContext.add_provider_for_display(
-            self._bar_css_display,
-            self._bar_css_provider,
-            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1,
-        )
-
-    def _read_sort_metadata(self) -> bool:
-        """Read sort order from GVfs metadata on computer:///.
-        Returns True when the column or direction changed since last read."""
-        try:
-            f = Gio.File.new_for_uri(DISKS_URI)
-            info = f.query_info(
-                f"{METADATA_SORT_BY},{METADATA_SORT_REVERSED}",
-                Gio.FileQueryInfoFlags.NONE,
-                None,
-            )
-            col = info.get_attribute_string(METADATA_SORT_BY) or "name"
-            rev_str = info.get_attribute_string(METADATA_SORT_REVERSED) or "false"
-            rev = rev_str == "true"
-            if col != self._sort_column or rev != self._sort_reverse:
-                self._sort_column = col
-                self._sort_reverse = rev
-                return True
-        except Exception:
-            pass
-        return False
-
-    def _attach_sort_button_watch(self, nautilus_win: Gtk.Window) -> None:
-        """Watch the sort GtkMenuButton's active state — arm poll when the sort
-        popover opens, disarm (with one final read) when it closes."""
-        state = self._windows.get(nautilus_win)
-        if not state or state.get("header_motion"):
-            return
-        btn = self._find_sort_button(nautilus_win)
-        if btn is None:
-            _log("sort button not found in toolbar")
-            return
-        btn.connect("notify::active", self._on_sort_button_active, nautilus_win)
-        state["header_motion"] = btn  # reuse slot — just marks "already attached"
-        _log(f"sort button watch attached ({type(btn).__name__})")
-
-    def _find_sort_button(self, nautilus_win: Gtk.Window):
-        """Find the GtkMenuButton inside NautilusViewControls (the sort/view popover button)."""
-        # NautilusViewControls has no real buildable_id (auto-generated) and no css class.
-        # Tier 2 (class name) is the primary match; tier 4 structural is the fallback.
-        view_controls = _find_widget(
-            nautilus_win,
-            class_name="NautilusViewControls",
-            site="_find_sort_button",
-        )
-        if view_controls:
-            for child in _all_widgets(view_controls):
-                if isinstance(child, Gtk.MenuButton):
-                    return child
-
-        # Structural fallback: navigate via typed Adwaita getters to the content
-        # toolbar and find the first MenuButton that isn't the hamburger.
-        split_view = next(
-            (w for w in _all_widgets(nautilus_win) if isinstance(w, Adw.OverlaySplitView)), None
-        )
-        if split_view:
-            content = split_view.get_content()
-            toolbar_view = (
-                next((w for w in _all_widgets(content) if isinstance(w, Adw.ToolbarView)), None)
-                if content
-                else None
-            )
-            if toolbar_view:
-                for w in _all_widgets(toolbar_view):
-                    if isinstance(w, Gtk.MenuButton) and w.get_icon_name() != "open-menu-symbolic":
-                        _log("_find_sort_button: matched via structural nav (NautilusViewControls)")
-                        return w
-        return None
-
-    def _on_sort_button_active(self, btn: Gtk.MenuButton, _param, nautilus_win: Gtk.Window) -> None:
-        state = self._windows.get(nautilus_win)
-        if not state or not self._has_live_overlay(state, "sort button"):
-            return
-        if state.get("visible_view") != VIEW_DISKINFO:
-            return
-        if btn.get_active():
-            self._sort_hover = True
-            if self._sort_poll_id is None:
-                _log("sort menu opened → sort poll armed")
-                self._sort_poll_id = GLib.timeout_add(_SORT_POLL_MS, self._poll_sort)
-        else:
-            self._sort_hover = False
-            _log("sort menu closed → sort poll disarming")
-
-    def _poll_sort(self) -> bool:
-        if self._read_sort_metadata():
-            _log(f"sort changed → col='{self._sort_column}' rev={self._sort_reverse}")
-            self._repopulate_visible()
-            _log(f"sort applied → col='{self._sort_column}' rev={self._sort_reverse}")
-        if not self._sort_hover:
-            # Menu closed — one final read already done above, now disarm.
-            _log("sort poll disarmed")
-            self._sort_poll_id = None
-            return GLib.SOURCE_REMOVE
-        return GLib.SOURCE_CONTINUE
-
-    def _read_view_mode(self) -> None:
-        """Read current view mode and click policy from Nautilus preferences."""
-        try:
-            settings = Gio.Settings.new("org.gnome.nautilus.preferences")
-            self._view_mode = settings.get_string("default-folder-viewer")
-            self._click_policy = settings.get_string("click-policy")
-        except Exception:
-            pass
-
-    def _watch_view_mode(self) -> None:
-        """Subscribe to GSettings so view-mode/click-policy changes are instant."""
-        try:
-            settings = Gio.Settings.new("org.gnome.nautilus.preferences")
-            settings.connect("changed::default-folder-viewer", self._on_view_mode_changed)
-            settings.connect("changed::click-policy", self._on_click_policy_changed)
-            self._nautilus_prefs = settings  # keep reference
-        except Exception:
-            pass
-
-    def _on_view_mode_changed(self, settings: Gio.Settings, _key: str) -> None:
-        prev = self._view_mode
-        self._view_mode = settings.get_string("default-folder-viewer")
-        if self._view_mode != prev:
-            _log(f"view changed → mode='{self._view_mode}'")
-            self._repopulate_visible()
-
-    def _on_click_policy_changed(self, settings: Gio.Settings, _key: str) -> None:
-        prev = self._click_policy
-        self._click_policy = settings.get_string("click-policy")
-        if self._click_policy != prev:
-            _log(f"click-policy changed → '{self._click_policy}'")
-            self._repopulate_visible()
-
     # ── Live-refresh helpers ──────────────────────────────────────────────────
 
-    def _on_disk_event(self, _monitor, *_args) -> None:
-        """VolumeMonitor signal handler — debounced."""
-        self._schedule_live_refresh()
-
-    def _on_proc_mounts_changed(self, _source, _condition) -> bool:
-        """/proc/mounts POLLPRI handler — any kernel mount change."""
-        self._schedule_live_refresh()
-        return GLib.SOURCE_CONTINUE  # keep watching
-
-    def _schedule_live_refresh(self) -> None:
-        """Coalesce rapid events (plug → volume-added → mount-added) into one update."""
-        if self._refresh_pending:
-            return
-        self._refresh_pending = True
-        GLib.timeout_add(_REFRESH_DEBOUNCE_MS, self._do_live_refresh)
-
-    def _do_live_refresh(self) -> bool:
-        self._refresh_pending = False
-        _show_sys_parts = (
-            self._gsettings.get_boolean("show-system-partitions") if self._gsettings else False
-        )
-        _refresh(_scan_mounts(_show_sys_parts) + _scan_gio_mounts() + _scan_gio_volumes())
-        # Re-discover network places in background; callback will repopulate
-        _refresh_network_places(on_done=self._repopulate_visible)
-        self._repopulate_visible()
-        return GLib.SOURCE_REMOVE
-
-    def _repopulate_visible(self) -> bool:
-        """Repopulate whichever windows are showing the disk view."""
-        for win, state in list(self._windows.items()):
-            if not self._has_live_overlay(state, "repopulate_visible"):
-                continue
-            if state.get("visible_view") == VIEW_DISKINFO:
-                self._populate(win)
-        return GLib.SOURCE_REMOVE
-
     # ── Usage poll workers (armed while panel is visible) ─────────────────────
-
-    def _sweep_local_usage(self) -> None:
-        """Worker-thread only: statvfs every local mount, queue changed usage to
-        the main thread. Pure-read — never writes _disk_data here (that happens on
-        the main thread in _apply_usage_updates via dataclasses.replace)."""
-        updates: dict[str, tuple[int, int]] = {}
-        for key, m in list(_disk_data.items()):
-            if m.is_gio or not m.is_mounted or not m.mountpoint:
-                continue
-            usage = _root_usage() if m.mountpoint == "/" else _statvfs_usage(m.mountpoint)
-            if usage is None:
-                continue
-            total, free = usage
-            if free != m.free or total != m.total:
-                updates[key] = (total, free)
-        if updates:
-            GLib.idle_add(self._apply_usage_updates, updates, priority=GLib.PRIORITY_DEFAULT)
-
-    def _local_usage_worker(self, stop_event: threading.Event) -> None:
-        """Background thread: refresh local-mount usage, adapting cadence to write
-        activity and gating on disk-busy.
-
-        statvfs blocks for *seconds* and contends with in-flight file operations
-        under ext4 journal load (confirmed: polling statvfs during a copy/delete
-        made those operations sluggish while the panel was visible). So normally we
-        check /proc/diskstats first (cheap, no contention): if the disk has I/O in
-        flight we skip the sweep — no statvfs, no contention.
-
-        Two refinements make the panel feel live without breaking that gate:
-          • An immediate ungated sweep on entry, so arriving at the panel (e.g.
-            navigating back after a copy) shows fresh numbers at once instead of
-            the stale cache _populate() rendered.
-          • A /proc/meminfo Dirty+Writeback forward signal (cadence only, never
-            used to estimate free space): poll fast while writes are buffered, and
-            force one definitive sweep the instant dirty pages drain — the flush,
-            i.e. exactly when statvfs finally changes — even if the busy-gate would
-            otherwise skip it.
-
-        Self-disarms when the panel is hidden (stop_event)."""
-        prev_ticks, _ = _read_io_busy()
-        prev_t = time.monotonic()
-        was_active = _read_dirty_bytes() >= _DIRTY_ACTIVE_THRESHOLD
-        while True:
-            interval = _USAGE_POLL_FAST_MS if was_active else _USAGE_GATE_MS
-            if stop_event.wait(interval / 1000.0):
-                break
-
-            now = time.monotonic()
-            ticks, inflight = _read_io_busy()
-            busy_ms = ticks - prev_ticks
-            elapsed_ms = (now - prev_t) * 1000
-            prev_ticks, prev_t = ticks, now
-
-            is_active = _read_dirty_bytes() >= _DIRTY_ACTIVE_THRESHOLD
-            just_flushed = was_active and not is_active  # buffered writes hit disk
-            was_active = is_active
-
-            # Skip while the disk is busy — except right after a flush, when the
-            # post-flush value is exactly what we need and must not be missed.
-            if not just_flushed and (inflight > 0 or busy_ms > _USAGE_BUSY_RATIO * elapsed_ms):
-                continue
-
-            self._sweep_local_usage()
-
-    def _net_usage_tick(self) -> bool:
-        """GLib timer callback: fire async D-Bus usage queries for all GVfs/network mounts."""
-        attrs = f"{Gio.FILE_ATTRIBUTE_FILESYSTEM_SIZE},{Gio.FILE_ATTRIBUTE_FILESYSTEM_FREE}"
-        for key, m in list(_disk_data.items()):
-            if not m.is_gio:
-                continue
-            Gio.File.new_for_uri(m.nav_uri).query_filesystem_info_async(
-                attrs,
-                GLib.PRIORITY_DEFAULT,
-                self._net_poll_cancellable,
-                self._on_net_info_ready,
-                key,
-            )
-        return GLib.SOURCE_CONTINUE
-
-    def _on_net_info_ready(self, gfile: Gio.File, result: Gio.AsyncResult, key: str) -> None:
-        """Async callback (main thread): apply network mount usage update."""
-        try:
-            info = gfile.query_filesystem_info_finish(result)
-        except GLib.Error as e:
-            if not e.matches(Gio.io_error_quark(), Gio.IOErrorEnum.CANCELLED):
-                _log(f"net usage query failed: {e.message}")
-            return
-        total = info.get_attribute_uint64(Gio.FILE_ATTRIBUTE_FILESYSTEM_SIZE)
-        free = info.get_attribute_uint64(Gio.FILE_ATTRIBUTE_FILESYSTEM_FREE)
-        if total <= 0 or key not in _disk_data:
-            return
-        m = _disk_data[key]
-        if total != m.total or free != m.free:
-            self._apply_usage_updates({key: (total, free)})
-
-    def _apply_usage_updates(self, updates: dict) -> bool:
-        """Main-thread callback: patch _disk_data and update card widgets in place."""
-        global _disk_data
-        for key, (total, free) in updates.items():
-            if key not in _disk_data:
-                continue
-            _disk_data[key] = dataclasses.replace(_disk_data[key], total=total, free=free)
-            for state in self._windows.values():
-                if not self._has_live_overlay(state, "apply_usage_updates"):
-                    continue
-                if state.get("visible_view") != VIEW_DISKINFO:
-                    continue
-                self._update_card_usage(state, key, total, free)
-        return GLib.SOURCE_REMOVE
-
-    def _update_card_usage(self, state: dict, key: str, total: int, free: int) -> None:
-        """Patch a disk card's LevelBar/sub-label in place via the O(1) card_widgets registry."""
-        card = state.get("card_widgets", {}).get(key)
-        if card is not None:
-            card.update_usage(_disk_data[key])
-
-    def _ensure_usage_poll_running(self) -> None:
-        """Arm both usage poll workers if not already running."""
-        if self._local_poll_stop is None:
-            ev = threading.Event()
-            self._local_poll_stop = ev
-            threading.Thread(target=self._local_usage_worker, args=(ev,), daemon=True).start()
-        if self._net_poll_timer_id is None:
-            self._net_poll_cancellable = Gio.Cancellable()
-            self._net_usage_tick()
-            self._net_poll_timer_id = GLib.timeout_add(_USAGE_POLL_NETWORK_MS, self._net_usage_tick)
-
-    def _stop_usage_poll_if_idle(self) -> None:
-        """Disarm poll workers when no window is showing the disk panel."""
-        any_visible = any(
-            st.get("overlay") is not None
-            and st.get("overlay_alive", True)
-            and st.get("visible_view") == VIEW_DISKINFO
-            for st in self._windows.values()
-        )
-        if not any_visible:
-            if self._local_poll_stop is not None:
-                self._local_poll_stop.set()
-                self._local_poll_stop = None
-            if self._net_poll_timer_id is not None:
-                GLib.source_remove(self._net_poll_timer_id)
-                self._net_poll_timer_id = None
-            if self._net_poll_cancellable is not None:
-                self._net_poll_cancellable.cancel()
-                self._net_poll_cancellable = None
 
     def _inject_overlay(self, nautilus_win: Gtk.Window) -> bool:
         split_view = None
@@ -2085,385 +948,6 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
 
     # ── Panel construction ────────────────────────────────────────────────────
 
-    def _new_grid_box(self) -> Gtk.Box:
-        grid_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        grid_box.set_hexpand(True)
-        grid_box.set_valign(Gtk.Align.START)
-        grid_box.set_margin_start(18)
-        grid_box.set_margin_end(18)
-        grid_box.set_margin_top(18)
-        grid_box.set_margin_bottom(18)
-        return grid_box
-
-    def _release_stale_generations(self, state: dict) -> bool:
-        state.get("stale_generations", []).clear()
-        state["stale_release_tick_id"] = None
-        state["stale_release_ticks"] = 0
-        return GLib.SOURCE_REMOVE
-
-    def _queue_stale_generation_release(self, state: dict, root: Gtk.Widget) -> None:
-        stale = state.setdefault("stale_generations", [])
-        stale.append(root)
-        state["stale_release_ticks"] = _STALE_RELEASE_FRAMES
-        if state.get("stale_release_tick_id") is not None:
-            return
-
-        owner = state.get("overlay")
-        if owner is None or not hasattr(owner, "add_tick_callback"):
-            GLib.timeout_add(50, lambda st=state: self._release_stale_generations(st))
-            return
-
-        def _release_on_tick(_widget, _frame_clock, st=state):
-            ticks_left = max(0, st.get("stale_release_ticks", 0) - 1)
-            st["stale_release_ticks"] = ticks_left
-            if ticks_left > 0:
-                return GLib.SOURCE_CONTINUE
-            return self._release_stale_generations(st)
-
-        state["stale_release_tick_id"] = owner.add_tick_callback(_release_on_tick)
-
-    def _build_panel(self, win: Gtk.Window) -> tuple:
-        panel = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        panel.set_hexpand(True)
-        panel.set_vexpand(True)
-        panel.get_style_context().add_class("diskinfo-panel")
-        panel.add_css_class("nautilus-grid-view")
-
-        scroll = Gtk.ScrolledWindow()
-        scroll.set_vexpand(True)
-        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-
-        grid_box = self._new_grid_box()
-
-        scroll.set_child(grid_box)
-        panel.append(scroll)
-
-        bg_deselect = Gtk.GestureClick()
-        bg_deselect.set_button(0)
-        bg_deselect.connect("pressed", self._on_panel_clicked, win)
-        scroll.add_controller(bg_deselect)
-
-        return panel, scroll, grid_box
-
-    def _populate(self, win: Gtk.Window) -> None:
-        state = self._windows.get(win)
-        if state is None:
-            return
-
-        grid_box = self._new_grid_box()
-        section_flows: list[Gtk.FlowBox] = []
-        card_widgets = {}
-        folder_card_widgets = {}
-
-        col = self._sort_column
-        rev = self._sort_reverse
-
-        def _sort_key(m: MountInfo):
-            if col == "size":
-                return m.total
-            return (m.display_name or "").lower()
-
-        # Build PanelGroup objects, reading visibility state from gsettings
-        groups: dict[str, PanelGroup] = {}
-        for gkey, glabel, gskey in _GROUP_SPEC:
-            if gskey is None:
-                # "On this Computer" is the merge target -- always visible, never merged
-                groups[gkey] = PanelGroup(key=gkey, label=_(glabel), visible=True, merged=False)
-                continue
-            vis_str = self._gsettings.get_string(gskey) if self._gsettings else "visible"
-            visible = vis_str != "hidden"
-            merged = vis_str == "merged"
-            groups[gkey] = PanelGroup(key=gkey, label=_(glabel), visible=visible, merged=merged)
-
-        # Classify each mount into its group
-        for m in _disk_data.values():
-            groups[_classify_mount(m)].add_item(m)
-
-        active_uris = {m.nav_uri for m in _disk_data.values()}
-        for place in _network_places:
-            if place.nav_uri not in active_uris:
-                groups["network"].add_item(place)
-
-        # Sort each group's items
-        for gkey, group in groups.items():
-            if gkey in ("system", "local"):
-                if col == "type":
-                    group.sort_items(key_func=_get_local_mount_tier, reverse=False)
-                else:
-                    mounted = [m for m in group.items if m.is_mounted]
-                    unmounted = [m for m in group.items if not m.is_mounted]
-                    mounted.sort(key=_sort_key, reverse=rev)
-                    unmounted.sort(key=_sort_key, reverse=rev)
-                    group.items = mounted + unmounted
-            elif gkey == "removable":
-                mounted = [m for m in group.items if m.is_mounted]
-                unmounted = [m for m in group.items if not m.is_mounted]
-                mounted.sort(key=_sort_key, reverse=rev)
-                unmounted.sort(key=_sort_key, reverse=rev)
-                group.items = mounted + unmounted
-            else:
-                group.sort_items(key_func=_sort_key, reverse=rev)
-
-        # Merge pass: fold items from merged groups into "local", preserving origin key
-        # Each entry in local_extra is (MountInfo, origin_group_key)
-        local_extra: list[tuple] = []
-        # Fixed group-level order for sort-by-type within the merged "On this Computer" group:
-        # system=0, local=1, removable=2, disc=3, network=4
-        _merge_type_order = {"system": 0, "local": 1, "removable": 2, "disc": 3, "network": 4}
-        for gkey, _gl, _gs in _GROUP_SPEC:
-            group = groups[gkey]
-            if gkey != "local" and group.merged:
-                for m in group.items:
-                    local_extra.append((m, gkey))
-
-        # Preferred Folders group (issue #30): rendered above the disk groups
-        show_folders = (
-            self._gsettings.get_string("visibility-preferred-folders") != "hidden"
-            if self._gsettings
-            else True
-        )
-        if show_folders:
-            folders = preferred_folders.load_preferred_folders(self._gsettings)
-            _folder_data.clear()
-            _folder_data.update({pf.key: pf for pf in folders})
-            for pf in folders:
-                if pf.key not in preferred_folders.PREFERRED_TOKENS:
-                    self._refresh_folder_metadata_async(pf)
-            self._sync_folder_rename_watchers(folders)
-            if folders:
-                section = MyComputerCardSection(
-                    self,
-                    win,
-                    _("Preferred Folders"),
-                    self._view_mode,
-                    max_cols=_FOLDER_FLOW_COLS_GRID,
-                    col_spacing=_FOLDER_CARD_SPACING,
-                    row_spacing=_FOLDER_CARD_ROW_SPACING,
-                    always_grid=True,
-                    justify=True,
-                    card_width=_folder_card_width(),
-                )
-                section_flows.append(section.flow)
-
-                for pf in folders:
-                    card = MyComputerFolderCard(self, win, self._view_mode, pf)
-                    section.add_card(card)
-                    folder_card_widgets[pf.key] = card
-
-                grid_box.append(section)
-        else:
-            _folder_data.clear()
-            self._sync_folder_rename_watchers([])
-
-        for gkey, _glabel, _gskey in _GROUP_SPEC:
-            group = groups[gkey]
-            # "local" is the merge target: render it whenever it has its own items
-            # OR has received merged items, even if the group itself is set to hidden.
-            if gkey == "local":
-                if not group.visible and not local_extra:
-                    continue
-            elif not group.visible or group.merged:
-                continue
-
-            # For "local", append any merged items (with their origin keys).
-            # If local itself is hidden, only the merged extras show.
-            render_items: list[tuple]  # (MountInfo, icon_group_key)
-            if gkey == "local":
-                own = [(m, "local") for m in group.items] if group.visible else []
-                render_items = own + local_extra
-                if col == "type" and local_extra:
-                    # Sort the combined list by group-level tier, then intra-group tier
-                    def _merged_type_key(entry, _order=_merge_type_order):
-                        m, origin = entry
-                        group_tier = _order.get(origin, 5)
-                        if origin in ("system", "local"):
-                            sub = _get_local_mount_tier(m)
-                        else:
-                            sub = (0 if m.is_mounted else 1, (m.display_name or "").lower())
-                        return (group_tier,) + sub
-
-                    render_items.sort(key=_merged_type_key)
-            else:
-                render_items = [(m, gkey) for m in group.items]
-
-            if not render_items:
-                continue
-
-            section = MyComputerCardSection(
-                self,
-                win,
-                group.label,
-                self._view_mode,
-                max_cols=_FLOW_COLS_GRID,
-                col_spacing=_DISK_CARD_SPACING,
-                row_spacing=_DISK_CARD_ROW_SPACING,
-                homogeneous=True,
-                max_card_width=_CARD_WIDTH,
-            )
-            section_flows.append(section.flow)
-
-            for m, origin_key in render_items:
-                card = MyComputerDiskCard(self, win, self._view_mode, m, origin_key)
-                section.add_card(card)
-                card_widgets[m.key] = card
-
-            grid_box.append(section)
-
-        old_grid_box = state.get("grid_box")
-        state["grid_box"] = grid_box
-        state["section_flows"] = section_flows
-        state["card_widgets"] = card_widgets
-        state["folder_card_widgets"] = folder_card_widgets
-        state["grid_host"].set_child(grid_box)
-        if old_grid_box is not None:
-            self._queue_stale_generation_release(state, old_grid_box)
-
-        # Restore the previously selected card, or explicitly clear all selections.
-        # Needed on every populate (first show AND live refresh): FlowBox with SINGLE
-        # selection mode can auto-select a child when the widget gains keyboard focus,
-        # so we must be explicit here rather than relying on the widget's default state.
-        state["_deselecting"] = True
-        for flow in section_flows:
-            flow.unselect_all()
-        state["_deselecting"] = False
-        sel_mount = state.get("selected_mount_key")
-        sel_folder = state.get("selected_folder_key")
-        if sel_mount and sel_mount in card_widgets:
-            wrapper = card_widgets[sel_mount].get_parent()
-            if isinstance(wrapper, Gtk.FlowBoxChild):
-                wrapper.get_parent().select_child(wrapper)
-        elif sel_folder and sel_folder in folder_card_widgets:
-            wrapper = folder_card_widgets[sel_folder].get_parent()
-            if isinstance(wrapper, Gtk.FlowBoxChild):
-                wrapper.get_parent().select_child(wrapper)
-        else:
-            state["selected_mount_key"] = None
-            state["selected_folder_key"] = None
-
-        self._apply_bar_color()
-
-    def _refresh_folder_metadata_async(self, pf: "PreferredFolder") -> None:
-        """Resolve real display-name/icon for a raw-URI preferred folder without blocking,
-        then patch any rendered cards in place via the folder_card_widgets registry."""
-        gfile = Gio.File.new_for_uri(pf.nav_uri)
-        gfile.query_info_async(
-            "standard::display-name,standard::icon,standard::is-hidden",
-            Gio.FileQueryInfoFlags.NONE,
-            GLib.PRIORITY_DEFAULT,
-            self._folder_refresh_cancellable,
-            self._on_folder_metadata_ready,
-            pf.key,
-        )
-
-    def _on_folder_metadata_ready(
-        self, gfile: Gio.File, result: Gio.AsyncResult, folder_key: str
-    ) -> None:
-        try:
-            info = gfile.query_info_finish(result)
-        except GLib.Error:
-            return
-        pf = _folder_data.get(folder_key)
-        if pf is None:
-            return
-        display_name = info.get_display_name() or pf.display_name
-        gio_icon = info.get_icon()
-        is_hidden = info.get_attribute_boolean("standard::is-hidden")
-        new_pf = dataclasses.replace(
-            pf, display_name=display_name, gio_icon=gio_icon, is_hidden=is_hidden
-        )
-        _folder_data[folder_key] = new_pf
-        for state in self._windows.values():
-            card = state.get("folder_card_widgets", {}).get(folder_key)
-            if card is not None:
-                card.update_metadata(new_pf)
-
-    def _sync_folder_rename_watchers(self, folders: list) -> None:
-        """Arm a Gio.FileMonitor (WATCH_MOVES) on the parent directory of each raw-URI
-        preferred folder so a rename/move is caught live and the stored GSettings URI
-        is corrected -- without this, a renamed folder keeps showing its old name
-        forever (the stored URI no longer resolves, so the async metadata refresh just
-        fails silently).
-
-        Monitoring the folder itself only sees the "self" side of a move (a bare
-        DELETED, no paired new path) -- the parent directory is the only vantage point
-        that sees both the move-out and move-in and can pair them into RENAMED.
-
-        Token-based folders (Home, Documents, ...) aren't watched: their URI is
-        resolved fresh from GLib.get_user_special_dir() every load, so they can't go
-        stale the same way.
-        """
-        live_keys = {pf.key for pf in folders if pf.key not in preferred_folders.PREFERRED_TOKENS}
-        self._watched_folder_keys = live_keys
-        live_parents = set()
-        for key in live_keys:
-            parent = Gio.File.new_for_uri(key).get_parent()
-            if parent is not None:
-                live_parents.add(parent.get_uri())
-
-        for parent_uri in list(self._folder_monitors):
-            if parent_uri not in live_parents:
-                self._folder_monitors.pop(parent_uri).cancel()
-        for parent_uri in live_parents:
-            if parent_uri in self._folder_monitors:
-                continue
-            try:
-                monitor = Gio.File.new_for_uri(parent_uri).monitor(
-                    Gio.FileMonitorFlags.WATCH_MOVES, None
-                )
-                monitor.connect("changed", self._on_preferred_folder_file_changed)
-                self._folder_monitors[parent_uri] = monitor
-            except GLib.Error as e:
-                _log(f"_sync_folder_rename_watchers: monitor failed for {parent_uri}: {e.message}")
-
-    def _on_preferred_folder_file_changed(
-        self,
-        _monitor: Gio.FileMonitor,
-        file: Gio.File,
-        other_file: Gio.File | None,
-        event_type: Gio.FileMonitorEvent,
-    ) -> None:
-        if event_type != Gio.FileMonitorEvent.RENAMED or other_file is None:
-            return
-        old_uri = file.get_uri()
-        if old_uri not in self._watched_folder_keys or not self._gsettings:
-            return
-        new_uri = other_file.get_uri()
-        entries = self._get_preferred_folders()
-        if old_uri not in entries:
-            return
-        entries[entries.index(old_uri)] = new_uri
-        self._gsettings.set_value("preferred-folders", GLib.Variant("as", entries))
-
-    def _on_card_activated(self, _flow_box, child: Gtk.FlowBoxChild, win: Gtk.Window) -> None:
-        card = child.get_child()
-        if card is None:
-            return
-        if isinstance(card, MyComputerDiskCard) and not card.model.is_mounted:
-            self._do_mount(card.model, win)
-            return
-        GLib.idle_add(self._navigate_to, card.nav_uri, win)
-
-    def _on_flow_selection_changed(self, flow_box: Gtk.FlowBox, win: Gtk.Window) -> None:
-        state = self._windows.get(win)
-        if not state or state.get("_deselecting"):
-            return
-        selected = flow_box.get_selected_children()
-        if selected:
-            card = selected[0].get_child()
-            is_disk = isinstance(card, MyComputerDiskCard)
-            is_folder = isinstance(card, MyComputerFolderCard)
-            state["selected_mount_key"] = card.model.key if is_disk else None
-            state["selected_folder_key"] = card.model.key if is_folder else None
-        else:
-            state["selected_mount_key"] = None
-            state["selected_folder_key"] = None
-            return
-        state["_deselecting"] = True
-        for other_flow in state.get("section_flows", []):
-            if other_flow is not flow_box:
-                other_flow.unselect_all()
-        state["_deselecting"] = False
-
     # ── Location change handler ───────────────────────────────────────────────
 
     def _on_title_changed(self, win: Gtk.Window, _param) -> None:
@@ -2474,7 +958,7 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
             return
 
         current_title = win.get_title() or ""
-        in_view = _window_is_at_disks(win)
+        in_view = my_computer_view._window_is_at_disks(win)
 
         # A transient/empty title ("Loading…") means the window hasn't resolved
         # its location yet. Never act on it: it must not consume the one-shot
@@ -2547,54 +1031,8 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
                 return
             self._stop_usage_poll_if_idle()
 
-    # ── Callbacks ─────────────────────────────────────────────────────────────
+        # ── Callbacks ─────────────────────────────────────────────────────────────
 
-    def _attach_flow_shortcuts(self, flow_box: Gtk.FlowBox, win: Gtk.Window) -> None:
-        """Declarative Ctrl/Shift/Alt+Return shortcuts for the focused card,
-        mirroring how native Nautilus wires a Gtk.ShortcutController onto its
-        grid cells, rather than hand-parsing modifier bits off a raw key event.
-
-        Must live on the FlowBox itself, not the card: FlowBoxChild (not our
-        card widget) is the actual keyboard focus target, and GTK's shortcut
-        search walks up from the focused widget through its ancestors -- the
-        FlowBox is one, the card is not. Plain Return is left alone here; it
-        already works natively via FlowBox's own "child-activated" binding
-        (see _on_card_activated), so duplicating it would be redundant.
-        """
-        controller = Gtk.ShortcutController()
-        controller.set_scope(Gtk.ShortcutScope.LOCAL)
-        for accel, kind in (
-            ("<Control>Return", "tab"),
-            ("<Shift>Return", "window"),
-            ("<Alt>Return", "properties"),
-        ):
-            trigger = Gtk.ShortcutTrigger.parse_string(accel)
-            action = Gtk.CallbackAction.new(
-                lambda w, _args, win=win, kind=kind: self._activate_focused_card(w, win, kind)
-            )
-            controller.add_shortcut(Gtk.Shortcut.new(trigger, action))
-        flow_box.add_controller(controller)
-
-    def _activate_focused_card(self, flow_box: Gtk.FlowBox, win: Gtk.Window, kind: str) -> bool:
-        focus_child = flow_box.get_focus_child()
-        if focus_child is None:
-            return False
-        row = focus_child.get_child()
-        if row is None:
-            return False
-
-        nav_uri = row.nav_uri
-        if isinstance(row, MyComputerDiskCard) and not row.model.is_mounted:
-            return False
-
-        if kind == "tab":
-            self._do_open_tab(nav_uri, win)
-        elif kind == "window":
-            self._do_open_window(nav_uri)
-        elif kind == "properties":
-            if not nav_uri:
-                return False
-            self._do_properties(nav_uri, win)
         return True
 
     def _do_open_with(self, nav_uri: str, win: Gtk.Window) -> None:
@@ -2777,39 +1215,6 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         dialog.present(win)
         search_entry.grab_focus()
 
-    def _on_panel_clicked(self, _gesture, _n, _x, _y, win: Gtk.Window) -> None:
-        state = self._windows.get(win)
-        if not state:
-            return
-        state["_deselecting"] = True
-        for flow in state.get("section_flows", []):
-            flow.unselect_all()
-        state["_deselecting"] = False
-        state["selected_mount_key"] = None
-        state["selected_folder_key"] = None
-
-    def _on_card_right_clicked(self, gesture, _n, x, y, win: Gtk.Window, row: Gtk.Box) -> None:
-        gesture.set_state(Gtk.EventSequenceState.CLAIMED)
-
-        if isinstance(row, MyComputerDiskCard):
-            m = _disk_data.get(row.model.key)
-            if not m or not callable(m.menu):
-                return
-            ctx_menu = m.menu(self, win, m)
-        elif isinstance(row, MyComputerFolderCard):
-            pf = _folder_data.get(row.model.key)
-            if not pf or not callable(pf.menu):
-                return
-            ctx_menu = pf.menu(self, win, pf)
-        else:
-            return
-
-        popover = ctx_menu.build_popover(row, "diskrow")
-        rect = Gdk.Rectangle()
-        rect.x, rect.y, rect.width, rect.height = int(x), int(y), 1, 1
-        popover.set_pointing_to(rect)
-        popover.popup()
-
     def _do_open(self, nav_uri: str, win: Gtk.Window) -> None:
         GLib.idle_add(self._navigate_to, nav_uri, win)
 
@@ -2860,93 +1265,6 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
 
     def _do_open_window(self, mountpoint: str) -> None:
         subprocess.Popen(["nautilus", "--new-window", mountpoint])
-
-    def _do_mount(self, m: MountInfo, win: Gtk.Window) -> None:
-        if not m or not m.gio_volume or not m.can_mount:
-            return
-        op = Gio.MountOperation.new()
-        m.gio_volume.mount(Gio.MountMountFlags.NONE, op, None, self._on_mount_finish, win)
-
-    def _on_mount_finish(self, volume, result, win) -> None:
-        try:
-            volume.mount_finish(result)
-        except GLib.Error as e:
-            _log(f"mount failed: {e.message}")
-        GLib.idle_add(self._repopulate_visible)
-
-    def _do_mount_then_open(self, m: MountInfo, win: Gtk.Window, mode: str) -> None:
-        if not m or not m.gio_volume or not m.can_mount:
-            return
-        op = Gio.MountOperation.new()
-        op.set_password_save(Gio.PasswordSave.NEVER)
-        m.gio_volume.mount(
-            Gio.MountMountFlags.NONE, op, None, self._on_mount_then_open_finish, (win, mode)
-        )
-
-    def _on_mount_then_open_finish(self, volume, result, user_data) -> None:
-        win, mode = user_data
-        try:
-            volume.mount_finish(result)
-        except GLib.Error as e:
-            _log(f"mount-then-open failed: {e.message}")
-            GLib.idle_add(self._repopulate_visible)
-            return
-        mount = volume.get_mount()
-        if not mount:
-            GLib.idle_add(self._repopulate_visible)
-            return
-        uri = mount.get_root().get_uri()
-        GLib.idle_add(self._repopulate_visible)
-        if mode == "tab":
-            GLib.idle_add(self._do_open_tab, uri, win)
-        elif mode == "window":
-            GLib.idle_add(self._do_open_window, uri)
-        else:
-            GLib.idle_add(self._do_open, uri, win)
-
-    def _do_unmount(self, m: MountInfo) -> None:
-        if not m or not m.gio_mount or not m.can_unmount:
-            return
-        op = Gio.MountOperation.new()
-        m.gio_mount.unmount_with_operation(
-            Gio.MountUnmountFlags.NONE, op, None, self._on_unmount_finish
-        )
-
-    def _on_unmount_finish(self, mount, result) -> None:
-        try:
-            mount.unmount_with_operation_finish(result)
-        except GLib.Error as e:
-            _log(f"unmount failed: {e.message}")
-        GLib.idle_add(self._repopulate_visible)
-
-    def _do_eject(self, m: MountInfo) -> None:
-        if not m:
-            return
-        op = Gio.MountOperation.new()
-        if m.gio_volume and m.gio_volume.can_eject():
-            m.gio_volume.eject_with_operation(
-                Gio.MountUnmountFlags.NONE, op, None, self._on_eject_finish
-            )
-        elif m.gio_mount and m.gio_mount.can_eject():
-            m.gio_mount.eject_with_operation(
-                Gio.MountUnmountFlags.NONE, op, None, self._on_eject_finish
-            )
-
-    def _on_eject_finish(self, source, result) -> None:
-        try:
-            source.eject_with_operation_finish(result)
-        except GLib.Error as e:
-            _log(f"eject failed: {e.message}")
-        GLib.idle_add(self._repopulate_visible)
-
-    def _do_format(self, device: str) -> None:
-        try:
-            Gio.Subprocess.new(
-                ["gnome-disks", "--block-device", device, "--format-device"],
-                Gio.SubprocessFlags.NONE,
-            )
-        except GLib.Error as e:
-            _log(f"format launch failed: {e.message}")
 
     def _do_properties(self, nav_uri: str, win: Gtk.Window) -> None:
         uri = nav_uri
@@ -3241,7 +1559,7 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
             st = self._windows.get(win)
             if st is None:
                 return GLib.SOURCE_REMOVE
-            if _window_is_at_disks(win):
+            if my_computer_view._window_is_at_disks(win):
                 st["awaiting_disks"] = False  # arrived
                 return GLib.SOURCE_REMOVE
             attempts[0] += 1
@@ -3482,11 +1800,18 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         computer_row = my_computer_listbox.get_row_at_index(0)
 
         # Wrap: the My Computer one-row list on top, the native list below, in the existing
-        # scrolled window so both scroll together.
+        # scrolled window so both scroll together. boundary_separator stands between
+        # them, hidden by default, and only shown when every native place row is
+        # hidden (see _apply_native_place_visibility for why).
         wrapper = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         wrapper.set_name("sidebar_my_computer_wrapper")
+        wrapper.add_css_class("navigation-sidebar")
         native_scrolled_window.set_child(wrapper)
+        boundary_separator = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
+        boundary_separator.set_name("sidebar_my_computer_boundary_separator")
+        boundary_separator.set_visible(False)
         wrapper.append(my_computer_listbox)
+        wrapper.append(boundary_separator)
         wrapper.append(native_listbox)
 
         # Cross-deselect: the My Computer selection and any native section selection
@@ -3514,12 +1839,13 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         if state is not None:
             state["sidebar_listbox"] = native_listbox
             state["sidebar_my_computer_listbox"] = my_computer_listbox
+            state["sidebar_boundary_separator"] = boundary_separator
             state["sidebar_row"] = computer_row
             state["sidebar_native"] = True
             state["sidebar_native_widget"] = nautilus_sidebar
 
         # Hide native place rows the user toggled off, and re-apply on rebuilds.
-        self._apply_native_place_visibility(native_listbox)
+        self._apply_native_place_visibility(native_listbox, boundary_separator)
         self._attach_bookmark_context_menus(win, native_listbox)
         self._apply_bookmark_icons(native_listbox)
         self._watch_native_list_changes(win, native_listbox)
@@ -3595,7 +1921,9 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
 
         def _rescan() -> bool:
             state["native_hide_pending"] = False
-            self._apply_native_place_visibility(native_listbox)
+            self._apply_native_place_visibility(
+                native_listbox, state.get("sidebar_boundary_separator")
+            )
             self._attach_bookmark_context_menus(win, native_listbox)
             self._apply_bookmark_icons(native_listbox)
             return GLib.SOURCE_REMOVE
@@ -3660,16 +1988,20 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
     def _open_bookmark_icon_picker(self, uri: str, label: str, row) -> None:
         bookmarks.open_bookmark_icon_picker(self, uri, label, row)
 
-    def _apply_native_place_visibility(self, native_listbox: Gtk.ListBox) -> None:
+    def _apply_native_place_visibility(
+        self, native_listbox: Gtk.ListBox, boundary_separator: Gtk.Separator | None = None
+    ) -> None:
         """Instance shim so call sites can use self; delegates to the helper."""
-        _apply_native_place_visibility(native_listbox, self._gsettings)
+        _apply_native_place_visibility(native_listbox, self._gsettings, boundary_separator)
 
     def _reapply_sidebar_visibility(self) -> bool:
         """Re-apply native place visibility in every window after a settings change."""
         for _win, state in list(self._windows.items()):
             native_listbox = state.get("sidebar_listbox")
             if native_listbox is not None:
-                self._apply_native_place_visibility(native_listbox)
+                self._apply_native_place_visibility(
+                    native_listbox, state.get("sidebar_boundary_separator")
+                )
         return GLib.SOURCE_REMOVE
 
     def _inject_sidebar_link(self, win: Gtk.Window) -> bool:

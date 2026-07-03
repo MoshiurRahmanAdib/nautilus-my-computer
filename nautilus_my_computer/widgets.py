@@ -347,6 +347,13 @@ class MyComputerFolderCard(Gtk.Box):
             src_child.set_child(None)
             flow.remove(src_child)
             flow.insert(src, dst_index)
+            # flow.insert() wraps src in a brand-new FlowBoxChild, so the "mc-selected"
+            # highlight applied to the old wrapper at drag-begin was destroyed along
+            # with it. Reapply it here or the dragged card's gutter highlight vanishes
+            # after its first move.
+            new_child = src.get_parent()
+            if new_child is not None:
+                new_child.add_css_class("mc-selected")
 
             # Step 3: rewrite every card's .index to match the new FlowBox order.
             child = flow.get_first_child()
@@ -379,7 +386,13 @@ class MyComputerFolderCard(Gtk.Box):
     def _on_drag_begin(self, _source, drag) -> None:
         Gtk.DragIcon.get_for_drag(drag).set_child(self._build_drag_ghost())
         self._set_content_opacity(0.55)
-        self.add_css_class("mc-selected")
+        # Painted on the FlowBoxChild, not self: self's own margins (the card's
+        # gutter) sit outside its CSS box, so a highlight on self would be drawn
+        # smaller than the native :hover highlight, which GTK paints on the
+        # FlowBoxChild and therefore spans the full cell including that gutter.
+        parent = self.get_parent()
+        if parent is not None:
+            parent.add_css_class("mc-selected")
         _log(
             f"preferred folders dragging started: {self.model.display_name}/ "
             f"position {self.model.index}"
@@ -394,13 +407,17 @@ class MyComputerFolderCard(Gtk.Box):
         # this opacity for genuinely hidden folders.
         if not self.model.is_hidden:
             self._set_content_opacity(1.0)
-        self.remove_css_class("mc-selected")
+        parent = self.get_parent()
+        if parent is not None:
+            parent.remove_css_class("mc-selected")
         self._ext._dragging_folder_card = None
 
     def _on_drag_cancel(self, _source, _drag, _reason) -> bool:
         if not self.model.is_hidden:
             self._set_content_opacity(1.0)
-        self.remove_css_class("mc-selected")
+        parent = self.get_parent()
+        if parent is not None:
+            parent.remove_css_class("mc-selected")
         self._ext._dragging_folder_card = None
         return False
 

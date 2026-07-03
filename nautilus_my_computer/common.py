@@ -287,19 +287,19 @@ _LIST_BAR_MAX_WIDTH = 240  # max width (px) of the usage bar at the end of a lis
 _DISK_CARD_SPACING = 16  # disk card FlowBox column spacing (px)
 _DISK_CARD_ROW_SPACING = 6  # disk card FlowBox row spacing (px)
 _DISK_CARD_ICON_SPACING = 18  # gap between icon and details column inside a grid disk card (px)
-_DISK_CARD_MARGIN_START = 16  # disk card own start inset inside its total width (px)
-_DISK_CARD_MARGIN_END = 16  # disk card own end inset inside its total width (px)
-_DISK_CARD_MARGIN_TOP = 12  # disk card own top inset inside its total height (px)
-_DISK_CARD_MARGIN_BOTTOM = 12  # disk card own bottom inset inside its total height (px)
+_DISK_CARD_MARGIN_START = 8  # disk card own start inset inside its total width (px)
+_DISK_CARD_MARGIN_END = 8  # disk card own end inset inside its total width (px)
+_DISK_CARD_MARGIN_TOP = 6  # disk card own top inset inside its total height (px)
+_DISK_CARD_MARGIN_BOTTOM = 6  # disk card own bottom inset inside its total height (px)
 
 _FOLDER_FLOW_COLS_GRID = 20  # matches native Nautilus folder view's max column count
-_FOLDER_CARD_SPACING = 16  # folder card FlowBox column spacing (px); min gap the justified
+_FOLDER_CARD_SPACING = 24  # folder card FlowBox column spacing (px); min gap the justified
 # flow stretches from once a row is full (see MyComputerJustifiedFlowBox)
 _FOLDER_CARD_ROW_SPACING = 6  # folder card FlowBox row spacing (px)
-_FOLDER_CARD_MARGIN_START = 16  # folder card own start inset inside its total width (px)
-_FOLDER_CARD_MARGIN_END = 16  # folder card own end inset inside its total width (px)
-_FOLDER_CARD_MARGIN_TOP = 16  # folder card own top inset inside its total height (px)
-_FOLDER_CARD_MARGIN_BOTTOM = 8  # folder card own bottom inset inside its total height (px)
+_FOLDER_CARD_MARGIN_START = 8  # folder card own start inset inside its total width (px)
+_FOLDER_CARD_MARGIN_END = 8  # folder card own end inset inside its total width (px)
+_FOLDER_CARD_MARGIN_TOP = 8  # folder card own top inset inside its total height (px)
+_FOLDER_CARD_MARGIN_BOTTOM = 4  # folder card own bottom inset inside its total height (px)
 
 _INTERNAL_FSTYPES = {"gvfs", "unmounted", "network-place"}
 
