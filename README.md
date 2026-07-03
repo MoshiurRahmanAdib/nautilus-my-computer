@@ -36,6 +36,18 @@ Computer sits at the top of the GNOME Files sidebar, click to open the panel and
 
 ![Computer button](assets/images/computer-button.png)
 
+### Preferred Folders
+
+A "Preferred Folders" group sits at the top of the Computer view, giving you one-click access to your everyday folders without digging through the sidebar.
+
+This group can be hidden if you'd rather not see it. Pin or unpin any folder as you want.
+
+![Preferred Folders](assets/images/preferred-folders.png)
+
+Reorder your Preferred Folders by dragging cards into place, right in the Computer view, and the new order is saved automatically.
+
+![Preferred Folders drag-and-drop](assets/images/preferred-folders-dnd.png)
+
 ### Settings page
 
 My Computer Settings let you:
@@ -44,6 +56,7 @@ My Computer Settings let you:
 - Show or hide system partitions (root, boot, EFI, swap)
 - Control the visibility of each group: visible, hidden, or merged into On this Computer
 - Choose which sidebar locations are shown: Home, Recent, Starred, Network, Trash
+- Choose which folders appear in Preferred Folders, and hide the row entirely
 - Customize the disk usage bar color to match your style
 
 ![Settings Page](assets/images/settings-page.png)
@@ -129,6 +142,9 @@ My Computer is compatible with almost all custom GTK themes.
 - **Groups visibility:** choose which storage groups are visible, hidden, or merged into one flat list.
 - **Sidebar visibility:** choose which sidebar locations are shown: Home, Recent, Starred, Network, and Trash.
 - **Custom bookmark icons:** right-click any bookmark to pick a custom symbolic icon from a searchable picker, persisted across restarts.
+- **Preferred Folders:** one-click cards for your everyday folders at the top of the Computer panel, customizable via Settings or the "..." menu's "Pin to My Computer" item, and reorderable by drag-and-drop.
+- **Open With:** pick an app to open a folder or disk with, from a native-feel app chooser.
+- **Live icon theme updates:** disk and folder card icons refresh immediately when you switch icon themes, no restart needed.
   
 ## Tested on
 
@@ -149,20 +165,7 @@ My Computer is fully localised. The UI language is picked up automatically from 
 
 Both left-to-right (LTR) and right-to-left (RTL) layouts are supported. The panel mirrors its layout direction automatically when a RTL language is active.
 
-| Language | Code | Direction |
-|----------|------|-----------|
-| English *(default)*| `en` | LTR |
-| Arabic | `ar` | RTL |
-| Catalan | `ca` | LTR |
-| French | `fr` | LTR |
-| German | `de` | LTR |
-| Hungarian | `hu` | LTR |
-| Italian | `it` | LTR |
-| Korean | `ko` | LTR |
-| Portuguese | `pt` | LTR |
-| Russian | `ru` | LTR |
-| Spanish | `es` | LTR |
-| Turkish | `tr` | LTR |
+English `en` *(default)* · Arabic `ar` · Catalan `ca` · French `fr` · German `de` · Hungarian `hu` · Italian `it` · Korean `ko` · Portuguese `pt` · Russian `ru` · Spanish `es` · Turkish `tr`
 
 Want to add your language? Contributions are welcome, open a PR with a new `.po` file under `po/`.
 
@@ -183,6 +186,8 @@ The goal is for My Computer to feel indistinguishable from a built-in feature an
 My Computer is community-built. These people have shaped what it is today.
 
 [![Contributors](https://contrib.rocks/image?repo=yannmasoch/nautilus-my-computer)](https://github.com/yannmasoch/nautilus-my-computer/graphs/contributors)
+
+Thanks also go to everyone who opened issues, reported bugs, and shared feedback on GitHub and social media, this project owes just as much to them as it does to the code.
 
 Want to contribute? Check out [CONTRIBUTING.md](CONTRIBUTING.md).
 

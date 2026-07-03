@@ -54,6 +54,9 @@ msgstr "Ouvrir dans un nouvel onglet"
 msgid "Open in New Window"
 msgstr "Ouvrir dans une nouvelle fenêtre"
 
+msgid "Open With…"
+msgstr "Ouvrir avec…"
+
 msgid "Mount"
 msgstr "Monter"
 
@@ -221,3 +224,34 @@ msgstr "Rechercher des icônes…"
 
 msgid "Reset"
 msgstr "Réinitialiser"
+
+#——————————————————————————————
+# Panel - Preferred Folders
+#——————————————————————————————
+
+msgid "Documents"
+msgstr "Documents"
+
+msgid "Downloads"
+msgstr "Téléchargements"
+
+msgid "Music"
+msgstr "Musique"
+
+msgid "Videos"
+msgstr "Vidéos"
+
+msgid "Pictures"
+msgstr "Images"
+
+msgid "Preferred Folders"
+msgstr "Dossiers préférés"
+
+msgid "Show the Preferred Folders group at the top of the view"
+msgstr "Afficher le groupe Dossiers préférés en haut de la vue"
+
+msgid "Add to Preferred"
+msgstr "Ajouter aux préférés"
+
+msgid "Remove from Preferred"
+msgstr "Retirer des préférés"

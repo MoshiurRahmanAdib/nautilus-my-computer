@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nautilus-my-computer"
-version = "0.8.4"
+version = "0.10.1"
 description = "My Computer for Nautilus, a GNOME file manager extension"
 readme = "README.md"
 requires-python = ">=3.12"

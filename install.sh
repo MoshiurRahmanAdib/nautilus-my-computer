@@ -38,6 +38,7 @@ trap cleanup EXIT
 REPO="yannmasoch/nautilus-my-computer"
 EXT_DIR="$HOME/.local/share/nautilus-python/extensions"
 EXT_FILE="nautilus-my-computer.py"
+PKG_DIR="nautilus_my_computer"
 SCHEMA_ID="io.github.yannmasoch.nautilus-my-computer"
 SCHEMA_FILE="$SCHEMA_ID.gschema.xml"
 USER_SCHEMA_DIR="$HOME/.local/share/glib-2.0/schemas"
@@ -73,7 +74,8 @@ case "$0" in
         ;;
 esac
 if [ -z "${INSTALL_SOURCE:-}" ]; then
-    if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/$EXT_FILE" ] && [ -f "$SCRIPT_DIR/$SCHEMA_FILE" ]; then
+    if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/$EXT_FILE" ] && [ -f "$SCRIPT_DIR/$SCHEMA_FILE" ] \
+        && [ -d "$SCRIPT_DIR/$PKG_DIR" ]; then
         INSTALL_SOURCE="$SCRIPT_DIR"
     else
         INSTALL_SOURCE="remote"
@@ -307,6 +309,14 @@ download_files() {
         curl -fsSL "$base/$EXT_FILE"    -o "$TEMP_DIR/$EXT_FILE"    || die "Failed to download $EXT_FILE"
         curl -fsSL "$base/$SCHEMA_FILE" -o "$TEMP_DIR/$SCHEMA_FILE" || die "Failed to download $SCHEMA_FILE"
 
+        mkdir -p "$TEMP_DIR/$PKG_DIR"
+        pkg_files=$(curl -fsSL "https://api.github.com/repos/$REPO/contents/$PKG_DIR?ref=$LATEST" \
+            | sed -n 's/.*"name": "\(.*\.py\)".*/\1/p') || true
+        [ -n "$pkg_files" ] || die "Failed to list $PKG_DIR contents"
+        for f in $pkg_files; do
+            curl -fsSL "$base/$PKG_DIR/$f" -o "$TEMP_DIR/$PKG_DIR/$f" || die "Failed to download $PKG_DIR/$f"
+        done
+
         mkdir -p "$TEMP_DIR/po"
         langs=$(curl -fsSL "https://api.github.com/repos/$REPO/contents/po?ref=$LATEST" \
             | sed -n 's/.*"name": "\(.*\)\.po".*/\1/p') || true
@@ -316,11 +326,14 @@ download_files() {
     else
         cp "$INSTALL_SOURCE/$EXT_FILE"    "$TEMP_DIR/$EXT_FILE"    || die "Local $EXT_FILE not found"
         cp "$INSTALL_SOURCE/$SCHEMA_FILE" "$TEMP_DIR/$SCHEMA_FILE" || die "Local $SCHEMA_FILE not found"
+        [ -d "$INSTALL_SOURCE/$PKG_DIR" ] || die "Local $PKG_DIR not found"
+        mkdir -p "$TEMP_DIR/$PKG_DIR"
+        cp "$INSTALL_SOURCE/$PKG_DIR"/*.py "$TEMP_DIR/$PKG_DIR/"
         [ -d "$INSTALL_SOURCE/po" ] && cp -r "$INSTALL_SOURCE/po" "$TEMP_DIR/"
     fi
 
-    python3 -m py_compile "$TEMP_DIR/$EXT_FILE" \
-        || die "Extension file failed syntax check, aborting."
+    python3 -m py_compile "$TEMP_DIR/$EXT_FILE" "$TEMP_DIR/$PKG_DIR"/*.py \
+        || die "Extension files failed syntax check, aborting."
 }
 
 # --- Install extension + schema ---
@@ -328,7 +341,12 @@ install_files() {
     mkdir -p "$EXT_DIR"
     cp "$TEMP_DIR/$EXT_FILE" "$EXT_DIR/$EXT_FILE"
     rm -f "$EXT_DIR/__pycache__/$PYCACHE_GLOB"*.pyc 2>/dev/null || true
-    line "Extension" "$EXT_DIR/$EXT_FILE"
+    line "Extension file" "$EXT_DIR/$EXT_FILE"
+
+    rm -rf "$EXT_DIR/$PKG_DIR"
+    cp -r "$TEMP_DIR/$PKG_DIR" "$EXT_DIR/$PKG_DIR"
+    rm -rf "$EXT_DIR/$PKG_DIR/__pycache__"
+    line "Extension dir" "$EXT_DIR/$PKG_DIR/"
 
     mkdir -p "$USER_SCHEMA_DIR"
     cp "$TEMP_DIR/$SCHEMA_FILE" "$USER_SCHEMA_DIR/$SCHEMA_FILE"
@@ -383,7 +401,7 @@ do_install() {
         [ -n "$REF_VERSION" ] && line "Version" "$REF_VERSION"
     else
         REF_BRANCH=$(git -C "$INSTALL_SOURCE" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
-        REF_VERSION=$(sed -n 's/^EXT_VERSION = "\(.*\)"/\1/p' "$INSTALL_SOURCE/$EXT_FILE")
+        REF_VERSION=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' "$INSTALL_SOURCE/$PKG_DIR/__init__.py")
         line "Source" "local"
         line "Branch" "$REF_BRANCH"
         line "Version" "v${REF_VERSION:-?} (latest)"
@@ -417,7 +435,13 @@ do_uninstall() {
     if [ -f "$EXT_DIR/$EXT_FILE" ]; then
         rm -f "$EXT_DIR/$EXT_FILE"
         rm -f "$EXT_DIR/__pycache__/$PYCACHE_GLOB"*.pyc 2>/dev/null || true
-        line "Extension" "$EXT_DIR/$EXT_FILE"
+        line "Extension file" "$EXT_DIR/$EXT_FILE"
+        found=true
+    fi
+
+    if [ -d "$EXT_DIR/$PKG_DIR" ]; then
+        rm -rf "$EXT_DIR/$PKG_DIR"
+        line "Extension dir" "$EXT_DIR/$PKG_DIR/"
         found=true
     fi
 

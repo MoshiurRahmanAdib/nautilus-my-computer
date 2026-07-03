@@ -54,6 +54,9 @@ msgstr "Obrir en una pestanya nova"
 msgid "Open in New Window"
 msgstr "Obrir en una finestra nova"
 
+msgid "Open With…"
+msgstr "Obre amb…"
+
 msgid "Mount"
 msgstr "Muntar"
 
@@ -221,3 +224,34 @@ msgstr ""
 
 msgid "Reset"
 msgstr ""
+
+#——————————————————————————————
+# Panel - Preferred Folders
+#——————————————————————————————
+
+msgid "Documents"
+msgstr "Documents"
+
+msgid "Downloads"
+msgstr "Baixades"
+
+msgid "Music"
+msgstr "Música"
+
+msgid "Videos"
+msgstr "Vídeos"
+
+msgid "Pictures"
+msgstr "Imatges"
+
+msgid "Preferred Folders"
+msgstr "Carpetes preferides"
+
+msgid "Show the Preferred Folders group at the top of the view"
+msgstr "Mostra el grup de carpetes preferides a la part superior de la vista"
+
+msgid "Add to Preferred"
+msgstr "Afegeix a preferides"
+
+msgid "Remove from Preferred"
+msgstr "Elimina de preferides"

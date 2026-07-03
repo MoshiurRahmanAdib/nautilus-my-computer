@@ -4,6 +4,91 @@ All notable changes to this project are documented here.
 
 ---
 
+## v0.10.1
+Sidebar and Preferred Folders polish.
+
+### Added
+- Recent and Starred now appear by default in Preferred Folders, right
+  after Home, with Network added at the end, each with a proper icon
+- Switching your icon theme now updates disk and folder card icons
+  immediately, no more restarting Nautilus to see the change
+
+### Fixed
+- The sidebar separator line between the Computer row and your other
+  places no longer disappears when every native place is hidden
+- The drag gutter on folder cards now matches Nautilus's native hover
+  highlight instead of looking out of place while dragging
+
+---
+
+## v0.10.0
+Preferred Folders can now be reordered by drag-and-drop, plus a big internal refactor.
+
+### Added
+- Drag-and-drop reordering for Preferred Folders cards, with a live preview
+  of the landing slot as you drag; the new order is persisted to GSettings
+  on drop
+- Hidden-file detection for disk and folder cards (`.hidden-file` CSS class),
+  matching native Nautilus behavior
+- Live rename tracking for Preferred Folders via `Gio.FileMonitor` on parent
+  directories, auto-correcting stale GSettings URIs when a folder is renamed
+  on disk
+
+### Changed
+- Folder card grid layout is now compact (single-line label, 42px icon) and
+  always shown as a grid, closer to native Nautilus folder cells
+- Preferred Folders menu items renamed from "Add/Remove from Preferred" to
+  "Pin to My Computer" / "Unpin from My Computer" across all surfaces (card,
+  file view, pathbar menu)
+- Removed the duplicate "Add/Remove from Bookmarks" item from the folder
+  card right-click menu (kept only in the native file-view menu)
+
+### Internal
+- Split the monolithic entry file into `nautilus_my_computer/main.py` (app
+  state and Nautilus integration), `common.py` (stateless helpers),
+  `widgets.py` (`MyComputerDiskCard`/`MyComputerFolderCard`/
+  `MyComputerCardSection`), and per-surface target modules (`bookmarks.py`,
+  `preferred_folders.py`, `file_view_menu.py`); no behavior change
+- Installer now handles the `nautilus_my_computer/` package directory as a
+  distinct unit from the entry shim, and reads the local version from
+  `nautilus_my_computer/__init__.py`
+
+---
+
+## v0.9.1
+The "Open With…" row now does something.
+
+### Added
+- "Open With…" on local folder and disk cards now opens an app chooser
+  matching native Nautilus's own picker (search, Recommended/Other Apps),
+  attached to the Nautilus window, instead of always being greyed out
+
+### Changed
+- Preferred Folders card spacing increased from 16px to 24px between columns
+
+### Fixed
+- Turkish translation for "Open With…" was missing; added
+
+### Docs
+- README now documents the Preferred Folders group (added in v0.9.0), with a
+  new screenshot and settings/feature list entries
+  
+---
+
+## v0.9.0
+One-click access to your everyday folders, right from the Computer view.
+
+### Added
+- A new "Preferred Folders" group at the top of the Computer panel, with
+  cards for Home, Recent, Starred, Network, Documents, Downloads, Music,
+  Videos, and Pictures, so you can jump straight to them without digging
+  through the sidebar (issue #30)
+- This group can be hidden if you'd rather not see it, and power users
+  (or distributions shipping their own defaults) can customize which
+  folders appear and in what order
+
+---
+
 ## v0.8.4
 Correct root disk detection on OSTree/bootc systems.
 

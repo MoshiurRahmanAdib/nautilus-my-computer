@@ -5,14 +5,14 @@ Planned fixes, features, and improvements. Subject to change as the project evol
 ---
 
 ## Currently
-- feat: pin custom folders and other locations alongside Computer (#30)
-
-## Next up
 - fix: compatibility with Zorin OS
 - fix: Computer doesn't appear after install on Bazzite/Silverblue-style images (#41)
+
+## Next up
 - fix: misaligned sidebar icon and text (#22)
 - fix: stray Computer icon next to the first tab's title (#29)
 - docs: README screenshot for custom bookmark icons feature (#23)
+- docs: README screenshot for Preferred Folders feature (#30)
 
 ## On the horizon
 - feat: drag-and-drop and copy/paste support on disk cards

@@ -53,6 +53,9 @@ msgstr "Yeni Sekmede Aç"
 msgid "Open in New Window"
 msgstr "Yeni Pencerede Aç"
 
+msgid "Open With…"
+msgstr "Birlikte Aç…"
+
 msgid "Mount"
 msgstr "Bağla"
 
@@ -218,3 +221,34 @@ msgstr ""
 
 msgid "Reset"
 msgstr ""
+
+#——————————————————————————————
+# Panel - Preferred Folders
+#——————————————————————————————
+
+msgid "Documents"
+msgstr "Belgeler"
+
+msgid "Downloads"
+msgstr "İndirilenler"
+
+msgid "Music"
+msgstr "Müzik"
+
+msgid "Videos"
+msgstr "Videolar"
+
+msgid "Pictures"
+msgstr "Resimler"
+
+msgid "Preferred Folders"
+msgstr "Tercih Edilen Klasörler"
+
+msgid "Show the Preferred Folders group at the top of the view"
+msgstr "Görünümün üst kısmında Tercih Edilen Klasörler grubunu göster"
+
+msgid "Add to Preferred"
+msgstr "Tercihlere ekle"
+
+msgid "Remove from Preferred"
+msgstr "Tercihlerden kaldır"

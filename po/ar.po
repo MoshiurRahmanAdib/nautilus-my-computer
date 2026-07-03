@@ -54,6 +54,9 @@ msgstr "افتح في علامة تبويب جديدة"
 msgid "Open in New Window"
 msgstr "افتح في نافذة جديدة"
 
+msgid "Open With…"
+msgstr "افتح باستخدام…"
+
 msgid "Mount"
 msgstr "ضم"
 
@@ -221,3 +224,34 @@ msgstr ""
 
 msgid "Reset"
 msgstr ""
+
+#——————————————————————————————
+# Panel - Preferred Folders
+#——————————————————————————————
+
+msgid "Documents"
+msgstr "المستندات"
+
+msgid "Downloads"
+msgstr "التنزيلات"
+
+msgid "Music"
+msgstr "الموسيقى"
+
+msgid "Videos"
+msgstr "الفيديوهات"
+
+msgid "Pictures"
+msgstr "الصور"
+
+msgid "Preferred Folders"
+msgstr "المجلدات المفضلة"
+
+msgid "Show the Preferred Folders group at the top of the view"
+msgstr "إظهار مجموعة المجلدات المفضلة في أعلى العرض"
+
+msgid "Add to Preferred"
+msgstr "أضف إلى المفضلة"
+
+msgid "Remove from Preferred"
+msgstr "أزل من المفضلة"
