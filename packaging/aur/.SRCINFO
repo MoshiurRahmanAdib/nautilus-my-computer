@@ -9,6 +9,6 @@ pkgbase = nautilus-my-computer
 	depends = python-nautilus
 	depends = libadwaita
 	source = nautilus-my-computer-0.11.0.tar.gz::https://github.com/yannmasoch/nautilus-my-computer/archive/refs/tags/v0.11.0.tar.gz
-	sha256sums = SKIP
+	sha256sums = 93f1c68243e1dd66959d5bd8fa4486ef62a3b027cdcce8a92038d5e19fb9fefe
 
 pkgname = nautilus-my-computer
