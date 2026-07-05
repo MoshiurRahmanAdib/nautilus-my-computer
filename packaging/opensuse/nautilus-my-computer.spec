@@ -33,8 +33,12 @@ make build
 
 %files -f %{name}.lang
 %license LICENSE
+%dir %{_datadir}/nautilus-python
+%dir %{_datadir}/nautilus-python/extensions
 %{_datadir}/nautilus-python/extensions/nautilus-my-computer.py
 %{_datadir}/nautilus-python/extensions/nautilus_my_computer/
+%dir %{_datadir}/glib-2.0
+%dir %{_datadir}/glib-2.0/schemas
 %{_datadir}/glib-2.0/schemas/io.github.yannmasoch.nautilus-my-computer.gschema.xml
 
 %changelog
