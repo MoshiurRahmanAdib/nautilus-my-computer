@@ -1,0 +1,94 @@
+name: Packaging
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - "Makefile"
+      - "packaging/**"
+      - ".github/workflows/packaging.yml"
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - "Makefile"
+      - "packaging/**"
+      - ".github/workflows/packaging.yml"
+
+jobs:
+  makefile-build:
+    name: Makefile build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - name: Install gettext
+        run: sudo apt-get update && sudo apt-get install -y gettext
+
+      - name: make build
+        run: make build
+
+      - name: make DESTDIR install/uninstall round-trip
+        run: |
+          make DESTDIR=/tmp/fakeroot PREFIX=/usr install
+          test -f /tmp/fakeroot/usr/share/nautilus-python/extensions/nautilus-my-computer.py
+          make DESTDIR=/tmp/fakeroot PREFIX=/usr uninstall
+
+  aur-validate:
+    name: Validate AUR PKGBUILD
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - name: Create unprivileged build user
+        run: |
+          useradd -m builder
+          chown -R builder:builder .
+
+      - name: Install namcap
+        run: pacman -Sy --noconfirm namcap
+
+      - name: Check .SRCINFO is up to date
+        run: |
+          cd packaging/aur
+          su builder -c "makepkg --printsrcinfo" > /tmp/SRCINFO.generated
+          diff -u .SRCINFO /tmp/SRCINFO.generated
+
+      - name: namcap PKGBUILD
+        run: namcap packaging/aur/PKGBUILD
+
+  fedora-validate:
+    name: Validate Fedora spec
+    runs-on: ubuntu-latest
+    container: fedora:latest
+
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - name: Install rpm tooling
+        run: dnf install -y rpmlint rpmdevtools
+
+      - name: Parse spec
+        run: rpmspec --parse packaging/fedora/nautilus-my-computer.spec
+
+      - name: rpmlint spec
+        run: rpmlint packaging/fedora/nautilus-my-computer.spec
+
+  opensuse-validate:
+    name: Validate openSUSE spec
+    runs-on: ubuntu-latest
+    container: opensuse/tumbleweed:latest
+
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - name: Install rpm tooling
+        run: zypper --non-interactive install rpmlint rpmdevtools
+
+      - name: Parse spec
+        run: rpmspec --parse packaging/opensuse/nautilus-my-computer.spec
+
+      - name: rpmlint spec
+        run: rpmlint packaging/opensuse/nautilus-my-computer.spec
