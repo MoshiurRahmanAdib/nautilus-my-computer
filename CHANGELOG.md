@@ -4,6 +4,25 @@ All notable changes to this project are documented here.
 
 ---
 
+## v0.11.0
+Package-manager distribution: Makefile-driven packaging for AUR, Fedora, and openSUSE.
+
+### Added
+- `Makefile` with standard `DESTDIR`/`PREFIX` install/uninstall targets, for use by
+  distro packaging instead of the manual `~/.local` dev-loop steps
+- AUR `PKGBUILD` (`packaging/aur/`), plus a GitHub Action that publishes it to the
+  AUR git repo automatically on each GitHub release
+- Fedora RPM `.spec` (`packaging/fedora/`), built, linted, and installed end-to-end
+  on a real Fedora VM
+- openSUSE RPM `.spec` (`packaging/opensuse/`), built, linted, and installed
+  end-to-end on a real openSUSE Tumbleweed VM
+
+### Changed
+- Project description updated to "My Computer for Nautilus, what GNOME Files
+  should have always been" across README, `pyproject.toml`, and the AUR package
+
+---
+
 ## v0.10.1
 Sidebar and Preferred Folders polish.
 

@@ -1,0 +1,42 @@
+name: Publish AUR package
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  aur-publish:
+    name: Update AUR package
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - name: Resolve version and checksum
+        id: resolve
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          url="https://github.com/${GITHUB_REPOSITORY}/archive/refs/tags/${GITHUB_REF_NAME}.tar.gz"
+          curl -fsSL -o source.tar.gz "$url"
+          sha256=$(sha256sum source.tar.gz | cut -d' ' -f1)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "sha256=$sha256" >> "$GITHUB_OUTPUT"
+
+      - name: Update PKGBUILD
+        run: |
+          sed -i \
+            -e "s/^pkgver=.*/pkgver=${{ steps.resolve.outputs.version }}/" \
+            -e "s/^pkgrel=.*/pkgrel=1/" \
+            -e "s/^sha256sums=.*/sha256sums=('${{ steps.resolve.outputs.sha256 }}')/" \
+            packaging/aur/PKGBUILD
+          cat packaging/aur/PKGBUILD
+
+      - name: Publish to AUR
+        uses: KSXGitHub/github-actions-deploy-aur@v4
+        with:
+          pkgname: nautilus-my-computer
+          pkgbuild: ./packaging/aur/PKGBUILD
+          commit_username: ${{ secrets.AUR_USERNAME }}
+          commit_email: ${{ secrets.AUR_EMAIL }}
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: "Update to ${{ github.ref_name }}"
