@@ -1,6 +1,6 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: nautilus-my-computer
-Upstream-Contact: Yann Masoch <yann.masoch@gmail.com>
+Upstream-Contact: Yann Masoch <231734284+yannmasoch@users.noreply.github.com>
 Source: https://github.com/yannmasoch/nautilus-my-computer
 
 Files: *

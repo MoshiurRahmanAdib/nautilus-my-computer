@@ -8,12 +8,24 @@ All notable changes to this project are documented here.
 Ubuntu PPA packaging.
 
 ### Added
-- Ubuntu `debian/` packaging (`packaging/ubuntu/`), targeting noble, oracular, and plucky,
-  built and installed end-to-end on a real Ubuntu 26.04 VM
+- Ubuntu `debian/` packaging (`packaging/ubuntu/`), targeting only currently-supported
+  series: resolute (26.04 LTS, GNOME 50) and stonking (26.10, in development). Non-LTS
+  Ubuntu releases only get ~9 months of support; noble, oracular, plucky, and questing
+  either ship GNOME older than this extension targets or are already EOL. Built and
+  installed end-to-end on a real Ubuntu 26.04 VM.
 - `packaging/ubuntu/build-and-upload.sh` to build and `dput` signed source packages
-  per series to `ppa:yannmasoch/nautilus-my-computer`
+  per series to `ppa:yannmasoch/nautilus-my-computer`. Builds the source package
+  (`.dsc`/`.orig.tar.gz`/`.debian.tar.xz`) once and generates a separate signed `.changes`
+  per series referencing the same files, since Launchpad's pool is shared across every
+  series in a PPA and rejects re-uploading the same filename with different contents
+  (which happens if `debian/changelog` is baked into a fresh source build per series).
+  Version derived from `debian/changelog` via `dpkg-parsechangelog` rather than hardcoded.
 - `ubuntu-validate` CI job building a real `.deb` via `dpkg-buildpackage` and checking
   installed paths with `lintian`
+- README `## Installation` section now documents package-manager installs (Fedora COPR,
+  openSUSE OBS, Ubuntu PPA), not just the universal `install.sh`. AUR is prepared
+  (`packaging/aur/`) but not yet published - AUR is currently blocking new-account
+  submissions after a recent spam wave.
 
 ### Fixed
 - `EXT_VERSION` in `nautilus_my_computer/main.py` was still `0.10.1`, out of sync with

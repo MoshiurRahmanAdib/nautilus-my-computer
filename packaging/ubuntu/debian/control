@@ -1,7 +1,7 @@
 Source: nautilus-my-computer
 Section: gnome
 Priority: optional
-Maintainer: Yann Masoch <yann.masoch@gmail.com>
+Maintainer: Yann Masoch <231734284+yannmasoch@users.noreply.github.com>
 Build-Depends: debhelper-compat (= 13), gettext, python3
 Standards-Version: 4.6.2
 Rules-Requires-Root: no

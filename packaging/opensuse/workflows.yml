@@ -1,0 +1,7 @@
+rebuild_on_tag:
+  steps:
+    - rebuild_package:
+        project: home:yannmasoch
+        package: nautilus-my-computer
+  filters:
+    event: tag_push

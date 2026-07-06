@@ -18,17 +18,43 @@ My Computer for Nautilus, what GNOME Files should have always been
 
 ## Installation
 
-### Install
+### Universal install script
 ```bash
 curl -fsSL https://raw.githubusercontent.com/yannmasoch/nautilus-my-computer/main/install.sh | sh
 ```
-
-### Uninstall
+Uninstall:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/yannmasoch/nautilus-my-computer/main/install.sh | sh -s -- --uninstall
 ```
-
 Nothing is written outside your home directory.
+
+### Arch Linux (AUR)
+Not yet published - AUR is currently blocking submissions from new accounts due to a recent
+spam wave. Will be added as soon as that's lifted. A `PKGBUILD` is already maintained at
+[`packaging/aur/`](packaging/aur/) for when it is.
+
+### Ubuntu (PPA)
+```bash
+sudo add-apt-repository ppa:yannmasoch/nautilus-my-computer
+sudo apt update
+sudo apt install nautilus-my-computer
+```
+Currently supported series: 26.04 LTS (resolute) and 26.10 (stonking). Non-LTS Ubuntu releases
+only get about 9 months of support, so this list moves forward as older series reach end of life.
+
+### Fedora (COPR)
+```bash
+sudo dnf copr enable yannmasoch/nautilus-my-computer
+sudo dnf install nautilus-my-computer
+```
+
+### openSUSE (OBS)
+```bash
+sudo zypper addrepo https://download.opensuse.org/repositories/home:yannmasoch/openSUSE_Tumbleweed/home:yannmasoch.repo
+sudo zypper refresh
+sudo zypper install nautilus-my-computer
+```
+Leap 16.0 is also built; swap `openSUSE_Tumbleweed` for `16.0` in the repo URL above.
 
 ## My Computer
 
