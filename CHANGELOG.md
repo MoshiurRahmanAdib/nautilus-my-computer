@@ -4,6 +4,23 @@ All notable changes to this project are documented here.
 
 ---
 
+## v0.11.6
+Fix a bug where the Computer view could get permanently stuck blank.
+
+### Fixed
+- Clicking "Computer" inside a file picker (e.g. a browser's "upload file"
+  dialog) could leave the view blank for the rest of that window's life.
+- Switching between tabs could occasionally leave the Computer view showing
+  stale content instead of updating to match the tab you switched to.
+- File pickers no longer jump to the Computer view on their own when the
+  "Show Computer view on open" preference is enabled - that's for regular
+  Nautilus windows only.
+
+Credit to the reporter of issue #55 for finding and clearly describing the
+original bug.
+
+---
+
 ## v0.11.5
 Add GNOME/Nautilus version-detection helpers and fix two GNOME 47 compatibility issues.
 
