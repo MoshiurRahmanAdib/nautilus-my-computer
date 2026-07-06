@@ -1,5 +1,5 @@
 Name:           nautilus-my-computer
-Version:        0.11.1
+Version:        0.11.2
 Release:        0
 Summary:        My Computer for Nautilus, what GNOME Files should have always been
 
@@ -42,6 +42,11 @@ make build
 %{_datadir}/glib-2.0/schemas/io.github.yannmasoch.nautilus-my-computer.gschema.xml
 
 %changelog
+* Mon Jul 06 2026 Yann Masoch <231734284+yannmasoch@users.noreply.github.com> - 0.11.2-0
+- Trigger COPR/AUR/Ubuntu PPA/openSUSE OBS builds directly on version tag
+  push instead of a manually-published GitHub release
+- Auto-create a GitHub Release with changelog notes on tag push
+
 * Sun Jul 06 2026 Yann Masoch <231734284+yannmasoch@users.noreply.github.com> - 0.11.1-0
 - Add Ubuntu PPA packaging, sync EXT_VERSION with pyproject.toml
 

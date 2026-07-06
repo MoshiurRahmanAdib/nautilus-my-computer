@@ -5,8 +5,8 @@
 #   packaging/ubuntu/build-and-upload.sh <version> [--upload]
 #
 # Example:
-#   packaging/ubuntu/build-and-upload.sh 0.11.1          # build only, source packages left in ./ppa-build
-#   packaging/ubuntu/build-and-upload.sh 0.11.1 --upload  # build and dput to the PPA
+#   packaging/ubuntu/build-and-upload.sh 0.11.2          # build only, source packages left in ./ppa-build
+#   packaging/ubuntu/build-and-upload.sh 0.11.2 --upload  # build and dput to the PPA
 #
 # Requires: devscripts, dpkg-dev, debhelper (build-essential + these on a Debian/Ubuntu host).
 # Signs with the GPG key below; override by exporting GPG_KEYID before running.
@@ -62,7 +62,7 @@ first_series="${SERIES[0]}"
 )
 
 # Derived from debian/changelog rather than hardcoded, so a packaging-only
-# revision bump (e.g. 0.11.1-2 for a debian/ fix with no upstream change)
+# revision bump (e.g. 0.11.2-2 for a debian/ fix with no upstream change)
 # doesn't also require editing this script.
 DEB_VERSION="$(cd "$SRC_DIR" && dpkg-parsechangelog -S Version)"
 CHANGES_BASENAME="nautilus-my-computer_${DEB_VERSION}_source.changes"
