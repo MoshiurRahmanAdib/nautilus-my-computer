@@ -4,6 +4,20 @@ All notable changes to this project are documented here.
 
 ---
 
+## v0.11.4
+Fix openSUSE OBS auto-rebuild actually doing nothing.
+
+### Fixed
+- `packaging/opensuse/workflows.yml`'s `rebuild_package` step only calls OBS's plain
+  `Package.rebuild` API, which rebuilds whatever source is already committed to the package - it
+  never re-runs the `_service`, so every `v0.11.2`/`v0.11.3` tag push silently "succeeded" while
+  actually just rebuilding the same stale `v0.11.1` content over and over (no error, since the step
+  did exactly what it's coded to do, just not what we needed). Switched to `trigger_services`,
+  which re-runs the `_service` (re-fetching the spec and tarball from GitHub via `download_url`/
+  `download_files`) and triggers a real rebuild once the content actually changes.
+
+---
+
 ## v0.11.3
 Fix the CI issues found on v0.11.2's first live tag-push run.
 

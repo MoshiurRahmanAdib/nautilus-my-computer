@@ -1,6 +1,6 @@
 rebuild_on_tag:
   steps:
-    - rebuild_package:
+    - trigger_services:
         project: home:yannmasoch
         package: nautilus-my-computer
   filters:
