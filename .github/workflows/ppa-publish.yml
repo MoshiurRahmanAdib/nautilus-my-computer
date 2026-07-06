@@ -1,0 +1,48 @@
+name: Publish Ubuntu PPA package
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  ppa-publish:
+    name: Build and upload to PPA
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - name: Resolve version
+        id: resolve
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Install packaging tools
+        run: sudo apt-get update && sudo apt-get install -y devscripts dpkg-dev debhelper gnupg dput
+
+      - name: Import GPG key
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.PPA_GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.PPA_GPG_PASSPHRASE }}
+        run: |
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+          keyid=$(gpg --list-secret-keys --with-colons | awk -F: '/^sec/ {print $5; exit}')
+          echo "GPG_KEYID=$keyid" >> "$GITHUB_ENV"
+
+          mkdir -p ~/.gnupg
+          echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+          echo "default-cache-ttl 3600" >> ~/.gnupg/gpg-agent.conf
+          echo "max-cache-ttl 3600" >> ~/.gnupg/gpg-agent.conf
+          echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+          gpgconf --reload gpg-agent
+
+          # Warm up the agent's passphrase cache so debuild/debsign's later,
+          # non-interactive gpg calls (which can't supply --passphrase
+          # themselves) reuse the already-unlocked key instead of prompting.
+          echo "warmup" | gpg --batch --yes --pinentry-mode loopback \
+            --passphrase "$GPG_PASSPHRASE" --local-user "$keyid" \
+            --sign --armor --output /dev/null
+
+      - name: Build and upload
+        run: bash packaging/ubuntu/build-and-upload.sh "${{ steps.resolve.outputs.version }}" --upload
