@@ -1,0 +1,23 @@
+Source: nautilus-my-computer
+Section: gnome
+Priority: optional
+Maintainer: Yann Masoch <yann.masoch@gmail.com>
+Build-Depends: debhelper-compat (= 13), gettext, python3
+Standards-Version: 4.6.2
+Rules-Requires-Root: no
+Homepage: https://github.com/yannmasoch/nautilus-my-computer
+Vcs-Browser: https://github.com/yannmasoch/nautilus-my-computer
+Vcs-Git: https://github.com/yannmasoch/nautilus-my-computer.git
+
+Package: nautilus-my-computer
+Architecture: all
+Depends: ${misc:Depends},
+         python3-nautilus,
+         python3-gi,
+         gir1.2-gtk-4.0,
+         gir1.2-adw-1 (>= 1.4)
+Description: My Computer for Nautilus, what GNOME Files should have always been
+ My Computer is a custom view for GNOME Files (Nautilus), showing all your
+ drives, volumes, and network mounts with usage levels in one clean panel:
+ System, Devices and Drives, Removable Devices, and Network Volumes, with
+ usage bars, context menus, live refresh, and mount/unmount/eject actions.

@@ -1,0 +1,5 @@
+nautilus-my-computer (0.11.1-1) UNRELEASED; urgency=medium
+
+  * Initial PPA packaging.
+
+ -- Yann Masoch <yann.masoch@gmail.com>  Sun, 05 Jul 2026 18:54:48 -0700

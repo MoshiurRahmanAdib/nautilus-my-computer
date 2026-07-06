@@ -4,6 +4,23 @@ All notable changes to this project are documented here.
 
 ---
 
+## v0.11.1
+Ubuntu PPA packaging.
+
+### Added
+- Ubuntu `debian/` packaging (`packaging/ubuntu/`), targeting noble, oracular, and plucky,
+  built and installed end-to-end on a real Ubuntu 26.04 VM
+- `packaging/ubuntu/build-and-upload.sh` to build and `dput` signed source packages
+  per series to `ppa:yannmasoch/nautilus-my-computer`
+- `ubuntu-validate` CI job building a real `.deb` via `dpkg-buildpackage` and checking
+  installed paths with `lintian`
+
+### Fixed
+- `EXT_VERSION` in `nautilus_my_computer/main.py` was still `0.10.1`, out of sync with
+  `pyproject.toml`; the About page now reports the correct version
+
+---
+
 ## v0.11.0
 Package-manager distribution: Makefile-driven packaging for AUR, Fedora, and openSUSE.
 

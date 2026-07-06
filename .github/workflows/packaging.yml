@@ -92,3 +92,29 @@ jobs:
 
       - name: rpmlint spec
         run: rpmlint packaging/opensuse/nautilus-my-computer.spec
+
+  ubuntu-validate:
+    name: Validate Ubuntu PPA packaging
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - name: Install devscripts and build tools
+        run: sudo apt-get update && sudo apt-get install -y devscripts build-essential debhelper lintian gettext
+
+      - name: Copy debian/ to repo root
+        run: cp -r packaging/ubuntu/debian ./debian
+
+      - name: Build binary package
+        run: dpkg-buildpackage -us -uc -b
+
+      - name: lintian
+        run: lintian ../nautilus-my-computer_*.deb
+
+      - name: Verify installed paths
+        run: |
+          dpkg-deb --contents ../nautilus-my-computer_*.deb | tee /tmp/contents.txt
+          grep -q "usr/share/nautilus-python/extensions/nautilus-my-computer.py" /tmp/contents.txt
+          grep -q "usr/share/nautilus-python/extensions/nautilus_my_computer/" /tmp/contents.txt
+          grep -q "usr/share/glib-2.0/schemas/io.github.yannmasoch.nautilus-my-computer.gschema.xml" /tmp/contents.txt
