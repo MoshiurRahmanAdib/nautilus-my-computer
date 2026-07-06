@@ -16,7 +16,7 @@ jobs:
           COPR_LOGIN: ${{ secrets.COPR_LOGIN }}
           COPR_TOKEN: ${{ secrets.COPR_TOKEN }}
         run: |
-          curl -fsSL --fail-with-body -u "$COPR_LOGIN:$COPR_TOKEN" \
+          curl -sSL --fail-with-body -u "$COPR_LOGIN:$COPR_TOKEN" \
             -X POST "https://copr.fedorainfracloud.org/api_3/build/create/scm" \
             -H "Content-Type: application/json" \
             -d "{

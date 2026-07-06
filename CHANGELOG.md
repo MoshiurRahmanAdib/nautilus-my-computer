@@ -4,6 +4,24 @@ All notable changes to this project are documented here.
 
 ---
 
+## v0.11.3
+Fix the CI issues found on v0.11.2's first live tag-push run.
+
+### Fixed
+- `aur-publish.yml` pinned `KSXGitHub/github-actions-deploy-aur@v4`, a floating major-version tag
+  that doesn't actually exist for that action (only full versions like `v4.1.3` are published) -
+  pinned to `v4.1.3` instead.
+- `ppa-publish.yml` didn't install `build-essential`, which `dpkg-checkbuilddeps` requires
+  regardless of whether it's explicitly listed in `debian/control`'s `Build-Depends` - added it to
+  both the workflow and `packaging/ubuntu/README.md`'s documented one-time setup.
+- `copr-publish.yml` combined `curl -f` and `--fail-with-body`, which are mutually exclusive
+  fail-reporting modes - dropped the redundant `-f`.
+- Disabled `aur-publish.yml` (`gh workflow disable`) rather than leaving it failing on every tag
+  push - the AUR account itself was never created, so publishing can't succeed regardless of the
+  action version fix. Re-enable once the account exists.
+
+---
+
 ## v0.11.2
 Tag-triggered package publishing across all four distro channels.
 

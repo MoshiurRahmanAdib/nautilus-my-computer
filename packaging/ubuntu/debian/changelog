@@ -1,3 +1,10 @@
+nautilus-my-computer (0.11.3-1) UNRELEASED; urgency=medium
+
+  * Bump to 0.11.3, no packaging changes (CI-only fix for the release
+    automation added in 0.11.2).
+
+ -- Yann Masoch <231734284+yannmasoch@users.noreply.github.com>  Sun, 05 Jul 2026 23:24:11 -0700
+
 nautilus-my-computer (0.11.2-1) UNRELEASED; urgency=medium
 
   * Bump to 0.11.2, no packaging changes.
