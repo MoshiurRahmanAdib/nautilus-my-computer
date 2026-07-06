@@ -1,9 +1,8 @@
 name: Publish Ubuntu PPA package
 
 on:
-  push:
-    tags:
-      - 'v*'
+  release:
+    types: [published]
 
 jobs:
   ppa-publish:
