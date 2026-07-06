@@ -1,5 +1,5 @@
 Name:           nautilus-my-computer
-Version:        0.11.0
+Version:        0.11.1
 Release:        0
 Summary:        My Computer for Nautilus, what GNOME Files should have always been
 
@@ -42,6 +42,9 @@ make build
 %{_datadir}/glib-2.0/schemas/io.github.yannmasoch.nautilus-my-computer.gschema.xml
 
 %changelog
+* Sun Jul 06 2026 Yann Masoch <231734284+yannmasoch@users.noreply.github.com> - 0.11.1-0
+- Add Ubuntu PPA packaging, sync EXT_VERSION with pyproject.toml
+
 * Sun Jul 05 2026 Yann Masoch <231734284+yannmasoch@users.noreply.github.com> - 0.11.0-0
 - Add Makefile and AUR/Fedora/openSUSE packaging
 
