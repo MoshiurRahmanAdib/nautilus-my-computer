@@ -1,3 +1,12 @@
+nautilus-my-computer (0.11.5-1) UNRELEASED; urgency=medium
+
+  * Add GNOME/Nautilus version-detection helpers and fix two GNOME 47
+    compatibility issues: sidebar row resolves NautilusGtkSidebarRow (47)
+    or NautilusSidebarRow (48+), and the Preferred Folders/disk-grid
+    FlowBox now uses halign=FILL unconditionally.
+
+ -- Yann Masoch <231734284+yannmasoch@users.noreply.github.com>  Mon, 06 Jul 2026 16:09:21 -0700
+
 nautilus-my-computer (0.11.4-1) UNRELEASED; urgency=medium
 
   * Bump to 0.11.4, no packaging changes (openSUSE OBS auto-rebuild fix
