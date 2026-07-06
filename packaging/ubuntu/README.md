@@ -10,7 +10,7 @@ whenever a new series ships.
 ## One-time setup (maintainer machine)
 
 ```shell
-sudo apt install devscripts dpkg-dev debhelper gnupg
+sudo apt install build-essential devscripts dpkg-dev debhelper gnupg
 ```
 
 A GPG key must be configured and registered with your Launchpad account (`debuild` signs the

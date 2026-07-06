@@ -1,5 +1,5 @@
 Name:           nautilus-my-computer
-Version:        0.11.2
+Version:        0.11.3
 Release:        0
 Summary:        My Computer for Nautilus, what GNOME Files should have always been
 
@@ -42,6 +42,11 @@ make build
 %{_datadir}/glib-2.0/schemas/io.github.yannmasoch.nautilus-my-computer.gschema.xml
 
 %changelog
+* Mon Jul 06 2026 Yann Masoch <231734284+yannmasoch@users.noreply.github.com> - 0.11.3-0
+- Fix broken CI: pin AUR deploy action to v4.1.3 (no floating v4 tag
+  exists), add build-essential to the PPA workflow's installed
+  packages, fix a curl flag conflict in the COPR trigger workflow
+
 * Mon Jul 06 2026 Yann Masoch <231734284+yannmasoch@users.noreply.github.com> - 0.11.2-0
 - Trigger COPR/AUR/Ubuntu PPA/openSUSE OBS builds directly on version tag
   push instead of a manually-published GitHub release

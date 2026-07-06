@@ -20,7 +20,7 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Install packaging tools
-        run: sudo apt-get update && sudo apt-get install -y devscripts dpkg-dev debhelper gnupg dput
+        run: sudo apt-get update && sudo apt-get install -y build-essential devscripts dpkg-dev debhelper gnupg dput
 
       - name: Import GPG key
         env:

@@ -33,7 +33,7 @@ jobs:
           cat packaging/aur/PKGBUILD
 
       - name: Publish to AUR
-        uses: KSXGitHub/github-actions-deploy-aur@v4
+        uses: KSXGitHub/github-actions-deploy-aur@v4.1.3
         with:
           pkgname: nautilus-my-computer
           pkgbuild: ./packaging/aur/PKGBUILD
