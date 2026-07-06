@@ -1,8 +1,9 @@
 name: Publish AUR package
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - 'v*'
 
 jobs:
   aur-publish:
