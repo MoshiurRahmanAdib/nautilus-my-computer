@@ -73,7 +73,7 @@ DETACH_SETTINGS_WINDOW = False  # testing toggle: True opens settings as a stand
 
 # ── Extension metadata (keep in sync with pyproject.toml) ────────────────────
 EXT_NAME = "My Computer for Nautilus"
-EXT_VERSION = "0.11.5"
+EXT_VERSION = "0.11.6"
 EXT_AUTHOR = "Yann Masoch"
 EXT_LICENSE = "MIT"
 EXT_GITHUB = "https://github.com/yannmasoch/nautilus-my-computer"
@@ -390,14 +390,26 @@ def _get_gsettings() -> Gio.Settings | None:
         return None
 
 
+def _is_file_chooser_window(win: Gtk.Window) -> bool:
+    """True for NautilusFileChooser — the portal/file-picker window Nautilus
+    opens when acting as another app's "open file" dialog. It is an AdwWindow
+    subclass, not a NautilusWindow: no window-level "locations-changed"
+    signal, no title updates on navigation, but it reuses the same
+    OverlaySplitView/ToolbarView spine and carries a single NautilusWindowSlot."""
+    return type(win).__name__ == "NautilusFileChooser"
+
+
 def _is_nautilus_window(win: Gtk.Window) -> bool:
     """Identify a Nautilus application window by layered fallback.
 
+    Tier 0: NautilusFileChooser (file-picker/portal window) — matched explicitly
     Tier 1: buildable_id == 'NautilusWindow'
     Tier 2: class name  == 'NautilusWindow'
     Tier 3: css class      'nautilus-window'
     Tier 4: structural  — contains Adw.OverlaySplitView
     """
+    if _is_file_chooser_window(win):
+        return True
     bid = win.get_buildable_id() if hasattr(win, "get_buildable_id") else None
     if bid and bid == "NautilusWindow":
         return True
@@ -599,13 +611,33 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
             self._apply_bar_color()
         if self._inject_overlay(win):
             win.connect("destroy", self._on_window_destroyed)
-            win.connect("notify::title", self._on_title_changed)
+            if _is_file_chooser_window(win):
+                # No window-level "locations-changed" on this class — watch the
+                # slot's own "location" property directly (same ground truth
+                # _window_is_at_disks() reads, symmetric with normal windows).
+                for w in _all_widgets(win):
+                    if "Slot" in type(w).__name__:
+                        w.connect(
+                            "notify::location",
+                            lambda _slot, _pspec, w=win: self._on_navigation(w),
+                        )
+                        break
+            else:
+                # "locations-changed" fires when a slot's own location changes
+                # (navigating within a tab), but NOT on tab switch: switching
+                # tabs only reassigns NautilusWindow's "active-slot" property
+                # (set_active_slot() -> g_object_notify_by_pspec(active-slot),
+                # confirmed in nautilus-window.c) without touching any slot's
+                # location. Both must be watched or the overlay goes stale
+                # the moment the active tab changes without a navigation.
+                win.connect("locations-changed", self._on_navigation)
+                win.connect("notify::active-slot", lambda w, _pspec: self._on_navigation(w))
 
             if DEBUG_COMPUTER_BUTTON_ACTIVE:
                 self._inject_sidebar_link(win)
             self._attach_pathbar_menu_watch(win)
             self._attach_file_view_context_menu(win)
-            self._on_title_changed(win, None)
+            self._on_navigation(win)
 
             if DEBUG_SELFTEST and not getattr(self, "_selftest_started", False):
                 self._selftest_started = True
@@ -744,9 +776,9 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         Adding/removing a style class is a same-frame paint change, not a tree
         mutation - it cannot trigger the GTK_IS_STACK reparenting crash class
         (see _set_visible_view). We arm this the moment we know navigation is
-        heading to computer:/// (earlier than the title-settle signal that drives
-        the overlay toggle), so the vanilla grid is never painted at all on the
-        paths we initiate ourselves."""
+        heading to computer:/// (earlier than the location-change signal that
+        drives the overlay toggle), so the vanilla grid is never painted at all
+        on the paths we initiate ourselves."""
         files_widget = state.get("files_widget")
         if files_widget is None:
             return
@@ -899,7 +931,9 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
             "_deselecting": False,
             "force_disks": False,
             "initial_title": None,
-            "start_on_computer": self._start_on_disks,
+            # A file-picker dialog should never auto-navigate itself to
+            # computer:/// on open - that heuristic is normal-window-only.
+            "start_on_computer": self._start_on_disks and not _is_file_chooser_window(nautilus_win),
             "awaiting_disks": False,
             "selected_mount_key": None,
             "selected_folder_key": None,
@@ -957,7 +991,7 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
 
     # ── Location change handler ───────────────────────────────────────────────
 
-    def _on_title_changed(self, win: Gtk.Window, _param) -> None:
+    def _on_navigation(self, win: Gtk.Window) -> None:
         state = self._windows.get(win)
         if not state:
             return
@@ -1554,7 +1588,7 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         is ready. The slot often isn't navigable the instant the window settles
         on Home, so a single open-location call silently no-ops; we retry on a
         short bounded poll and stop as soon as the location actually changes.
-        While awaiting arrival the panel stays pinned (see _on_title_changed)."""
+        While awaiting arrival the panel stays pinned (see _on_navigation)."""
         state = self._windows.get(win)
         if state is not None:
             state["awaiting_disks"] = True
@@ -2074,8 +2108,8 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
 
         Never connects signals to Nautilus's internal pathbar GtkStack or box
         models, and never calls set_child() — those caused the GTK_IS_STACK crash
-        (issue #11). The notify::title trigger already fires on every navigation,
-        so no persistent watcher is needed."""
+        (issue #11). The navigation trigger already fires on every location
+        change, so no persistent watcher is needed."""
         target_labels = {COMPUTER_LABEL, _LOCATION_TITLE}
 
         for w in _all_widgets(win):

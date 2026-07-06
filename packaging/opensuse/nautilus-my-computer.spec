@@ -1,5 +1,5 @@
 Name:           nautilus-my-computer
-Version:        0.11.4
+Version:        0.11.6
 Release:        0
 Summary:        My Computer for Nautilus, what GNOME Files should have always been
 
@@ -42,6 +42,12 @@ make build
 %{_datadir}/glib-2.0/schemas/io.github.yannmasoch.nautilus-my-computer.gschema.xml
 
 %changelog
+* Mon Jul 06 2026 Yann Masoch <231734284+yannmasoch@users.noreply.github.com> - 0.11.6-0
+- Fix a permanently blank Computer view inside file-picker dialogs
+  (NautilusFileChooser), and a multi-tab regression found while fixing it.
+  Navigation detection now watches window/slot location instead of window
+  title (issue #55).
+
 * Mon Jul 06 2026 Yann Masoch <231734284+yannmasoch@users.noreply.github.com> - 0.11.4-0
 - Fix OBS auto-rebuild: the workflow's rebuild_package step only
   re-triggers a build of already-committed sources, it never re-runs
