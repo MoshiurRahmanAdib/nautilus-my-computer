@@ -1,3 +1,10 @@
+nautilus-my-computer (0.11.4-1) UNRELEASED; urgency=medium
+
+  * Bump to 0.11.4, no packaging changes (openSUSE OBS auto-rebuild fix
+    only affects packaging/opensuse/workflows.yml).
+
+ -- Yann Masoch <231734284+yannmasoch@users.noreply.github.com>  Sun, 05 Jul 2026 23:51:47 -0700
+
 nautilus-my-computer (0.11.3-1) UNRELEASED; urgency=medium
 
   * Bump to 0.11.3, no packaging changes (CI-only fix for the release

@@ -1,5 +1,5 @@
 Name:           nautilus-my-computer
-Version:        0.11.3
+Version:        0.11.4
 Release:        0
 Summary:        My Computer for Nautilus, what GNOME Files should have always been
 
@@ -42,6 +42,14 @@ make build
 %{_datadir}/glib-2.0/schemas/io.github.yannmasoch.nautilus-my-computer.gschema.xml
 
 %changelog
+* Mon Jul 06 2026 Yann Masoch <231734284+yannmasoch@users.noreply.github.com> - 0.11.4-0
+- Fix OBS auto-rebuild: the workflow's rebuild_package step only
+  re-triggers a build of already-committed sources, it never re-runs
+  the _service, so every tag push kept rebuilding the same stale
+  content. Switched to trigger_services, which re-runs the _service
+  (re-fetching the spec and tarball from GitHub) and auto-triggers a
+  rebuild once the content changes.
+
 * Mon Jul 06 2026 Yann Masoch <231734284+yannmasoch@users.noreply.github.com> - 0.11.3-0
 - Fix broken CI: pin AUR deploy action to v4.1.3 (no floating v4 tag
   exists), add build-essential to the PPA workflow's installed
