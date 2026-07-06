@@ -19,8 +19,8 @@ source package with it; unsigned uploads are rejected by Launchpad).
 ## Build and upload
 
 ```shell
-packaging/ubuntu/build-and-upload.sh 0.11.1            # build only, output in ./ppa-build
-packaging/ubuntu/build-and-upload.sh 0.11.1 --upload    # build and dput to the PPA
+packaging/ubuntu/build-and-upload.sh 0.11.2            # build only, output in ./ppa-build
+packaging/ubuntu/build-and-upload.sh 0.11.2 --upload    # build and dput to the PPA
 ```
 
 This builds the source package (`.dsc`/`.orig.tar.gz`/`.debian.tar.xz`) **once**, from a tarball

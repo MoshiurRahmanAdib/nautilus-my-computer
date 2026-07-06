@@ -1,0 +1,30 @@
+name: Trigger COPR build
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  copr-build:
+    name: Trigger COPR build for tag
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger build via COPR API
+        env:
+          COPR_LOGIN: ${{ secrets.COPR_LOGIN }}
+          COPR_TOKEN: ${{ secrets.COPR_TOKEN }}
+        run: |
+          curl -fsSL --fail-with-body -u "$COPR_LOGIN:$COPR_TOKEN" \
+            -X POST "https://copr.fedorainfracloud.org/api_3/build/create/scm" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"ownername\": \"yannmasoch\",
+              \"projectname\": \"nautilus-my-computer\",
+              \"clone_url\": \"https://github.com/${GITHUB_REPOSITORY}\",
+              \"committish\": \"${GITHUB_REF_NAME}\",
+              \"subdirectory\": \"packaging/fedora\",
+              \"spec\": \"nautilus-my-computer.spec\",
+              \"source_build_method\": \"rpkg\"
+            }"

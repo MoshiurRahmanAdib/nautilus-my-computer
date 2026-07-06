@@ -4,6 +4,23 @@ All notable changes to this project are documented here.
 
 ---
 
+## v0.11.2
+Tag-triggered package publishing across all four distro channels.
+
+### Added
+- `.github/workflows/aur-publish.yml` and `.github/workflows/ppa-publish.yml` now trigger on
+  `push: tags: v*` instead of a manually-published GitHub release, since releases were never
+  actually being published - pushing a version tag is the real release step for this project.
+- `.github/workflows/copr-publish.yml`, triggering a Fedora COPR build directly via the COPR API
+  (`/build/create/scm`) with the pushed tag as the `committish` override, since COPR's own
+  SCM auto-rebuild only watches a fixed branch (`main`) and has no native tag-tracking mode.
+- `.github/workflows/release.yml`, auto-creating a GitHub Release (with notes pulled from the
+  matching section of this changelog) on every version tag push.
+- openSUSE OBS was already tag-triggered (`packaging/opensuse/workflows.yml`, added in v0.11.1's
+  follow-up work), no change needed there.
+
+---
+
 ## v0.11.1
 Ubuntu PPA packaging.
 
