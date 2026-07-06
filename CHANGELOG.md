@@ -4,6 +4,29 @@ All notable changes to this project are documented here.
 
 ---
 
+## v0.11.5
+Add GNOME/Nautilus version-detection helpers and fix two GNOME 47 compatibility issues.
+
+### Added
+- `_nautilus_version()` in `common.py`: reads Nautilus's own compiled-in AppStream metadata via
+  `Gio.resources_lookup_data("/org/gnome/nautilus/appdata")` (the same GResource its About dialog
+  uses) to get the running app version in-process, with no subprocess or filesystem guessing.
+- `_resolve_gtype()` in `common.py`: tries a list of GObject type names in order and returns the
+  first one registered, centralizing the pattern needed whenever Nautilus renames an internal
+  GObject type across releases.
+
+### Fixed
+- `_build_place_sidebar_row` now resolves either `NautilusSidebarRow` (48+) or
+  `NautilusGtkSidebarRow` (47) via `_resolve_gtype`, instead of hardcoding the post-47 name only.
+- The Preferred Folders / disk-grid justified `FlowBox` now uses `halign=FILL` unconditionally.
+  On GTK 4.16 (Nautilus 47), an expanding `FlowBox` with `halign=START` wasn't allocated its full
+  available width, collapsing the justified layout to one column and overlapping the next
+  section. Verified `FILL` causes no regression on GTK 4.22 (Nautilus 50) either.
+
+Credit to @PizzaLovingNerd for identifying both issues and the original fix approach in PR #54.
+
+---
+
 ## v0.11.4
 Fix openSUSE OBS auto-rebuild actually doing nothing.
 

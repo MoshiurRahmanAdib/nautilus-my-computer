@@ -8,14 +8,16 @@ lookup, icon pinning) used by every native-UI injection target.
 
 import gettext
 import os
+from xml.etree import ElementTree
 
 import gi
 
 gi.require_version("Gdk", "4.0")
 gi.require_version("Gio", "2.0")
 gi.require_version("GLib", "2.0")
+gi.require_version("GObject", "2.0")
 gi.require_version("Gtk", "4.0")
-from gi.repository import Gdk, Gio, GLib, Gtk
+from gi.repository import Gdk, Gio, GLib, GObject, Gtk
 
 _custom_translation = None
 _localedir = os.path.expanduser("~/.local/share/locale")
@@ -105,6 +107,48 @@ def _all_widgets(widget):
     while child:
         yield from _all_widgets(child)
         child = child.get_next_sibling()
+
+
+_NAUTILUS_VERSION_CACHE = None
+_NAUTILUS_VERSION_READ = False
+
+
+def _nautilus_version() -> tuple[int, ...] | None:
+    """Parse Nautilus's own compiled-in AppStream metadata to get its running app
+    version (e.g. (50, 2, 2)), reading the same GResource its own About dialog uses
+    (nautilus-window.c: adw_about_dialog_new_from_appdata("/org/gnome/nautilus/appdata")).
+    Works in-process with no subprocess, filesystem guessing, or Flatpak concerns --
+    the resource is compiled into the binary and registered process-globally, and we
+    run inside that same process. Returns None if the resource or a <release> tag is
+    unexpectedly missing (e.g. a future Nautilus restructures its appdata)."""
+    global _NAUTILUS_VERSION_CACHE, _NAUTILUS_VERSION_READ
+    if _NAUTILUS_VERSION_READ:
+        return _NAUTILUS_VERSION_CACHE
+    _NAUTILUS_VERSION_READ = True
+    try:
+        data = Gio.resources_lookup_data(
+            "/org/gnome/nautilus/appdata", Gio.ResourceLookupFlags.NONE
+        )
+        root = ElementTree.fromstring(data.get_data().decode("utf-8"))
+        version = root.find("releases/release").get("version")
+        _NAUTILUS_VERSION_CACHE = tuple(int(p) for p in version.split("."))
+    except Exception as e:
+        _log(f"_nautilus_version: could not read Nautilus appdata version ({e})")
+    return _NAUTILUS_VERSION_CACHE
+
+
+def _resolve_gtype(*names: str) -> int | None:
+    """Return the GType of the first name in `names` that is registered, or None if
+    none are. GObject.type_from_name() raises RuntimeError (not TYPE_INVALID) for an
+    unknown name, so each candidate must be tried in its own try/except. Centralizes
+    the pattern needed whenever Nautilus renames an internal GObject type across
+    releases (e.g. NautilusGtkSidebarRow -> NautilusSidebarRow in 48)."""
+    for name in names:
+        try:
+            return GObject.type_from_name(name)
+        except RuntimeError:
+            continue
+    return None
 
 
 def _find_widget(root, *, buildable_id=None, class_name=None, css_class=None, site=""):
