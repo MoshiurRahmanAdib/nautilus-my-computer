@@ -24,7 +24,14 @@ gi.require_version("Gtk", "4.0")
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, Nautilus, Pango
 
 from nautilus_my_computer import bookmarks, file_view_menu, my_computer_view, preferred_folders
-from nautilus_my_computer.common import _, _all_widgets, _find_widget, _log, _pin_icon
+from nautilus_my_computer.common import (
+    _,
+    _all_widgets,
+    _find_widget,
+    _log,
+    _pin_icon,
+    _resolve_gtype,
+)
 from nautilus_my_computer.my_computer_view import _GROUP_SPEC, DISKS_URI, VIEW_DISKINFO
 from nautilus_my_computer.preferred_folders import PreferredFolder
 from nautilus_my_computer.widgets import MyComputerContextualMenu, MyComputerMenuItem
@@ -66,7 +73,7 @@ DETACH_SETTINGS_WINDOW = False  # testing toggle: True opens settings as a stand
 
 # ── Extension metadata (keep in sync with pyproject.toml) ────────────────────
 EXT_NAME = "My Computer for Nautilus"
-EXT_VERSION = "0.11.4"
+EXT_VERSION = "0.11.5"
 EXT_AUTHOR = "Yann Masoch"
 EXT_LICENSE = "MIT"
 EXT_GITHUB = "https://github.com/yannmasoch/nautilus-my-computer"
@@ -1661,32 +1668,42 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         row_tooltip = entry.tooltip
         icon_name = self._get_computer_icon() if entry.uri == DISKS_URI else entry.icon
 
-        # Try to instantiate NautilusSidebarRow directly from the Nautilus GObject
-        # type system. It is registered at runtime when Nautilus loads, so
-        # GObject.type_from_name() can find it. uri is construct-only.
+        # Instantiate the native row directly from Nautilus's GObject type system.
+        # Nautilus 47 calls it NautilusGtkSidebarRow; 48+ calls it NautilusSidebarRow.
+        # Both are registered before extensions load and expose the same
+        # construct-only uri and sidebar properties. uri is construct-only.
         list_row = None
-        try:
-            row_gtype = GObject.type_from_name("NautilusSidebarRow")
-            row_props = {
-                "uri": entry.uri,
-                "place-type": 0,  # NAUTILUS_SIDEBAR_ROW_INVALID, sorts before built-in rows
-                "section-type": 1,  # NAUTILUS_SIDEBAR_SECTION_DEFAULT_LOCATIONS
-                "order-index": entry.order_index,
-                "label": row_label,
-                "tooltip": row_tooltip,
-                "eject-tooltip": _("Unmount"),
-                "start-icon": Gio.ThemedIcon.new(icon_name),
-            }
-            if nautilus_sidebar is not None:
-                row_props["sidebar"] = nautilus_sidebar
+        row_gtype = _resolve_gtype("NautilusSidebarRow", "NautilusGtkSidebarRow")
+        if row_gtype is not None:
+            try:
+                row_props = {
+                    "uri": entry.uri,
+                    "place-type": 0,  # NAUTILUS_SIDEBAR_ROW_INVALID, sorts before built-in rows
+                    "section-type": 1,  # NAUTILUS_SIDEBAR_SECTION_DEFAULT_LOCATIONS
+                    "order-index": entry.order_index,
+                    "label": row_label,
+                    "tooltip": row_tooltip,
+                    "eject-tooltip": _("Unmount"),
+                    "start-icon": Gio.ThemedIcon.new(icon_name),
+                }
+                if nautilus_sidebar is not None:
+                    row_props["sidebar"] = nautilus_sidebar
 
-            list_row = GObject.new(row_gtype, **row_props)
-            list_row.set_name(f"place_{entry.name}")
-            list_row.set_has_tooltip(True)
-            _log(f"_build_place_sidebar_row: NautilusSidebarRow created (uri={entry.uri})")
-        except Exception as e:
+                list_row = GObject.new(row_gtype, **row_props)
+                list_row.set_name(f"place_{entry.name}")
+                list_row.set_has_tooltip(True)
+                _log(
+                    f"_build_place_sidebar_row: {GObject.type_name(row_gtype)} created"
+                    f" (uri={entry.uri})"
+                )
+            except Exception as e:
+                _log(
+                    f"_build_place_sidebar_row: native row construction failed ({e}),"
+                    " using GtkListBoxRow"
+                )
+        else:
             _log(
-                f"_build_place_sidebar_row: NautilusSidebarRow unavailable ({e}),"
+                "_build_place_sidebar_row: no known sidebar row type registered,"
                 " using GtkListBoxRow"
             )
 

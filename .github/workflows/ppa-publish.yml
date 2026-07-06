@@ -6,8 +6,31 @@ on:
       - 'v*'
 
 jobs:
+  check-main:
+    name: Check tag is on main
+    runs-on: ubuntu-latest
+    outputs:
+      on_main: ${{ steps.check.outputs.on_main }}
+
+    steps:
+      - uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Check tag targets main
+        id: check
+        run: |
+          if git merge-base --is-ancestor "${{ github.sha }}" origin/main; then
+            echo "on_main=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::${{ github.ref_name }} does not point to a commit on main -- skipping publish. Tag a commit on main to publish."
+            echo "on_main=false" >> "$GITHUB_OUTPUT"
+          fi
+
   ppa-publish:
     name: Build and upload to PPA
+    needs: check-main
+    if: needs.check-main.outputs.on_main == 'true'
     runs-on: ubuntu-latest
 
     steps:
