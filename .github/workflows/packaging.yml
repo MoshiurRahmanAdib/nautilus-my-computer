@@ -71,10 +71,10 @@ jobs:
         run: dnf install -y rpmlint rpmdevtools
 
       - name: Parse spec
-        run: rpmspec --parse packaging/fedora/nautilus-my-computer.spec
+        run: rpmspec --parse packaging/copr/nautilus-my-computer.spec
 
       - name: rpmlint spec
-        run: rpmlint packaging/fedora/nautilus-my-computer.spec
+        run: rpmlint packaging/copr/nautilus-my-computer.spec
 
   opensuse-validate:
     name: Validate openSUSE spec
@@ -88,10 +88,10 @@ jobs:
         run: zypper --non-interactive install rpmlint rpmdevtools
 
       - name: Parse spec
-        run: rpmspec --parse packaging/opensuse/nautilus-my-computer.spec
+        run: rpmspec --parse packaging/obs/nautilus-my-computer.spec
 
       - name: rpmlint spec
-        run: rpmlint packaging/opensuse/nautilus-my-computer.spec
+        run: rpmlint packaging/obs/nautilus-my-computer.spec
 
   ubuntu-validate:
     name: Validate Ubuntu PPA packaging
@@ -104,7 +104,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y devscripts build-essential debhelper lintian gettext
 
       - name: Copy debian/ to repo root
-        run: cp -r packaging/ubuntu/debian ./debian
+        run: cp -r packaging/ppa/debian ./debian
 
       - name: Build binary package
         run: dpkg-buildpackage -us -uc -b

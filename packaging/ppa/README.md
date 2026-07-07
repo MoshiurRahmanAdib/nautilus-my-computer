@@ -19,8 +19,8 @@ source package with it; unsigned uploads are rejected by Launchpad).
 ## Build and upload
 
 ```shell
-packaging/ubuntu/build-and-upload.sh 0.11.2            # build only, output in ./ppa-build
-packaging/ubuntu/build-and-upload.sh 0.11.2 --upload    # build and dput to the PPA
+packaging/ppa/build-and-upload.sh 0.11.2            # build only, output in ./ppa-build
+packaging/ppa/build-and-upload.sh 0.11.2 --upload    # build and dput to the PPA
 ```
 
 This builds the source package (`.dsc`/`.orig.tar.gz`/`.debian.tar.xz`) **once**, from a tarball
@@ -44,7 +44,7 @@ build tarball must match what actually gets built.
 ## Local build sanity check (no Launchpad needed)
 
 ```shell
-cp -r packaging/ubuntu/debian ./debian
+cp -r packaging/ppa/debian ./debian
 dpkg-buildpackage -us -uc -b
 rm -rf ./debian ../nautilus-my-computer_*.deb ../nautilus-my-computer_*.buildinfo ../nautilus-my-computer_*.changes
 ```

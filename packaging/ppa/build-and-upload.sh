@@ -2,11 +2,11 @@
 # Build and upload the Ubuntu PPA source package for each target series.
 #
 # Usage:
-#   packaging/ubuntu/build-and-upload.sh <version> [--upload]
+#   packaging/ppa/build-and-upload.sh <version> [--upload]
 #
 # Example:
-#   packaging/ubuntu/build-and-upload.sh 0.11.2          # build only, source packages left in ./ppa-build
-#   packaging/ubuntu/build-and-upload.sh 0.11.2 --upload  # build and dput to the PPA
+#   packaging/ppa/build-and-upload.sh 0.11.2          # build only, source packages left in ./ppa-build
+#   packaging/ppa/build-and-upload.sh 0.11.2 --upload  # build and dput to the PPA
 #
 # Requires: devscripts, dpkg-dev, debhelper (build-essential + these on a Debian/Ubuntu host).
 # Signs with the GPG key below; override by exporting GPG_KEYID before running.
@@ -41,7 +41,7 @@ git -C "$REPO_ROOT" archive --format=tar.gz \
 
 tar -xzf "$BUILD_DIR/nautilus-my-computer_$VERSION.orig.tar.gz" -C "$BUILD_DIR"
 SRC_DIR="$BUILD_DIR/nautilus-my-computer-$VERSION"
-cp -r "$REPO_ROOT/packaging/ubuntu/debian" "$SRC_DIR/debian"
+cp -r "$REPO_ROOT/packaging/ppa/debian" "$SRC_DIR/debian"
 
 # The same version is uploaded to every series (the package doesn't differ
 # across them) - only the .changes file's Distribution: field differs, since
