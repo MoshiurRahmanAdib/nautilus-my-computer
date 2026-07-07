@@ -56,6 +56,11 @@ sudo zypper install nautilus-my-computer
 ```
 Leap 16.0 is also built; swap `openSUSE_Tumbleweed` for `16.0` in the repo URL above.
 
+### Nix / NixOS
+```bash
+nix profile install "github:yannmasoch/nautilus-my-computer?dir=packaging/nix"
+```
+
 ## My Computer
 
 ### Sidebar integration

@@ -118,3 +118,28 @@ jobs:
           grep -q "usr/share/nautilus-python/extensions/nautilus-my-computer.py" /tmp/contents.txt
           grep -q "usr/share/nautilus-python/extensions/nautilus_my_computer/" /tmp/contents.txt
           grep -q "usr/share/glib-2.0/schemas/io.github.yannmasoch.nautilus-my-computer.gschema.xml" /tmp/contents.txt
+
+  nix-validate:
+    name: Validate Nix flake
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+      # path:$PWD?dir=packaging/nix treats the whole repo as the fetched tree
+      # with the flake at packaging/nix, so `src = ../../.` can reach the repo
+      # root. `nix build ./packaging/nix` would copy only the subdirectory.
+      - name: Build flake
+        run: nix build --print-build-logs "path:$GITHUB_WORKSPACE?dir=packaging/nix"
+
+      - name: Verify installed paths
+        run: |
+          test -f result/share/nautilus-python/extensions/nautilus-my-computer.py
+          test -d result/share/nautilus-python/extensions/nautilus_my_computer
+          # package.nix moves the schema back to the standard XDG path (off the
+          # glib hook's gsettings-schemas prefix) so it works cross-distro.
+          test -f result/share/glib-2.0/schemas/io.github.yannmasoch.nautilus-my-computer.gschema.xml
+          test -f result/share/glib-2.0/schemas/gschemas.compiled
