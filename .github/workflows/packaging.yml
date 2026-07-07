@@ -71,10 +71,10 @@ jobs:
         run: dnf install -y rpmlint rpmdevtools
 
       - name: Parse spec
-        run: rpmspec --parse packaging/fedora/nautilus-my-computer.spec
+        run: rpmspec --parse packaging/copr/nautilus-my-computer.spec
 
       - name: rpmlint spec
-        run: rpmlint packaging/fedora/nautilus-my-computer.spec
+        run: rpmlint packaging/copr/nautilus-my-computer.spec
 
   opensuse-validate:
     name: Validate openSUSE spec
@@ -88,10 +88,10 @@ jobs:
         run: zypper --non-interactive install rpmlint rpmdevtools
 
       - name: Parse spec
-        run: rpmspec --parse packaging/opensuse/nautilus-my-computer.spec
+        run: rpmspec --parse packaging/obs/nautilus-my-computer.spec
 
       - name: rpmlint spec
-        run: rpmlint packaging/opensuse/nautilus-my-computer.spec
+        run: rpmlint packaging/obs/nautilus-my-computer.spec
 
   ubuntu-validate:
     name: Validate Ubuntu PPA packaging
@@ -104,7 +104,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y devscripts build-essential debhelper lintian gettext
 
       - name: Copy debian/ to repo root
-        run: cp -r packaging/ubuntu/debian ./debian
+        run: cp -r packaging/ppa/debian ./debian
 
       - name: Build binary package
         run: dpkg-buildpackage -us -uc -b
@@ -118,3 +118,28 @@ jobs:
           grep -q "usr/share/nautilus-python/extensions/nautilus-my-computer.py" /tmp/contents.txt
           grep -q "usr/share/nautilus-python/extensions/nautilus_my_computer/" /tmp/contents.txt
           grep -q "usr/share/glib-2.0/schemas/io.github.yannmasoch.nautilus-my-computer.gschema.xml" /tmp/contents.txt
+
+  nix-validate:
+    name: Validate Nix flake
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+      # path:$PWD?dir=packaging/nix treats the whole repo as the fetched tree
+      # with the flake at packaging/nix, so `src = ../../.` can reach the repo
+      # root. `nix build ./packaging/nix` would copy only the subdirectory.
+      - name: Build flake
+        run: nix build --print-build-logs "path:$GITHUB_WORKSPACE?dir=packaging/nix"
+
+      - name: Verify installed paths
+        run: |
+          test -f result/share/nautilus-python/extensions/nautilus-my-computer.py
+          test -d result/share/nautilus-python/extensions/nautilus_my_computer
+          # package.nix moves the schema back to the standard XDG path (off the
+          # glib hook's gsettings-schemas prefix) so it works cross-distro.
+          test -f result/share/glib-2.0/schemas/io.github.yannmasoch.nautilus-my-computer.gschema.xml
+          test -f result/share/glib-2.0/schemas/gschemas.compiled

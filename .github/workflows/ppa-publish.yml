@@ -69,4 +69,4 @@ jobs:
             --sign --armor --output /dev/null
 
       - name: Build and upload
-        run: bash packaging/ubuntu/build-and-upload.sh "${{ steps.resolve.outputs.version }}" --upload
+        run: bash packaging/ppa/build-and-upload.sh "${{ steps.resolve.outputs.version }}" --upload

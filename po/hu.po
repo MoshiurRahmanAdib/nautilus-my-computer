@@ -6,7 +6,7 @@ msgstr ""
 "Project-Id-Version: nautilus-my-computer\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-06-01 00:00+0200\n"
-"PO-Revision-Date: 2026-06-22 20:56+0200\n"
+"PO-Revision-Date: 2026-06-23 09:52+0200\n"
 "Last-Translator: Pelach András <pelach.andras@gmail.com>\n"
 "Language-Team: Hungarian\n"
 "Language: hu\n"
@@ -47,7 +47,7 @@ msgstr "Nincs csatolva"
 # Panel - Disk card actions
 # ——————————————————————————————
 msgid "Open"
-msgstr "Megynitás"
+msgstr "Megnyitás"
 
 msgid "Open in New Tab"
 msgstr "Megnyitás új lapon"
@@ -68,7 +68,7 @@ msgid "Eject"
 msgstr "Kiadás"
 
 msgid "Properties"
-msgstr "Tuajdonságok"
+msgstr "Tulajdonságok"
 
 msgid "Format…"
 msgstr "Formázás…"
@@ -80,7 +80,7 @@ msgid "Computer"
 msgstr "Számítógép"
 
 msgid "Open My Computer"
-msgstr "Saját gép nyitása"
+msgstr "Számítógép nyitása"
 
 # ——————————————————————————————
 # Sidebar - Places
@@ -131,7 +131,7 @@ msgid "Custom color"
 msgstr "Választott szín"
 
 msgid "Custom gradient"
-msgstr "Váasztott színátmenet"
+msgstr "Választott színátmenet"
 
 msgid "Color"
 msgstr "Szín"
@@ -170,7 +170,7 @@ msgstr "Rejtett"
 # Preferences - System
 # ——————————————————————————————
 msgid "Show system partitions"
-msgstr "Látható rendszer partició"
+msgstr "Látható rendszer partíció"
 
 msgid "Include boot and EFI partitions in the System group"
 msgstr "A rendszerindító és az EFI partíciók hozzáadása a Rendszer csoporthoz"
@@ -200,7 +200,7 @@ msgid "Author"
 msgstr "Szerző"
 
 msgid "License"
-msgstr "Licensz"
+msgstr "Licenc"
 
 msgid "Source code"
 msgstr "Forráskód"

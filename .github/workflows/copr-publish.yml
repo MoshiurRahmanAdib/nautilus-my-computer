@@ -47,7 +47,7 @@ jobs:
               \"projectname\": \"nautilus-my-computer\",
               \"clone_url\": \"https://github.com/${GITHUB_REPOSITORY}\",
               \"committish\": \"${GITHUB_REF_NAME}\",
-              \"subdirectory\": \"packaging/fedora\",
+              \"subdirectory\": \"packaging/copr\",
               \"spec\": \"nautilus-my-computer.spec\",
               \"source_build_method\": \"rpkg\"
             }"

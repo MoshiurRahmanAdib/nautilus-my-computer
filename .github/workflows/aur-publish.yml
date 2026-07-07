@@ -30,7 +30,7 @@ jobs:
   aur-publish:
     name: Update AUR package
     needs: check-main
-    if: needs.check-main.outputs.on_main == 'true'
+    if: needs.check-main.outputs.on_main == 'true' && false  # AUR account currently blocked, re-enable once unblocked
     runs-on: ubuntu-latest
 
     steps:
