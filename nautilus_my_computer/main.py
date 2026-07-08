@@ -73,7 +73,7 @@ DETACH_SETTINGS_WINDOW = False  # testing toggle: True opens settings as a stand
 
 # ── Extension metadata (keep in sync with pyproject.toml) ────────────────────
 EXT_NAME = "My Computer for Nautilus"
-EXT_VERSION = "0.11.8"
+EXT_VERSION = "0.11.9"
 EXT_AUTHOR = "Yann Masoch"
 EXT_LICENSE = "MIT"
 EXT_GITHUB = "https://github.com/yannmasoch/nautilus-my-computer"
@@ -622,7 +622,7 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
                             lambda _slot, _pspec, w=win: self._on_navigation(w),
                         )
                         break
-            else:
+            elif GObject.signal_lookup("locations-changed", type(win)):
                 # "locations-changed" fires when a slot's own location changes
                 # (navigating within a tab), but NOT on tab switch: switching
                 # tabs only reassigns NautilusWindow's "active-slot" property
@@ -632,6 +632,40 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
                 # the moment the active tab changes without a navigation.
                 win.connect("locations-changed", self._on_navigation)
                 win.connect("notify::active-slot", lambda w, _pspec: self._on_navigation(w))
+            else:
+                # Nautilus <= 47 has no "locations-changed" signal on
+                # NautilusWindow (issue #61). Fall back to watching the active
+                # slot's own "location" property directly (same technique as
+                # the file-chooser branch above), re-subscribing whenever
+                # "active-slot" changes (tab switch or new tab). URI-based,
+                # like _window_is_at_disks() itself, rather than locale-string
+                # title matching.
+                watch = {"slot": None, "handler": None}
+
+                def _rewatch_active_slot(w, _pspec=None, watch=watch):
+                    try:
+                        slot = w.get_property("active-slot")
+                    except TypeError:
+                        slot = None
+                    if slot is not watch["slot"]:
+                        if watch["slot"] is not None and watch["handler"] is not None:
+                            try:
+                                watch["slot"].disconnect(watch["handler"])
+                            except Exception:
+                                pass
+                        watch["slot"] = slot
+                        watch["handler"] = (
+                            slot.connect(
+                                "notify::location",
+                                lambda _s, _p, w=w: self._on_navigation(w),
+                            )
+                            if slot is not None
+                            else None
+                        )
+                    self._on_navigation(w)
+
+                win.connect("notify::active-slot", _rewatch_active_slot)
+                _rewatch_active_slot(win)
 
             if DEBUG_COMPUTER_BUTTON_ACTIVE:
                 self._inject_sidebar_link(win)
@@ -2109,7 +2143,15 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         Never connects signals to Nautilus's internal pathbar GtkStack or box
         models, and never calls set_child() — those caused the GTK_IS_STACK crash
         (issue #11). The navigation trigger already fires on every location
-        change, so no persistent watcher is needed."""
+        change, so no persistent watcher is needed.
+
+        On some Nautilus/GVfs combinations (confirmed: Nautilus 47.0 + gvfs 1.56
+        on Fedora 41) nautilus_is_root_for_scheme() fails to
+        recognise computer:/// as a root location and falls back to its generic
+        path-segment ("NORMAL_BUTTON") rendering: no Gtk.Image is ever created
+        for the chip, and a leading "/" separator label is shown before it. In
+        that case there is no existing image to pin, so one is created and
+        prepended, and the stray separator is hidden."""
         target_labels = {COMPUTER_LABEL, _LOCATION_TITLE}
 
         for w in _all_widgets(win):
@@ -2119,15 +2161,22 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
             if not label_text or label_text.strip() not in target_labels:
                 continue
 
-            # Skip labels inside the sidebar
+            # Skip labels inside the sidebar or the tab bar. A tab whose page
+            # title happens to be "Computer" (i.e. that tab is showing
+            # computer:///) has an AdwTab containing its own Label + Image;
+            # without this check the walk below would pin the computer icon
+            # onto that tab's icon, which then stays frozen there even after
+            # the tab navigates elsewhere (issue #29).
             ancestor = w.get_parent()
             in_sidebar = False
+            button = None
             while ancestor:
                 cls = type(ancestor).__name__
-                if "Sidebar" in cls or "PlacesView" in cls:
+                if "Sidebar" in cls or "PlacesView" in cls or "Tab" in cls:
                     in_sidebar = True
                     break
-                if cls in ("NautilusPathBarButton", "GtkButton", "AdwButton"):
+                if cls in ("NautilusPathBarButton", "GtkButton", "AdwButton", "Button"):
+                    button = ancestor
                     break
                 ancestor = ancestor.get_parent()
             if in_sidebar:
@@ -2148,10 +2197,37 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
                 continue
 
             # Pin the existing chip image — no structural changes to Nautilus's tree
+            image = None
             for sub in _all_widgets(container):
                 if isinstance(sub, Gtk.Image):
-                    _pin_icon(sub, self._get_computer_icon())
+                    image = sub
                     break
+
+            if image is not None:
+                _pin_icon(image, self._get_computer_icon())
+            else:
+                # Fallback layout: no Gtk.Image exists in the chip at all.
+                # Create one so the chip isn't left blank. This container was
+                # built by Nautilus with spacing=2 (meant for a lone label,
+                # per the NORMAL_BUTTON case in nautilus-pathbar.c) rather
+                # than the spacing=6 every other root chip's icon+label box
+                # uses, so match that native value instead of leaving the
+                # icon flush against the text.
+                image = Gtk.Image.new_from_icon_name(self._get_computer_icon())
+                container.prepend(image)
+                if isinstance(container, Gtk.Box):
+                    container.set_spacing(6)
+
+            # The fallback layout also prefixes the chip with a leading "/"
+            # separator, since Nautilus is treating computer:/// as an
+            # ordinary path segment instead of a filesystem root. A root
+            # location should never show a path separator ahead of it.
+            if button is not None:
+                outer = button.get_parent()
+                if outer is not None:
+                    sep = outer.get_first_child()
+                    if sep is not button and isinstance(sep, Gtk.Label) and sep.get_label() == "/":
+                        sep.set_visible(False)
 
         return False
 

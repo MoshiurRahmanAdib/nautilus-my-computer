@@ -222,14 +222,16 @@ My Computer is compatible with almost all custom GTK themes.
   
 ## Tested on
 
-| | Distro | GNOME Files | Status |
-|---|--------|-------------|--------|
-| ✅ | Arch | 50.2.2 | Fully working |
-| ✅ | openSUSE Tumbleweed | 50.2.2 | Fully working |
-| ✅ | Fedora 44 Workstation | 50.2.2 | Fully working |
-| ✅ | Fedora 44 Workstation | 50.0 | Fully working |
-| ✅ | Ubuntu 26.04 LTS | 50.0 | Fully working |
-| ☑️ | Zorin OS 18 | 46.4 | Partial, background colors and the My Computer menu entry are not available (Zorin ships a customised build of GNOME Files). Will be improved in a future release |
+| Distro | GNOME Files | Status | File Picker |
+|---|---|---|---|
+| Arch | 50.2.2 | ✅ | ✅ |
+| Fedora 44 Workstation | 50.2.2 | ✅ | ✅ |
+| Fedora 44 Workstation | 50.0 | ✅ | ✅ |
+| openSUSE Tumbleweed | 50.2.2 | ✅ | ✅ |
+| Ubuntu 26.04 LTS | 50.0 | ✅ | ✅ |
+| Fedora 41 Workstation | 47.0 | ✅ | ❌ Not supported |
+| Fedora 42 Workstation | 48.0 | ✅ | ❌ Not supported |
+| Zorin OS 18 | 46.4 | ☑️ | ❓ Not tested |
 
 > GNOME Files versions below 50 may have limited functionality. Full support targets GNOME Files 50+.
 
