@@ -4,6 +4,24 @@ All notable changes to this project are documented here.
 
 ---
 
+## v0.11.8
+Fix the install script failing with a GitHub rate-limit error for some users.
+
+### Fixed
+- The install script could fail with a "429 Too Many Requests" error from
+  GitHub, most often on shared or VPN networks where many people share the
+  same public IP address. The script now downloads the extension as a single
+  package instead of many separate files, which avoids the limit for
+  virtually everyone.
+- Running the script as `bash install.sh` from a manually cloned copy of the
+  repository was incorrectly treated as an online install (and could hit the
+  same rate limit) instead of installing directly from the local files.
+
+Credit to the Reddit user who reported the install failure with logs that
+pinpointed the exact GitHub error.
+
+---
+
 ## v0.11.7
 Fix a drive being listed twice in the Computer view for some network/autofs setups.
 

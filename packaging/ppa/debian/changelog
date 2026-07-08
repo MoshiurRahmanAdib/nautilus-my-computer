@@ -1,3 +1,13 @@
+nautilus-my-computer (0.11.8-1) UNRELEASED; urgency=medium
+
+  * Fix the install script failing with a GitHub rate-limit error (429) for
+    users on shared or VPN networks, by downloading the extension as a
+    single archive instead of many separate files. Also fix `bash
+    install.sh` run from a manually cloned copy being incorrectly treated
+    as an online install instead of installing from the local files.
+
+ -- Yann Masoch <231734284+yannmasoch@users.noreply.github.com>  Tue, 07 Jul 2026 20:57:00 -0700
+
 nautilus-my-computer (0.11.7-1) UNRELEASED; urgency=medium
 
   * Fix a drive being listed twice in the Computer view when it is mounted

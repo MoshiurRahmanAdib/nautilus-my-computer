@@ -61,18 +61,15 @@ for arg in "$@"; do
 done
 
 # --- Source detection: local clone or remote -----------------------------------
-# Only treat this as a local-clone run when the script was invoked as a real file
-# (e.g. ./install.sh). When piped via `curl | sh`, $0 is "sh" or "-" (no slash),
-# so the case below leaves SCRIPT_DIR empty and we fall through to remote install,
-# even if the cwd happens to contain files with matching names.
+# Treat this as a local-clone run whenever $0 points at a real file on disk,
+# whether invoked as `./install.sh`, `bash install.sh`, or `sh path/install.sh`.
+# When piped via `curl | sh`, $0 is the shell name ("sh", "bash", "-"), which is
+# not a file in the cwd, so SCRIPT_DIR stays empty and we fall through to remote.
+# The triple-file check below is the real guard against a stray cwd match.
 SCRIPT_DIR=""
-case "$0" in
-    */*)
-        if [ -f "$0" ]; then
-            SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd || echo "")"
-        fi
-        ;;
-esac
+if [ -f "$0" ]; then
+    SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd || echo "")"
+fi
 if [ -z "${INSTALL_SOURCE:-}" ]; then
     if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/$EXT_FILE" ] && [ -f "$SCRIPT_DIR/$SCHEMA_FILE" ] \
         && [ -d "$SCRIPT_DIR/$PKG_DIR" ]; then
@@ -252,7 +249,7 @@ ensure_gettext() {
 # --- Dependency check ---
 check_dependencies() {
     missing="" tools="python3 glib-compile-schemas gsettings"
-    [ "$INSTALL_SOURCE" = "remote" ] && tools="curl $tools"
+    [ "$INSTALL_SOURCE" = "remote" ] && tools="curl tar $tools"
     for tool in $tools; do
         command -v "$tool" >/dev/null 2>&1 || missing="$missing $tool"
     done
@@ -264,40 +261,18 @@ LATEST=""
 REF_BRANCH=""
 REF_VERSION=""
 
-probe_ref() {
-    curl -s -o /dev/null -w "%{http_code}" \
-        "https://raw.githubusercontent.com/$REPO/$1/$EXT_FILE"
-}
-
 resolve_ref() {
-    # Resolve the two display axes independently, then pick a single git ref.
+    # Pick the single git ref to fetch. No network here: an invalid ref simply
+    # makes the archive download fail later with a clear message. Keeping the
+    # remote install to one HTTP request (the tarball, see download_files) is
+    # what stops it tripping GitHub's per-IP rate limit (429 on shared/NAT'd IPs).
     #
     #   REF_BRANCH  - branch label shown to the user (default "main")
-    #   REF_VERSION - version label shown to the user (latest tag if not pinned)
-    #   LATEST      - the one git ref actually fetched (a tag pins a commit, so a
-    #                 valid --version always wins as the download ref)
-
-    # Branch axis: keep the arg only if it resolves, else fall back to main.
-    REF_BRANCH="main"
-    if [ -n "$BRANCH" ] && [ "$(probe_ref "$BRANCH")" = "200" ]; then
-        REF_BRANCH="$BRANCH"
-    fi
-
-    # Version axis: latest git tag, overridden by a valid --version.
-    # /tags lists tags newest-first, so the first name is the latest version.
-    response=$(curl -s "https://api.github.com/repos/$REPO/tags") \
-        || die "Failed to reach GitHub API."
-    latest_tag=$(echo "$response" | grep '"name"' \
-        | sed 's/.*"name": *"\(.*\)".*/\1/' | head -n 1)
-
-    pinned=""
-    [ -n "$VERSION" ] && [ "$(probe_ref "$VERSION")" = "200" ] && pinned="$VERSION"
-
-    if [ -n "$pinned" ]; then
-        REF_VERSION="$pinned"
-        LATEST="$pinned"            # a tag pins a commit, so it is the ref
+    #   LATEST      - the git ref actually fetched; a pinned --version wins.
+    REF_BRANCH="${BRANCH:-main}"
+    if [ -n "$VERSION" ]; then
+        LATEST="$VERSION"
     else
-        [ -n "$latest_tag" ] && REF_VERSION="$latest_tag (latest)"
         LATEST="$REF_BRANCH"
     fi
 }
@@ -305,32 +280,31 @@ resolve_ref() {
 # --- Fetch or copy source files ---
 download_files() {
     if [ "$INSTALL_SOURCE" = "remote" ]; then
-        base="https://raw.githubusercontent.com/$REPO/$LATEST"
-        curl -fsSL "$base/$EXT_FILE"    -o "$TEMP_DIR/$EXT_FILE"    || die "Failed to download $EXT_FILE"
-        curl -fsSL "$base/$SCHEMA_FILE" -o "$TEMP_DIR/$SCHEMA_FILE" || die "Failed to download $SCHEMA_FILE"
-
-        mkdir -p "$TEMP_DIR/$PKG_DIR"
-        pkg_files=$(curl -fsSL "https://api.github.com/repos/$REPO/contents/$PKG_DIR?ref=$LATEST" \
-            | sed -n 's/.*"name": "\(.*\.py\)".*/\1/p') || true
-        [ -n "$pkg_files" ] || die "Failed to list $PKG_DIR contents"
-        for f in $pkg_files; do
-            curl -fsSL "$base/$PKG_DIR/$f" -o "$TEMP_DIR/$PKG_DIR/$f" || die "Failed to download $PKG_DIR/$f"
-        done
-
-        mkdir -p "$TEMP_DIR/po"
-        langs=$(curl -fsSL "https://api.github.com/repos/$REPO/contents/po?ref=$LATEST" \
-            | sed -n 's/.*"name": "\(.*\)\.po".*/\1/p') || true
-        for lang in $langs; do
-            curl -fsSL "$base/po/$lang.po" -o "$TEMP_DIR/po/$lang.po" || true
-        done
+        # One request for the whole tree at $LATEST. Fetching a single archive
+        # from codeload (instead of many per-file raw fetches plus two
+        # api.github.com/contents listings) keeps the remote install to one HTTP
+        # request, so shared/NAT'd IPs no longer hit GitHub's per-IP 429 limit.
+        tarball="$TEMP_DIR/src.tar.gz"
+        curl -fsSL "https://codeload.github.com/$REPO/tar.gz/$LATEST" -o "$tarball" \
+            || die "Failed to download source archive for '$LATEST' (network error or unknown branch/version)."
+        src="$TEMP_DIR/src"
+        mkdir -p "$src"
+        tar -xzf "$tarball" -C "$src" --strip-components=1 \
+            || die "Failed to extract source archive."
+        rm -f "$tarball"
     else
-        cp "$INSTALL_SOURCE/$EXT_FILE"    "$TEMP_DIR/$EXT_FILE"    || die "Local $EXT_FILE not found"
-        cp "$INSTALL_SOURCE/$SCHEMA_FILE" "$TEMP_DIR/$SCHEMA_FILE" || die "Local $SCHEMA_FILE not found"
-        [ -d "$INSTALL_SOURCE/$PKG_DIR" ] || die "Local $PKG_DIR not found"
-        mkdir -p "$TEMP_DIR/$PKG_DIR"
-        cp "$INSTALL_SOURCE/$PKG_DIR"/*.py "$TEMP_DIR/$PKG_DIR/"
-        [ -d "$INSTALL_SOURCE/po" ] && cp -r "$INSTALL_SOURCE/po" "$TEMP_DIR/"
+        src="$INSTALL_SOURCE"
     fi
+
+    [ -f "$src/$EXT_FILE" ]    || die "$EXT_FILE not found in source."
+    [ -f "$src/$SCHEMA_FILE" ] || die "$SCHEMA_FILE not found in source."
+    [ -d "$src/$PKG_DIR" ]     || die "$PKG_DIR not found in source."
+
+    cp "$src/$EXT_FILE"    "$TEMP_DIR/$EXT_FILE"
+    cp "$src/$SCHEMA_FILE" "$TEMP_DIR/$SCHEMA_FILE"
+    mkdir -p "$TEMP_DIR/$PKG_DIR"
+    cp "$src/$PKG_DIR"/*.py "$TEMP_DIR/$PKG_DIR/"
+    [ -d "$src/po" ] && cp -r "$src/po" "$TEMP_DIR/po"
 
     python3 -m py_compile "$TEMP_DIR/$EXT_FILE" "$TEMP_DIR/$PKG_DIR"/*.py \
         || die "Extension files failed syntax check, aborting."
@@ -398,7 +372,7 @@ do_install() {
         resolve_ref
         line "Source" "GitHub"
         line "Branch" "$REF_BRANCH"
-        [ -n "$REF_VERSION" ] && line "Version" "$REF_VERSION"
+        [ -n "$VERSION" ] && line "Version" "$VERSION"
     else
         REF_BRANCH=$(git -C "$INSTALL_SOURCE" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
         REF_VERSION=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' "$INSTALL_SOURCE/$PKG_DIR/__init__.py")
@@ -418,6 +392,10 @@ do_install() {
     echo ""
     printf '%s\n' "${BOLD}Install${RESET}"
     download_files
+    if [ "$INSTALL_SOURCE" = "remote" ] && [ -z "$VERSION" ]; then
+        ver=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' "$TEMP_DIR/$PKG_DIR/__init__.py")
+        [ -n "$ver" ] && line "Version" "v$ver (latest)"
+    fi
     install_files
 
     echo ""

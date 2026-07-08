@@ -1,5 +1,5 @@
 Name:           nautilus-my-computer
-Version:        0.11.7
+Version:        0.11.8
 Release:        0
 Summary:        My Computer for Nautilus, what GNOME Files should have always been
 
@@ -42,6 +42,13 @@ make build
 %{_datadir}/glib-2.0/schemas/io.github.yannmasoch.nautilus-my-computer.gschema.xml
 
 %changelog
+* Tue Jul 07 2026 Yann Masoch <231734284+yannmasoch@users.noreply.github.com> - 0.11.8-0
+- Fix the install script failing with a GitHub rate-limit error (429) for
+  users on shared or VPN networks, by downloading the extension as a single
+  archive instead of many separate files. Also fix `bash install.sh` run
+  from a manually cloned copy being incorrectly treated as an online
+  install instead of installing from the local files.
+
 * Tue Jul 07 2026 Yann Masoch <231734284+yannmasoch@users.noreply.github.com> - 0.11.7-0
 - Fix a drive being listed twice in the Computer view when it is mounted
   through autofs (e.g. some fstab/NAS network share setups): the autofs

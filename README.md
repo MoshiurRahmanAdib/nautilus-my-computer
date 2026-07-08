@@ -18,22 +18,11 @@ My Computer for Nautilus, what GNOME Files should have always been
 
 ## Installation
 
-### Universal install script
-```bash
-curl -fsSL https://raw.githubusercontent.com/yannmasoch/nautilus-my-computer/main/install.sh | sh
-```
-Uninstall:
-```bash
-curl -fsSL https://raw.githubusercontent.com/yannmasoch/nautilus-my-computer/main/install.sh | sh -s -- --uninstall
-```
-Nothing is written outside your home directory.
+Pick your distribution below and expand it for the commands. No native package? Use the universal script. Nothing is written outside your home directory.
 
-### Arch Linux (AUR)
-Not yet published - AUR is currently blocking submissions from new accounts due to a recent
-spam wave. Will be added as soon as that's lifted. A `PKGBUILD` is already maintained at
-[`packaging/aur/`](packaging/aur/) for when it is.
+<details>
+<summary><b>Ubuntu</b> (PPA)</summary>
 
-### Ubuntu (PPA)
 ```bash
 sudo add-apt-repository ppa:yannmasoch/nautilus-my-computer
 sudo apt update
@@ -41,25 +30,77 @@ sudo apt install nautilus-my-computer
 ```
 Currently supported series: 26.04 LTS (resolute) and 26.10 (stonking). Non-LTS Ubuntu releases
 only get about 9 months of support, so this list moves forward as older series reach end of life.
+</details>
 
-### Fedora (COPR)
+<details>
+<summary><b>Fedora</b> (COPR)</summary>
+
 ```bash
 sudo dnf copr enable yannmasoch/nautilus-my-computer
 sudo dnf install nautilus-my-computer
 ```
+</details>
 
-### openSUSE (OBS)
+<details>
+<summary><b>openSUSE</b> (OBS)</summary>
+
+**Tumbleweed**
 ```bash
 sudo zypper addrepo https://download.opensuse.org/repositories/home:yannmasoch/openSUSE_Tumbleweed/home:yannmasoch.repo
 sudo zypper refresh
 sudo zypper install nautilus-my-computer
 ```
-Leap 16.0 is also built; swap `openSUSE_Tumbleweed` for `16.0` in the repo URL above.
+**16.0**
+```bash
+sudo zypper addrepo https://download.opensuse.org/repositories/home:yannmasoch/16.0/home:yannmasoch.repo
+sudo zypper refresh
+sudo zypper install nautilus-my-computer
+```
+</details>
 
-### Nix / NixOS
+<details>
+<summary><b>Nix / NixOS</b></summary>
+
 ```bash
 nix profile install "github:yannmasoch/nautilus-my-computer?dir=packaging/nix"
 ```
+</details>
+
+<details>
+<summary><b>Arch Linux</b> (AUR)</summary>
+
+Not yet published - AUR is currently blocking submissions from new accounts due to a recent spam wave. Will be added as soon as that's lifted.
+</details>
+
+<details>
+<summary><b>Universal install script</b> (any distro)</summary>
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/yannmasoch/nautilus-my-computer/main/install.sh | sh
+```
+Uninstall:
+```bash
+curl -fsSL https://raw.githubusercontent.com/yannmasoch/nautilus-my-computer/main/install.sh | sh -s -- --uninstall
+```
+</details>
+
+<details>
+<summary><b>Manual install</b> (from source)</summary>
+
+Clone the repo and run the installer locally. This installs from the local files
+with no downloads, so it avoids GitHub rate-limits:
+```bash
+git clone https://github.com/yannmasoch/nautilus-my-computer.git
+cd nautilus-my-computer
+./install.sh
+```
+Uninstall:
+```bash
+./install.sh --uninstall
+```
+Run it as `./install.sh` (not `bash install.sh`) so it installs from your local
+clone instead of downloading.
+</details>
 
 ## My Computer
 
