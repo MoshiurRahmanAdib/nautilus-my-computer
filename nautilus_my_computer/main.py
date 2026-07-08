@@ -2153,12 +2153,17 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
             if not label_text or label_text.strip() not in target_labels:
                 continue
 
-            # Skip labels inside the sidebar
+            # Skip labels inside the sidebar or the tab bar. A tab whose page
+            # title happens to be "Computer" (i.e. that tab is showing
+            # computer:///) has an AdwTab containing its own Label + Image;
+            # without this check the walk below would pin the computer icon
+            # onto that tab's icon, which then stays frozen there even after
+            # the tab navigates elsewhere (issue #29).
             ancestor = w.get_parent()
             in_sidebar = False
             while ancestor:
                 cls = type(ancestor).__name__
-                if "Sidebar" in cls or "PlacesView" in cls:
+                if "Sidebar" in cls or "PlacesView" in cls or "Tab" in cls:
                     in_sidebar = True
                     break
                 if cls in ("NautilusPathBarButton", "GtkButton", "AdwButton"):
