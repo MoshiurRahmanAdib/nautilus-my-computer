@@ -4,6 +4,19 @@ All notable changes to this project are documented here.
 
 ---
 
+## v0.11.9
+Fix My Computer failing to load entirely on GNOME 47 and 48.
+
+### Fixed
+- On GNOME Files 47 and 48, the extension could fail to load at all, so the
+  Computer view never appeared, with no visible error unless Nautilus was
+  started from a terminal (issue #61).
+
+Credit to @pelach for reporting the crash with the exact logs needed to
+track it down.
+
+---
+
 ## v0.11.8
 Fix the install script failing with a GitHub rate-limit error for some users.
 

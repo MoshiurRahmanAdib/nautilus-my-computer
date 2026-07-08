@@ -73,7 +73,7 @@ DETACH_SETTINGS_WINDOW = False  # testing toggle: True opens settings as a stand
 
 # ── Extension metadata (keep in sync with pyproject.toml) ────────────────────
 EXT_NAME = "My Computer for Nautilus"
-EXT_VERSION = "0.11.8"
+EXT_VERSION = "0.11.9"
 EXT_AUTHOR = "Yann Masoch"
 EXT_LICENSE = "MIT"
 EXT_GITHUB = "https://github.com/yannmasoch/nautilus-my-computer"
@@ -622,7 +622,7 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
                             lambda _slot, _pspec, w=win: self._on_navigation(w),
                         )
                         break
-            else:
+            elif GObject.signal_lookup("locations-changed", type(win)):
                 # "locations-changed" fires when a slot's own location changes
                 # (navigating within a tab), but NOT on tab switch: switching
                 # tabs only reassigns NautilusWindow's "active-slot" property
@@ -632,6 +632,40 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
                 # the moment the active tab changes without a navigation.
                 win.connect("locations-changed", self._on_navigation)
                 win.connect("notify::active-slot", lambda w, _pspec: self._on_navigation(w))
+            else:
+                # Nautilus <= 47 has no "locations-changed" signal on
+                # NautilusWindow (issue #61). Fall back to watching the active
+                # slot's own "location" property directly (same technique as
+                # the file-chooser branch above), re-subscribing whenever
+                # "active-slot" changes (tab switch or new tab). URI-based,
+                # like _window_is_at_disks() itself, rather than locale-string
+                # title matching.
+                watch = {"slot": None, "handler": None}
+
+                def _rewatch_active_slot(w, _pspec=None, watch=watch):
+                    try:
+                        slot = w.get_property("active-slot")
+                    except TypeError:
+                        slot = None
+                    if slot is not watch["slot"]:
+                        if watch["slot"] is not None and watch["handler"] is not None:
+                            try:
+                                watch["slot"].disconnect(watch["handler"])
+                            except Exception:
+                                pass
+                        watch["slot"] = slot
+                        watch["handler"] = (
+                            slot.connect(
+                                "notify::location",
+                                lambda _s, _p, w=w: self._on_navigation(w),
+                            )
+                            if slot is not None
+                            else None
+                        )
+                    self._on_navigation(w)
+
+                win.connect("notify::active-slot", _rewatch_active_slot)
+                _rewatch_active_slot(win)
 
             if DEBUG_COMPUTER_BUTTON_ACTIVE:
                 self._inject_sidebar_link(win)

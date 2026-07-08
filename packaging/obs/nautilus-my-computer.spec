@@ -1,5 +1,5 @@
 Name:           nautilus-my-computer
-Version:        0.11.8
+Version:        0.11.9
 Release:        0
 Summary:        My Computer for Nautilus, what GNOME Files should have always been
 
@@ -42,6 +42,11 @@ make build
 %{_datadir}/glib-2.0/schemas/io.github.yannmasoch.nautilus-my-computer.gschema.xml
 
 %changelog
+* Wed Jul 08 2026 Yann Masoch <231734284+yannmasoch@users.noreply.github.com> - 0.11.9-0
+- Fix the extension failing to load entirely on GNOME Files 47 and 48,
+  where the Computer view never appeared and no error was visible outside
+  a terminal (issue #61)
+
 * Tue Jul 07 2026 Yann Masoch <231734284+yannmasoch@users.noreply.github.com> - 0.11.8-0
 - Fix the install script failing with a GitHub rate-limit error (429) for
   users on shared or VPN networks, by downloading the extension as a single
