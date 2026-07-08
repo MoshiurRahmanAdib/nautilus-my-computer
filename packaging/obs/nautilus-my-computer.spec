@@ -46,6 +46,10 @@ make build
 - Fix the extension failing to load entirely on GNOME Files 47 and 48,
   where the Computer view never appeared and no error was visible outside
   a terminal (issue #61)
+- Fix the Computer icon getting permanently stuck next to a tab's label
+  after navigating that tab away from the Computer view (issue #29)
+- Fix the address bar showing no icon for Computer (with a stray "/" in
+  front of the name instead) on some systems, confirmed on Fedora 41
 
 * Tue Jul 07 2026 Yann Masoch <231734284+yannmasoch@users.noreply.github.com> - 0.11.8-0
 - Fix the install script failing with a GitHub rate-limit error (429) for

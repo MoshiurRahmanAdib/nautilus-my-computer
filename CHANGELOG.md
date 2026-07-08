@@ -5,12 +5,18 @@ All notable changes to this project are documented here.
 ---
 
 ## v0.11.9
-Fix My Computer failing to load entirely on GNOME 47 and 48.
+Fix My Computer failing to load entirely on GNOME 47 and 48, plus two address
+bar icon glitches.
 
 ### Fixed
 - On GNOME Files 47 and 48, the extension could fail to load at all, so the
   Computer view never appeared, with no visible error unless Nautilus was
   started from a terminal (issue #61).
+- Opening the Computer view in a tab, then navigating that same tab to a
+  regular folder, could leave the Computer icon permanently stuck next to
+  the tab's label until Nautilus was restarted (issue #29).
+- On some systems (confirmed on Fedora 41), the address bar showed no icon
+  at all for Computer, with a stray "/" in front of the name instead.
 
 Credit to @pelach for reporting the crash with the exact logs needed to
 track it down.
