@@ -79,6 +79,7 @@ REAL_FSTYPES = {
     "ext2",
     "xfs",
     "btrfs",
+    "bcachefs",
     "f2fs",
     "ntfs",
     "ntfs3",
@@ -86,6 +87,10 @@ REAL_FSTYPES = {
     "exfat",
     "zfs",
     "reiserfs",
+    "jfs",
+    "ufs",
+    "minix",
+    "hfsplus",
     "apfs",
     "erofs",
     "fuseblk",
@@ -605,6 +610,11 @@ def _scan_mounts(show_system_partitions: bool = False) -> list[MountInfo]:
     icon_by_path: dict[str, Gio.Icon] = {}
     mount_by_path: dict[str, object] = {}
     mount_by_uuid: dict[str, object] = {}
+    # Mount roots GIO reports as shadowed -- a mount superseded by another at the
+    # same location (e.g. an autofs trigger overmounted by the real cifs mount).
+    # This is the exact signal Nautilus uses to drop the duplicate row
+    # (nautilus-sidebar.c: `if (g_mount_is_shadowed (mount)) continue;`).
+    shadowed_paths: set[str] = set()
     try:
         vm = Gio.VolumeMonitor.get()
         for gm in vm.get_mounts():
@@ -613,6 +623,8 @@ def _scan_mounts(show_system_partitions: bool = False) -> list[MountInfo]:
             if path:
                 icon_by_path[path] = gm.get_icon()
                 mount_by_path[path] = gm
+                if gm.is_shadowed():
+                    shadowed_paths.add(path)
             vol = gm.get_volume()
             if vol:
                 uid = vol.get_identifier(Gio.VOLUME_IDENTIFIER_KIND_UUID)
@@ -633,14 +645,22 @@ def _scan_mounts(show_system_partitions: bool = False) -> list[MountInfo]:
                 opts = set(options.split(","))
                 if _is_ostree_implementation_mount(mountpoint):
                     continue
+                # GIO already told us this mount is superseded by another at the
+                # same path -- skip it, exactly as Nautilus does (see shadowed_paths).
+                if mountpoint in shadowed_paths:
+                    continue
                 gvfs_show = "x-gvfs-show" in opts
-                is_external = any(mountpoint.startswith(p) for p in EXTERNAL_PREFIXES)
-                if (
-                    fstype not in REAL_FSTYPES
-                    and not gvfs_show
-                    and not is_external
-                    and mountpoint != "/"
-                ) or device in seen:
+                # Admit-list: a /proc/mounts line is a real drive only if its fstype
+                # is a known real-storage, network, or optical filesystem (or it is an
+                # fstab entry flagged x-gvfs-show, or the root fs). This structurally
+                # excludes pseudo/trigger filesystems -- autofs, tmpfs, proc, sysfs,
+                # squashfs, ... -- which would otherwise be listed as phantom or
+                # duplicate drives when mounted under /media or /mnt (issue #57). The
+                # previous "any path under an external prefix" escape hatch was the leak.
+                is_real_fs = (
+                    fstype in REAL_FSTYPES or fstype in NETWORK_FSTYPES or fstype in OPTICAL_FSTYPES
+                )
+                if (not is_real_fs and not gvfs_show and mountpoint != "/") or device in seen:
                     continue
                 if not show_system_partitions and mountpoint in ("/boot", "/boot/efi", "/efi"):
                     continue
@@ -696,6 +716,15 @@ def _scan_mounts(show_system_partitions: bool = False) -> list[MountInfo]:
                     pass
     except OSError:
         pass
+    # Collapse any remaining same-mountpoint duplicates to the effective (last)
+    # mount -- our local analogue of GIO shadowing, for overmounts GIO does not
+    # flag. When two lines share a mountpoint only the topmost is reachable in the
+    # VFS, and /proc/mounts lists it last, so last-wins keeps the visible drive.
+    if mounts:
+        by_mountpoint: dict[str, MountInfo] = {}
+        for mi in mounts:
+            by_mountpoint[mi.mountpoint] = mi
+        mounts = list(by_mountpoint.values())
     if not has_root:
         root = _root_mount_info()
         if root is not None:

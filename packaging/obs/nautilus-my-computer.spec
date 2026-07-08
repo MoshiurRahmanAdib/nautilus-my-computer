@@ -1,5 +1,5 @@
 Name:           nautilus-my-computer
-Version:        0.11.6
+Version:        0.11.7
 Release:        0
 Summary:        My Computer for Nautilus, what GNOME Files should have always been
 
@@ -42,6 +42,15 @@ make build
 %{_datadir}/glib-2.0/schemas/io.github.yannmasoch.nautilus-my-computer.gschema.xml
 
 %changelog
+* Tue Jul 07 2026 Yann Masoch <231734284+yannmasoch@users.noreply.github.com> - 0.11.7-0
+- Fix a drive being listed twice in the Computer view when it is mounted
+  through autofs (e.g. some fstab/NAS network share setups): the autofs
+  trigger mount and the real filesystem mounted on top of it were both
+  shown as separate cards. The scanner now only accepts known real-storage,
+  network, or optical filesystem types, imports GIO's shadowed-mount
+  signal, and collapses any leftover same-mountpoint duplicates to the
+  visible mount (issue #57).
+
 * Mon Jul 06 2026 Yann Masoch <231734284+yannmasoch@users.noreply.github.com> - 0.11.6-0
 - Fix a permanently blank Computer view inside file-picker dialogs
   (NautilusFileChooser), and a multi-tab regression found while fixing it.
