@@ -4,6 +4,22 @@ All notable changes to this project are documented here.
 
 ---
 
+## v0.11.7
+Fix a drive being listed twice in the Computer view for some network/autofs setups.
+
+### Fixed
+- Drives mounted through autofs (common in some fstab-based NAS/network share
+  setups) could show up as two separate cards - one for the autofs trigger
+  mount and one for the real filesystem mounted on top of it. The scanner now
+  only accepts known real-storage, network, or optical filesystem types,
+  imports GIO's own shadowed-mount detection, and collapses any leftover
+  duplicate at the same mount point down to the one that's actually visible.
+
+Credit to @root9191 for the diagnostic screenshots on issue #57 that showed
+one card was `autofs` and the other `cifs`, which pinpointed the cause.
+
+---
+
 ## v0.11.6
 Fix a bug where the Computer view could get permanently stuck blank.
 

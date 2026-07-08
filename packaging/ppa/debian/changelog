@@ -1,3 +1,15 @@
+nautilus-my-computer (0.11.7-1) UNRELEASED; urgency=medium
+
+  * Fix a drive being listed twice in the Computer view when it is mounted
+    through autofs (e.g. some fstab/NAS network share setups): the autofs
+    trigger mount and the real filesystem mounted on top of it were both
+    shown as separate cards. The scanner now only accepts known
+    real-storage, network, or optical filesystem types, imports GIO's
+    shadowed-mount signal, and collapses any leftover same-mountpoint
+    duplicates to the visible mount (issue #57).
+
+ -- Yann Masoch <231734284+yannmasoch@users.noreply.github.com>  Tue, 07 Jul 2026 18:00:00 -0700
+
 nautilus-my-computer (0.11.6-1) UNRELEASED; urgency=medium
 
   * Fix a permanently blank Computer view inside file-picker dialogs
