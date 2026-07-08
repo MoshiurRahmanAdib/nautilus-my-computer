@@ -2143,7 +2143,15 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         Never connects signals to Nautilus's internal pathbar GtkStack or box
         models, and never calls set_child() — those caused the GTK_IS_STACK crash
         (issue #11). The navigation trigger already fires on every location
-        change, so no persistent watcher is needed."""
+        change, so no persistent watcher is needed.
+
+        On some Nautilus/GVfs combinations (confirmed: Nautilus 47.0 + gvfs 1.56
+        on Fedora 41) nautilus_is_root_for_scheme() fails to
+        recognise computer:/// as a root location and falls back to its generic
+        path-segment ("NORMAL_BUTTON") rendering: no Gtk.Image is ever created
+        for the chip, and a leading "/" separator label is shown before it. In
+        that case there is no existing image to pin, so one is created and
+        prepended, and the stray separator is hidden."""
         target_labels = {COMPUTER_LABEL, _LOCATION_TITLE}
 
         for w in _all_widgets(win):
@@ -2161,12 +2169,14 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
             # the tab navigates elsewhere (issue #29).
             ancestor = w.get_parent()
             in_sidebar = False
+            button = None
             while ancestor:
                 cls = type(ancestor).__name__
                 if "Sidebar" in cls or "PlacesView" in cls or "Tab" in cls:
                     in_sidebar = True
                     break
-                if cls in ("NautilusPathBarButton", "GtkButton", "AdwButton"):
+                if cls in ("NautilusPathBarButton", "GtkButton", "AdwButton", "Button"):
+                    button = ancestor
                     break
                 ancestor = ancestor.get_parent()
             if in_sidebar:
@@ -2187,10 +2197,37 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
                 continue
 
             # Pin the existing chip image — no structural changes to Nautilus's tree
+            image = None
             for sub in _all_widgets(container):
                 if isinstance(sub, Gtk.Image):
-                    _pin_icon(sub, self._get_computer_icon())
+                    image = sub
                     break
+
+            if image is not None:
+                _pin_icon(image, self._get_computer_icon())
+            else:
+                # Fallback layout: no Gtk.Image exists in the chip at all.
+                # Create one so the chip isn't left blank. This container was
+                # built by Nautilus with spacing=2 (meant for a lone label,
+                # per the NORMAL_BUTTON case in nautilus-pathbar.c) rather
+                # than the spacing=6 every other root chip's icon+label box
+                # uses, so match that native value instead of leaving the
+                # icon flush against the text.
+                image = Gtk.Image.new_from_icon_name(self._get_computer_icon())
+                container.prepend(image)
+                if isinstance(container, Gtk.Box):
+                    container.set_spacing(6)
+
+            # The fallback layout also prefixes the chip with a leading "/"
+            # separator, since Nautilus is treating computer:/// as an
+            # ordinary path segment instead of a filesystem root. A root
+            # location should never show a path separator ahead of it.
+            if button is not None:
+                outer = button.get_parent()
+                if outer is not None:
+                    sep = outer.get_first_child()
+                    if sep is not button and isinstance(sep, Gtk.Label) and sep.get_label() == "/":
+                        sep.set_visible(False)
 
         return False
 
