@@ -26,12 +26,12 @@ from gi.repository import Gio, GLib, Gtk
 
 from nautilus_my_computer import bookmarks, preferred_folders
 from nautilus_my_computer.common import (
-    _,
     _all_widgets,
     _log,
     _menu_section_index_with_action,
     _menu_section_with_action,
 )
+from nautilus_my_computer.context_menu import my_computer_additions_section
 
 
 def attach_file_view_context_menu(ext, win) -> None:
@@ -83,32 +83,20 @@ def inject_file_view_menu_items(ext, win) -> bool:
     anchor = _menu_section_index_with_action(model, "view.properties")
     insert_at = anchor if anchor is not None else model.get_n_items()
 
-    section = Gio.Menu()
     bookmarked = bookmarks.is_bookmarked(uri)
-    section.append(
-        _("Remove from Bookmarks") if bookmarked else _("Add to Bookmarks"),
-        "mcfileview.toggle-bookmark",
-    )
     preferred = preferred_folders.is_preferred(ext._gsettings, uri)
-    section.append(
-        _("Unpin from My Computer") if preferred else _("Pin to My Computer"),
-        "mcfileview.toggle-preferred",
-    )
-    model.insert_section(insert_at, None, section)
-    model._mc_fileview_section = section
+    built = my_computer_additions_section(
+        bookmarked=bookmarked,
+        preferred=preferred,
+        toggle_bookmark_action=lambda: bookmarks.toggle_bookmark(uri),
+        toggle_preferred_action=lambda: preferred_folders.toggle_preferred(ext._gsettings, uri),
+    ).build("mcfileview")
+    model.insert_section(insert_at, None, built.model)
+    model._mc_fileview_section = built.model
 
-    ag = Gio.SimpleActionGroup()
-    bookmark_act = Gio.SimpleAction.new("toggle-bookmark", None)
-    bookmark_act.connect("activate", lambda *_a: bookmarks.toggle_bookmark(uri))
-    ag.add_action(bookmark_act)
-    preferred_act = Gio.SimpleAction.new("toggle-preferred", None)
-    preferred_act.connect(
-        "activate", lambda *_a: preferred_folders.toggle_preferred(ext._gsettings, uri)
-    )
-    ag.add_action(preferred_act)
     for w in _all_widgets(win):
         if isinstance(w, Gtk.PopoverMenu) and w.get_menu_model() is model:
-            w.insert_action_group("mcfileview", ag)
+            w.insert_action_group("mcfileview", built.action_group)
             break
 
     _log(f"inject_file_view_menu_items: injected for {uri}")

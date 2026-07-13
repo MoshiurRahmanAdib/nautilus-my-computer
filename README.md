@@ -203,6 +203,16 @@ All icons are native GNOME icons. My Computer works with any custom icon theme.
 
 My Computer is compatible with almost all custom GTK themes.
 
+## Column View (Public Beta)
+
+Browse folders as Miller-style columns, a long-requested Nautilus feature that never shipped natively. Pick a folder in one column and its contents open in the next, so you can navigate several levels deep while keeping the whole path in view.
+
+Column View sits alongside the native list and grid views as a third option on GNOME Files' own view-mode toggle (or press <kbd>Ctrl</kbd>+<kbd>3</kbd>).
+
+![Column View](assets/images/column-view-screenshot.png)
+
+This is an early public beta, marked with a **Beta** badge in the view. The core browsing experience is solid, but it's still fresh and needs real-world use to surface edge cases. Found something rough? [Check details for Column View on GitHub](https://github.com/yannmasoch/nautilus-my-computer/issues/67).
+
 ## Features
 
 - **All your storage in one place:** local drives, USB sticks, phones, network mounts, and removable media grouped by type.
@@ -219,6 +229,7 @@ My Computer is compatible with almost all custom GTK themes.
 - **Preferred Folders:** one-click cards for your everyday folders at the top of the Computer panel, customizable via Settings or the "..." menu's "Pin to My Computer" item, and reorderable by drag-and-drop.
 - **Open With:** pick an app to open a folder or disk with, from a native-feel app chooser.
 - **Live icon theme updates:** disk and folder card icons refresh immediately when you switch icon themes, no restart needed.
+- **Column View (public beta):** browse folders as Miller-style columns, a third view mode alongside list and grid, with its own context menu and previews.
   
 ## Tested on
 

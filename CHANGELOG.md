@@ -4,6 +4,17 @@ All notable changes to this project are documented here.
 
 ---
 
+## v0.12.0
+Add an early, opt-in Column View (beta) as a third way to browse alongside
+the normal file view and the Computer panel.
+
+### Added
+- Column View (beta): browse folders as Miller-style columns, with its own
+  right-click menu and preview support. Still experimental, marked with a
+  beta badge, and off by default.
+
+---
+
 ## v0.11.9
 Fix My Computer failing to load entirely on GNOME 47 and 48, plus two address
 bar icon glitches.

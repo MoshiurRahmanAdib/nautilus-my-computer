@@ -47,6 +47,19 @@ def _format_size(n: float) -> str:
     return GLib.format_size(int(n))
 
 
+def _is_activating_click(ext, n_press: int) -> bool:
+    """True if a Gtk.GestureClick "pressed" event (n_press) should activate,
+    given Nautilus' own click-policy setting (ext._nautilus_prefs.click_policy,
+    'single' or 'double').
+
+    Only needed for raw GestureClick wiring on plain widgets that have no
+    built-in "activate-on-single-click" (Gtk.FlowBox/Gtk.ListBox already expose
+    that as a widget property -- see widgets.py's flow.set_activate_on_single_click
+    calls, which don't need this helper)."""
+    single_click = ext._nautilus_prefs.click_policy == "single"
+    return (single_click and n_press == 1) or (not single_click and n_press == 2)
+
+
 def _gicon_renders(gicon) -> bool:
     """True if gicon is non-None and resolves in the current icon theme."""
     if gicon is None:
@@ -67,6 +80,41 @@ def _icon_name_renders(icon_name: str) -> bool:
     except Exception:
         return True
     return theme.has_icon(icon_name)
+
+
+_SPECIAL_DIR_ICON = {
+    GLib.UserDirectory.DIRECTORY_DOCUMENTS: "folder-documents",
+    GLib.UserDirectory.DIRECTORY_DOWNLOAD: "folder-download",
+    GLib.UserDirectory.DIRECTORY_MUSIC: "folder-music",
+    GLib.UserDirectory.DIRECTORY_VIDEOS: "folder-videos",
+    GLib.UserDirectory.DIRECTORY_PICTURES: "folder-pictures",
+}
+
+
+def _native_folder_icon_name(uri: str) -> str | None:
+    """Canonical native icon name ("user-home", "folder-download", ...) for a
+    URI that is exactly the user's home directory or one of the standard XDG
+    user folders (Documents, Downloads, Music, Videos, Pictures) -- the same
+    fixed names Nautilus itself uses for those special locations. Returns
+    None for any other URI, so callers fall back to the real GIcon from
+    query_info/enumerate_children.
+
+    Single source of truth for this fixed table, shared by
+    preferred_folders.load_preferred_folders() and column_view's row icons --
+    both need the same native icon for the same real path, and neither should
+    hand-roll its own copy of this table.
+    """
+    if not uri:
+        return None
+    norm = uri.rstrip("/")
+    home_uri = GLib.filename_to_uri(GLib.get_home_dir(), None).rstrip("/")
+    if norm == home_uri:
+        return "user-home"
+    for special_dir, icon_name in _SPECIAL_DIR_ICON.items():
+        path = GLib.get_user_special_dir(special_dir)
+        if path and norm == GLib.filename_to_uri(path, None).rstrip("/"):
+            return icon_name
+    return None
 
 
 def _uri_is_hidden(uri: str) -> bool:
@@ -149,6 +197,34 @@ def _resolve_gtype(*names: str) -> int | None:
         except RuntimeError:
             continue
     return None
+
+
+def _current_location_uri(win) -> str | None:
+    """Return the URI of the active tab's current location, or None.
+
+    Reads the NautilusWindowSlot "location" GFile property on demand (same
+    approach as _window_is_at_disks in main.py, generalized to any URI rather
+    than just DISKS_URI). No persistent signal, no set_child (safe re: issue
+    #11). Prefers the active slot so tabs are handled; falls back to the
+    first slot with a location.
+    """
+    fallback = None
+    for w in _all_widgets(win):
+        if "Slot" not in type(w).__name__:
+            continue
+        try:
+            loc = w.get_property("location")
+        except TypeError:
+            continue
+        if loc is None:
+            continue
+        try:
+            if w.get_property("active"):
+                return loc.get_uri()
+        except TypeError:
+            pass
+        fallback = loc
+    return fallback.get_uri() if fallback is not None else None
 
 
 def _find_widget(root, *, buildable_id=None, class_name=None, css_class=None, site=""):
@@ -274,6 +350,56 @@ def _pin_icon(img: Gtk.Image, icon_name: str) -> None:
     img.connect("notify::visible", _on_changed)
 
 
+# Some icon themes ship a monochrome (symbolic-looking) variant of an
+# otherwise full-color icon in their small fixed-size dirs (confirmed:
+# MacTahoe-A ships places/24/folder.svg single-color, full color only under
+# scalable/). GTK's automatic size selection at a small display size (<=24)
+# resolves that monochrome dir, so a plain set_from_icon_name + set_pixel_size(24)
+# renders a gray glyph. Look the icon up at this larger nominal size instead --
+# it resolves the colored scalable/ variant (verified: 24->monochrome dir,
+# 32/48->scalable colored) -- then scale the resulting paintable down to the
+# display size. FORCE_REGULAR alone does NOT fix this (the small regular icon
+# is itself monochrome); the large lookup size is what matters.
+#
+# Content-view use only (list view / column view). Never use this for sidebar
+# or bookmark-row icons -- those must follow Nautilus' native sidebar rendering.
+_COLOR_ICON_LOOKUP_SIZE = 48
+
+
+def _set_regular_icon(image: Gtk.Image, size: int, *, icon_name=None, gicon=None) -> None:
+    """Set a full-color (non-symbolic) icon on `image`, drawn at `size` px.
+
+    Bypasses GTK's automatic small-size theme lookup (which resolves a
+    monochrome fixed-size variant for small icons on some themes) by looking
+    the icon up at _COLOR_ICON_LOOKUP_SIZE and scaling the paintable down.
+    Pass exactly one of `icon_name` / `gicon`.
+    """
+    display = Gdk.Display.get_default()
+    if display is None:
+        # No display (should not happen inside a running Nautilus); fall back to
+        # a plain set so the image is at least populated.
+        if icon_name is not None:
+            image.set_from_icon_name(icon_name)
+        elif gicon is not None:
+            image.set_from_gicon(gicon)
+        image.set_pixel_size(size)
+        return
+
+    theme = Gtk.IconTheme.get_for_display(display)
+    scale = image.get_scale_factor() or 1
+    flags = Gtk.IconLookupFlags.FORCE_REGULAR
+    if icon_name is not None:
+        paintable = theme.lookup_icon(
+            icon_name, None, _COLOR_ICON_LOOKUP_SIZE, scale, Gtk.TextDirection.NONE, flags
+        )
+    else:
+        paintable = theme.lookup_by_gicon(
+            gicon, _COLOR_ICON_LOOKUP_SIZE, scale, Gtk.TextDirection.NONE, flags
+        )
+    image.set_from_paintable(paintable)
+    image.set_pixel_size(size)
+
+
 def _repin_icon(img: Gtk.Image, icon_name: str) -> None:
     """Change the pinned icon target on an already-pinned Gtk.Image.
     The existing signal handlers read _diskinfo_pin_name dynamically, so
@@ -344,6 +470,18 @@ _FOLDER_CARD_MARGIN_START = 8  # folder card own start inset inside its total wi
 _FOLDER_CARD_MARGIN_END = 8  # folder card own end inset inside its total width (px)
 _FOLDER_CARD_MARGIN_TOP = 8  # folder card own top inset inside its total height (px)
 _FOLDER_CARD_MARGIN_BOTTOM = 4  # folder card own bottom inset inside its total height (px)
+
+# ── Column View geometry constants ───────────────────────────────────────────────
+_COLUMN_WIDTH = 300  # column view: default/fixed folder column width (px)
+_COLUMN_MIN_WIDTH = 180  # column view: floor a column can be dragged down to (px)
+_COLUMN_MAX_WIDTH = 580  # column view: ceiling a column can be dragged up to (px)
+_COLUMN_ROW_ICON_SIZE = (
+    24  # column view: gap (px) between a row's leading icon and its label/chevron
+)
+_COLUMN_ROW_SPACING = 8  # column view: gap (px) between a row's icon/label/chevron
+_COLUMN_PREVIEW_WIDTH = 400  # column view: default preview column width (px)
+_COLUMN_PREVIEW_IMAGE_SIZE = 1024  # preview lookup size (px); big enough for scalable variant
+_COLUMN_PREVIEW_IMAGE_MAX_WIDTH = 1024  # max preview image width (px); larger images scaled to fit
 
 _INTERNAL_FSTYPES = {"gvfs", "unmounted", "network-place"}
 
