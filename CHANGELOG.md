@@ -4,6 +4,18 @@ All notable changes to this project are documented here.
 
 ---
 
+## v0.12.1
+Replace the two-state view-mode button with a segmented Grid/List/Column
+switcher.
+
+### Changed
+- The view-mode button is now a segmented Grid/List/Column switcher, so all
+  three views are one click away instead of cycling through them. Sorting
+  and other view settings moved into their own "View Options" button next
+  to it.
+
+---
+
 ## v0.12.0
 Add an early, opt-in Column View (beta) as a third way to browse alongside
 the normal file view and the Computer panel.

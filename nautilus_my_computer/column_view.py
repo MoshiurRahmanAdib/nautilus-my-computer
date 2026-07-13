@@ -18,7 +18,6 @@ from nautilus_my_computer.common import (
     _,
     _all_widgets,
     _log,
-    _menu_section_index_with_action,
 )
 from nautilus_my_computer.context_menu import (
     ContextMenu,
@@ -32,7 +31,11 @@ from nautilus_my_computer.context_menu import (
     open_section,
     properties_section,
 )
-from nautilus_my_computer.widgets import MyComputerColumn, MyComputerPreviewColumn
+from nautilus_my_computer.widgets import (
+    MyComputerColumn,
+    MyComputerPreviewColumn,
+    MyComputerToggleButton,
+)
 
 VIEW_COLUMN = "column"
 
@@ -96,17 +99,15 @@ _COLUMN_KEYBOARD_NAV = False
 # reverts to a fixed COLUMN_WIDTH per column (see _on_paned_position_fixed).
 _COLUMN_RESIZE_ENABLED = True
 
-# Icon shown for our Column View state on the native list/grid view-toggle
-# split button. Adw.SplitButton's bound icon-name is always the TARGET view's
-# icon (nautilus_files_view_get_toggle_icon_name), not the current one:
-# "view-grid-symbolic" while list is showing, "view-list-symbolic" while grid is
-# showing. Reading it back tells us which side of the native toggle we sit on.
+# Icon used for the Column segment of the Grid/List/Column switcher, and to
+# read back which side of the native split button's TARGET-view icon-name
+# binding (nautilus_files_view_get_toggle_icon_name) is currently showing:
+# "view-grid-symbolic" while list is showing, "view-list-symbolic" while grid
+# is showing.
 _COLUMN_ICON_NAME = "view-column-symbolic"
 _ICON_TARGET_GRID = "view-grid-symbolic"  # shown while sitting on list
 _ICON_TARGET_LIST = "view-list-symbolic"  # shown while sitting on grid (default fallback)
 _NATIVE_TOGGLE_ACTION = "slot.files-view-mode-toggle"
-_COLUMN_PRIMARY_ACTION = "mccolumnprimary.primary-click"
-_COLUMN_TOOLTIP = _("Column View")
 
 # Single sources of truth are common._COLUMN_WIDTH for folder columns and
 # common._COLUMN_PREVIEW_WIDTH for the trailing preview column. These aliases
@@ -2116,14 +2117,24 @@ def populate_column_view(ext, win: Gtk.Window) -> None:
             col.grab_list_focus()
 
 
-def inject_column_view_entry(ext, win: Gtk.Window) -> None:
-    """Extend Nautilus's persistent List/Grid split button with Column View.
+_SEGMENTS = (
+    ("grid", _ICON_TARGET_GRID, "Grid View"),
+    ("list", _ICON_TARGET_LIST, "List View"),
+    ("column", _COLUMN_ICON_NAME, "Column View"),
+)
 
-    Nautilus creates one NautilusViewControls per window and never rewrites the
-    split button's action-name after loading its template. Rebind that property
-    once to an extension-owned action, while leaving Nautilus's native toggle
-    action intact for the transitions that still belong to it. If the expected
-    widget/action contract is not present, fail closed and leave Nautilus alone.
+
+def inject_column_view_entry(ext, win: Gtk.Window) -> None:
+    """Replace the visible content of NautilusViewControls (an Adw.Bin, see
+    nautilus-view-controls.blp) with a segmented Grid/List/Column switcher.
+
+    Nautilus creates one NautilusViewControls per window and never rewrites
+    it afterwards. The native Adw.SplitButton is kept alive (hidden, not
+    removed/rebound) inside our own Box: its icon-name binding to the window
+    slot still tells us which native side (Grid/List) is showing, and it
+    stays the target we activate for native Grid<->List transitions. If the
+    expected widget contract is not present, fail closed and leave Nautilus
+    alone.
     """
     state = ext._windows.get(win)
     if state is None:
@@ -2133,17 +2144,7 @@ def inject_column_view_entry(ext, win: Gtk.Window) -> None:
     if menu_btn is None:
         _log("inject_column_view_entry: view-options button not found")
         return
-    state["column_menu_button"] = menu_btn
 
-    if not getattr(menu_btn, "_mc_column_watch_attached", False):
-        menu_btn._mc_column_watch_attached = True
-        menu_btn.connect("notify::active", lambda b, _p: _ensure_column_item(ext, win, b))
-
-    # Scope discovery to the MenuButton we already found inside
-    # NautilusViewControls. Some libadwaita versions expose the popover's
-    # internal MenuButton outside the SplitButton's parent chain, so retain a
-    # guarded fallback that selects only a SplitButton with Nautilus's exact
-    # native view-toggle action.
     split_button = _ancestor_split_button(menu_btn)
     if split_button is None:
         split_button = next(
@@ -2155,37 +2156,40 @@ def inject_column_view_entry(ext, win: Gtk.Window) -> None:
             ),
             None,
         )
-    if split_button is None or getattr(split_button, "_mc_column_primary_attached", False):
-        _ensure_column_item(ext, win, menu_btn)
+    if split_button is None or getattr(split_button, "_mc_column_attached", False):
         return
 
-    original_action = split_button.get_action_name()
-    if original_action != _NATIVE_TOGGLE_ACTION:
-        _log(
-            "inject_column_view_entry: unexpected split-button action "
-            f"{original_action!r}; leaving Nautilus control untouched"
-        )
-        _ensure_column_item(ext, win, menu_btn)
+    view_controls = split_button.get_parent()
+    if not isinstance(view_controls, Adw.Bin):
+        _log("inject_column_view_entry: unexpected parent, leaving Nautilus control untouched")
         return
 
-    primary_group = Gio.SimpleActionGroup()
-    primary_action = Gio.SimpleAction.new("primary-click", None)
-    primary_action.connect(
-        "activate", lambda *_a, sb=split_button: _on_primary_button_clicked(sb, ext, win)
-    )
-    primary_group.add_action(primary_action)
-    split_button.insert_action_group("mccolumnprimary", primary_group)
-    split_button.set_action_name(_COLUMN_PRIMARY_ACTION)
+    popover = split_button.get_popover()
+    split_button.set_popover(None)
+    split_button.set_visible(False)
+    split_button._mc_column_attached = True
 
-    split_button._mc_column_primary_attached = True
-    state["column_split_button"] = split_button
-    state["column_original_action_name"] = original_action
-    # Keep the group/action alive explicitly for the window lifetime.
-    state["column_primary_action_group"] = primary_group
-    state["column_primary_action"] = primary_action
-    _pin_column_button_chrome(split_button, ext, win)
-    _ensure_column_item(ext, win, menu_btn)
-    _log("inject_column_view_entry: rebound native split button to three-state action")
+    options_btn = Gtk.MenuButton(icon_name="view-more-symbolic", tooltip_text=_("View Options"))
+    if popover is not None:
+        options_btn.set_popover(popover)
+
+    switcher = _build_view_switcher(ext, win)
+
+    box = Gtk.Box(spacing=6)
+    box.append(switcher)
+    box.append(options_btn)
+    box.append(split_button)
+    view_controls.set_child(box)
+
+    state["native_split_button"] = split_button
+    state["view_switcher"] = switcher
+    state["view_options_menu_button"] = options_btn
+
+    # The hidden split button's icon-name is still bound to the window slot,
+    # so this is how a native Grid<->List change (e.g. Ctrl+1/2) is detected.
+    split_button.connect("notify::icon-name", lambda *_a: _sync_view_switcher(ext, win))
+    _sync_view_switcher(ext, win)
+    _log("inject_column_view_entry: hid native split button behind three-way switcher")
 
 
 def _ancestor_split_button(widget: Gtk.Widget) -> Adw.SplitButton | None:
@@ -2197,172 +2201,76 @@ def _ancestor_split_button(widget: Gtk.Widget) -> Adw.SplitButton | None:
     return None
 
 
-def _pin_column_button_chrome(split_button: Adw.SplitButton, ext, win: Gtk.Window) -> None:
-    """Show the Column View icon as the button's "next stop" hint while it sits
-    on the native list state, re-deriving it on every genuine native change.
+def _build_view_switcher(ext, win: Gtk.Window) -> Gtk.Widget:
+    """Build the Grid/List/Column segmented control (see
+    widgets.MyComputerToggleButton)."""
+    switcher = MyComputerToggleButton((name, icon, _(tooltip)) for name, icon, tooltip in _SEGMENTS)
+    switcher.connect("changed", lambda _w, name: _on_view_segment_activated(ext, win, name))
+    return switcher
 
-    Nautilus's own icon-name binding only reacts to its own source property, so
-    once we override the displayed icon it will NOT self-correct. notify::icon-name
-    / notify::tooltip-text fire asynchronously (after our own set_*() returns), so
-    a synchronous "restoring" flag cannot mask them -- we filter by value instead:
-    Nautilus only ever emits the list/grid icons and tooltips, never our Column
-    ones, so ignoring the Column value keeps native tracking clean."""
+
+def _set_active_segment(switcher: MyComputerToggleButton, name: str) -> None:
+    switcher.set_active_name(name)
+
+
+def _set_segment_enabled(switcher: MyComputerToggleButton, name: str, enabled: bool) -> None:
+    switcher.set_segment_enabled(name, enabled)
+
+
+def _on_view_segment_activated(ext, win: Gtk.Window, name: str | None) -> None:
+    """Direct Grid/List/Column selection -- one click, one target view.
+    MyComputerToggleButton never emits "changed" for a programmatic
+    set_active_name (see its own _syncing guard), so no re-entrance guard
+    is needed here for calls coming from _sync_view_switcher below."""
     state = ext._windows.get(win)
-    if state is not None:
-        state["native_toggle_icon"] = split_button.get_icon_name()
-        state["native_toggle_tooltip"] = split_button.get_tooltip_text()
-
-    def _on_icon_changed(sb: Adw.SplitButton, _pspec) -> None:
-        new_icon = sb.get_icon_name()
-        if new_icon == _COLUMN_ICON_NAME:
-            return  # our own override, never a native Nautilus value
-        st = ext._windows.get(win)
-        if st is None:
-            return
-        st["native_toggle_icon"] = new_icon
-        _apply_button_icon(sb, ext, win)
-
-    def _on_tooltip_changed(sb: Adw.SplitButton, _pspec) -> None:
-        if sb.get_tooltip_text() == _COLUMN_TOOLTIP:
-            return  # our own override
-        st = ext._windows.get(win)
-        if st is None:
-            return
-        st["native_toggle_tooltip"] = sb.get_tooltip_text()
-        _apply_button_icon(sb, ext, win)
-
-    state["column_icon_handler"] = split_button.connect("notify::icon-name", _on_icon_changed)
-    state["column_tooltip_handler"] = split_button.connect(
-        "notify::tooltip-text", _on_tooltip_changed
-    )
-    _apply_button_icon(split_button, ext, win)
-
-
-def _apply_button_icon(split_button: Adw.SplitButton, ext, win: Gtk.Window) -> None:
-    state = ext._windows.get(win)
-    if state is None:
-        return
-    native_icon = state.get("native_toggle_icon") or _ICON_TARGET_LIST
-    native_tooltip = state.get("native_toggle_tooltip")
-
-    if not ext._column_view_available_for_window(win):
-        target_icon = native_icon
-        target_tooltip = native_tooltip
-    elif state.get("visible_view") == VIEW_COLUMN:
-        target_icon = native_icon  # frozen native value while column view is up
-        target_tooltip = native_tooltip
-    elif native_icon == _ICON_TARGET_GRID:
-        target_icon = _COLUMN_ICON_NAME  # sitting on list -- hint the Column state
-        target_tooltip = _COLUMN_TOOLTIP
-    else:
-        target_icon = native_icon  # sitting on grid -- native "list" icon is correct
-        target_tooltip = native_tooltip
-
-    if split_button.get_icon_name() != target_icon:
-        split_button.set_icon_name(target_icon)
-    if split_button.get_tooltip_text() != target_tooltip:
-        split_button.set_tooltip_text(target_tooltip)
-
-
-def _on_primary_button_clicked(split_button: Adw.SplitButton, ext, win: Gtk.Window) -> None:
-    """Drive the tested Grid -> List -> Column -> Grid primary-button cycle."""
-    state = ext._windows.get(win)
-    if state is None:
+    if name is None or state is None:
         return
 
-    if not ext._column_view_available_for_window(win):
-        # Special locations retain Nautilus's ordinary two-state behavior.
-        win.activate_action(_NATIVE_TOGGLE_ACTION, None)
-        return
+    split_button = state.get("native_split_button")
+    native_on_list = split_button is not None and split_button.get_icon_name() == _ICON_TARGET_GRID
 
-    native_icon = state.get("native_toggle_icon") or _ICON_TARGET_LIST
-    if state.get("visible_view") == VIEW_COLUMN:
-        # The native view stayed on List during the primary List -> Column
-        # transition. Reveal it, then ask Nautilus to perform List -> Grid.
-        ext._leave_column_view_for_native_mode(win)
-        if win.activate_action(_NATIVE_TOGGLE_ACTION, None):
-            state["native_toggle_icon"] = _ICON_TARGET_LIST
-        _apply_button_icon(split_button, ext, win)
-    elif native_icon == _ICON_TARGET_GRID:
-        # Nautilus is on List. Keep its action untouched and show our overlay.
+    if name == "column":
         ext._show_column_view(win)
-        _apply_button_icon(split_button, ext, win)
+    elif name == "grid":
+        if state.get("visible_view") == VIEW_COLUMN:
+            ext._leave_column_view_for_native_mode(win)
+        if native_on_list:
+            win.activate_action(_NATIVE_TOGGLE_ACTION, None)
+    elif name == "list":
+        if state.get("visible_view") == VIEW_COLUMN:
+            ext._leave_column_view_for_native_mode(win)
+        if not native_on_list:
+            win.activate_action(_NATIVE_TOGGLE_ACTION, None)
+    _sync_view_switcher(ext, win)
+
+
+def _sync_view_switcher(ext, win: Gtk.Window) -> None:
+    """Reflect visible_view / the native split button's frozen icon back onto
+    the segmented control. MyComputerToggleButton.set_active_name() does not
+    emit "changed", so this never re-triggers _on_view_segment_activated."""
+    state = ext._windows.get(win)
+    switcher = state.get("view_switcher") if state is not None else None
+    if switcher is None:
+        return
+
+    column_available = ext._column_view_available_for_window(win)
+    _set_segment_enabled(switcher, "column", column_available)
+
+    if state.get("visible_view") == VIEW_COLUMN and column_available:
+        active = "column"
     else:
-        # Nautilus is on Grid. Delegate Grid -> List to its native action.
-        if win.activate_action(_NATIVE_TOGGLE_ACTION, None):
-            state["native_toggle_icon"] = _ICON_TARGET_GRID
-        _apply_button_icon(split_button, ext, win)
+        split_button = state.get("native_split_button")
+        native_icon = split_button.get_icon_name() if split_button is not None else None
+        active = "list" if native_icon == _ICON_TARGET_GRID else "grid"
+
+    _set_active_segment(switcher, active)
 
 
 def refresh_column_view_chrome(ext, win: Gtk.Window) -> None:
-    """Refresh the persistent split-button and menu after slot navigation."""
-    state = ext._windows.get(win)
-    split_button = state.get("column_split_button") if state is not None else None
-    if split_button is not None:
-        _apply_button_icon(split_button, ext, win)
-    menu_button = state.get("column_menu_button") if state is not None else None
-    if menu_button is not None:
-        _ensure_column_item(ext, win, menu_button)
+    """Refresh the persistent view switcher after slot navigation."""
+    _sync_view_switcher(ext, win)
 
 
 def detach_column_view_entry(ext, win: Gtk.Window, state: dict | None = None) -> None:
-    """Restore the native button contract and disconnect our chrome observers."""
-    state = state or ext._windows.get(win)
-    split_button = state.get("column_split_button") if state is not None else None
-    if split_button is None:
-        return
-
-    try:
-        if split_button.get_action_name() == _COLUMN_PRIMARY_ACTION:
-            split_button.set_action_name(
-                state.get("column_original_action_name") or _NATIVE_TOGGLE_ACTION
-            )
-        for key in ("column_icon_handler", "column_tooltip_handler"):
-            handler_id = state.get(key)
-            if handler_id:
-                split_button.disconnect(handler_id)
-                state[key] = None
-        split_button.insert_action_group("mccolumnprimary", None)
-    except Exception as error:
-        # Window teardown can destroy private template children before the
-        # toplevel's destroy signal reaches the extension.
-        _log(f"detach_column_view_entry: teardown raced widget disposal: {error}")
-
-
-def _ensure_column_item(ext, win: Gtk.Window, menu_btn: Gtk.MenuButton) -> None:
-    popover = menu_btn.get_popover()
-    if not isinstance(popover, Gtk.PopoverMenu):
-        return
-    model = popover.get_menu_model()
-    if not isinstance(model, Gio.Menu):
-        return
-
-    section_index = _menu_section_index_with_action(model, "mccolumn.show")
-    if not ext._column_view_available_for_window(win):
-        # Nautilus keeps this GMenu for the window lifetime, so explicitly
-        # remove our stable section when the active slot is a special location.
-        if section_index is not None:
-            model.remove(section_index)
-        return
-    if section_index is not None:
-        return  # already present on this model instance
-
-    item = Gio.MenuItem.new(_("Column View"), "mccolumn.show")
-    item.set_icon(Gio.ThemedIcon.new(_COLUMN_ICON_NAME))
-    section = Gio.Menu()
-    section.append_item(item)
-    # Insert at the top, above Icon Size/Sort/etc., so it reads as a view-mode
-    # option next to the native list/grid toggle rather than misc overflow.
-    model.insert_section(0, None, section)
-
-    ag = Gio.SimpleActionGroup()
-    act = Gio.SimpleAction.new("show", None)
-    # Tmp entry point: clicking calls the same handler used by the Ctrl+3
-    # shortcut (Ctrl+3 itself is unreliable -- Nautilus's type-ahead search
-    # can still eat keys before our capture controller sees them reliably
-    # outside VIEW_DISKINFO). This menu item is a real button click, not a
-    # keystroke, so it isn't subject to that interception.
-    act.connect("activate", lambda *_a: ext._show_column_view(win))
-    ag.add_action(act)
-    popover.insert_action_group("mccolumn", ag)
-    _log("inject_column_view_entry: injected Column View menu item")
+    """Nothing to restore -- injection only hides/reparents widgets that stay
+    alive in the tree, and window teardown drops our Box along with them."""
