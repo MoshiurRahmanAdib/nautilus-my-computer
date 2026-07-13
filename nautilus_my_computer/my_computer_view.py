@@ -47,13 +47,18 @@ from nautilus_my_computer.common import (
     _log,
     _uri_is_hidden,
 )
+from nautilus_my_computer.context_menu import (
+    ContextMenu,
+    ContextMenuItem,
+    ContextMenuSection,
+    open_section,
+    properties_section,
+)
 from nautilus_my_computer.preferred_folders import PreferredFolder
 from nautilus_my_computer.widgets import (
     MyComputerCardSection,
-    MyComputerContextualMenu,
     MyComputerDiskCard,
     MyComputerFolderCard,
-    MyComputerMenuItem,
 )
 
 DISKS_URI = "computer:///"
@@ -118,7 +123,7 @@ EXTERNAL_PREFIXES = ("/media/", "/run/media/", "/mnt/")
 VIEW_DISKINFO = "diskinfo"  # visible_view token — our panel (Overlay child), shared with main.py
 
 
-def _disk_context_menu(ext, win, m) -> MyComputerContextualMenu:
+def _disk_context_menu(ext, win, m) -> ContextMenu:
     """Build a disk card's right-click menu from live mount state.
 
     Same three-section layout as before: open actions, then mount/eject/unmount +
@@ -133,85 +138,52 @@ def _disk_context_menu(ext, win, m) -> MyComputerContextualMenu:
         if unix_dev:
             device = unix_dev
 
-    # Section 0: open actions (all disks), collapsed into a single native "Open"
-    # submenu. Mounted -> navigate; unmounted -> mount then open.
+    # Section 0: open actions (all disks). Mounted disks navigate directly;
+    # unmounted disks mount first, then open in the requested target.
     if is_mounted and nav_uri:
-        open_submenu = [
-            MyComputerMenuItem(
-                _("Open"), action=lambda: ext._do_open(nav_uri, win), shortcut="Return"
-            ),
-            MyComputerMenuItem(
-                _("Open in New Tab"),
-                action=lambda: ext._do_open_tab(nav_uri, win),
-                shortcut="<Control>Return",
-            ),
-            MyComputerMenuItem(
-                _("Open in New Window"),
-                action=lambda: ext._do_open_window(nav_uri),
-                shortcut="<Shift>Return",
-            ),
-        ]
-        # See _do_open_with() / _open_actions() above. Only local mounts would ever
+        # See _do_open_with(). Only local mounts would ever
         # resolve in the system app chooser; network mounts (smb://, sftp://) have
         # no app handler, so omit it there entirely, like native Nautilus.
-        if nav_uri.startswith("file://"):
-            open_submenu.append(
-                MyComputerMenuItem(
-                    _("Open With…"), action=lambda: ext._do_open_with(nav_uri, win), section=1
-                )
-            )
+        open_actions = open_section(
+            lambda: ext._do_open(nav_uri, win),
+            open_tab_action=lambda: ext._do_open_tab(nav_uri, win),
+            open_window_action=lambda: ext._do_open_window(nav_uri),
+            open_with_action=(
+                (lambda: ext._do_open_with(nav_uri, win)) if nav_uri.startswith("file://") else None
+            ),
+        )
     else:
-        open_submenu = [
-            MyComputerMenuItem(
-                _("Open"),
-                action=lambda: _do_mount_then_open(ext, m, win, "current"),
-                shortcut="Return",
-            ),
-            MyComputerMenuItem(
-                _("Open in New Tab"),
-                action=lambda: _do_mount_then_open(ext, m, win, "tab"),
-                shortcut="<Control>Return",
-            ),
-            MyComputerMenuItem(
-                _("Open in New Window"),
-                action=lambda: _do_mount_then_open(ext, m, win, "window"),
-                shortcut="<Shift>Return",
-            ),
-        ]
-    items = [MyComputerMenuItem(_("Open"), submenu=open_submenu)]
+        open_actions = open_section(
+            lambda: _do_mount_then_open(ext, m, win, "current"),
+            open_tab_action=lambda: _do_mount_then_open(ext, m, win, "tab"),
+            open_window_action=lambda: _do_mount_then_open(ext, m, win, "window"),
+        )
+    sections = [open_actions]
 
     # Section 1: mount / unmount / eject + format (non-protected only).
+    device_items = []
     if not _is_protected_mount(m):
         if not is_mounted:
             if m.can_mount:
-                items.append(
-                    MyComputerMenuItem(_("Mount"), action=lambda: _do_mount(ext, m, win), section=1)
+                device_items.append(
+                    ContextMenuItem(_("Mount"), action=lambda: _do_mount(ext, m, win))
                 )
         elif m.can_eject:
-            items.append(
-                MyComputerMenuItem(_("Eject"), action=lambda: _do_eject(ext, m), section=1)
-            )
+            device_items.append(ContextMenuItem(_("Eject"), action=lambda: _do_eject(ext, m)))
         elif m.can_unmount:
-            items.append(
-                MyComputerMenuItem(_("Unmount"), action=lambda: _do_unmount(ext, m), section=1)
-            )
+            device_items.append(ContextMenuItem(_("Unmount"), action=lambda: _do_unmount(ext, m)))
         if device.startswith("/dev/"):
-            items.append(
-                MyComputerMenuItem(_("Format…"), action=lambda: _do_format(ext, device), section=1)
+            device_items.append(
+                ContextMenuItem(_("Format…"), action=lambda: _do_format(ext, device))
             )
+    if device_items:
+        sections.append(ContextMenuSection(device_items))
 
     # Section 2: properties (mounted disks only).
     if is_mounted and nav_uri:
-        items.append(
-            MyComputerMenuItem(
-                _("Properties"),
-                action=lambda: ext._do_properties(nav_uri, win),
-                shortcut="<Alt>Return",
-                section=2,
-            )
-        )
+        sections.append(properties_section(lambda: ext._do_properties(nav_uri, win)))
 
-    return MyComputerContextualMenu(items)
+    return ContextMenu(sections)
 
 
 @dataclasses.dataclass
@@ -251,7 +223,7 @@ class MountInfo:
     is_network_place: bool = False
     is_hidden: bool = False  # standard::is-hidden on the mount root, local mounts only
 
-    # Right-click menu factory menu(ext, win, m) -> MyComputerContextualMenu (built at show-time).
+    # Right-click menu factory menu(ext, win, m) -> ContextMenu (built at show-time).
     menu: object = _disk_context_menu
 
     @property
@@ -497,6 +469,13 @@ _CSS = b"""
 .unmounted {
     opacity: 0.5;
 }
+/* Same class/value Nautilus's own grid/list cells use to dim hidden-file icons
+   (nautilus-grid-cell.c, nautilus-name-cell.c, style.css's ".view .hidden-file").
+   Unscoped here (no .view ancestor requirement) since Column View's rows aren't
+   inside Nautilus's own view widget tree. */
+.hidden-file {
+    opacity: 0.55;
+}
 .vanilla-diskinfo-view-hidden > * {
     opacity: 0;
 }
@@ -536,6 +515,64 @@ _CSS = b"""
 .mc-selected {
     background-color: alpha(@window_fg_color, 0.07);
     border-radius: 12px;
+}
+/* Miller view preview column: 12px inner inset on every edge. */
+.mc-preview-column {
+    padding: 12px;
+}
+/* Persistent early-access marker for Column View. The warm red follows the
+   destructive/action-warning family without borrowing the user's accent. */
+.mc-beta-badge {
+    background-color: #c01c28;
+    color: #ffffff;
+    border-radius: 4px;
+    font-size: 0.78em;
+    font-weight: 700;
+    padding: 3px 8px;
+}
+/* Preview thumbnail: rounded corners. The Gtk.Picture sets overflow:hidden so
+   this radius clips the drawn image. 12px matches .card / .nautilus-view-cell. */
+.mc-preview-image {
+    border-radius: 12px;
+}
+/* Column View row thumbnail: rounded corners. The Gtk.Picture sets
+   overflow:hidden so this radius clips the COVER-cropped square texture. */
+.mc-row-thumbnail {
+    border-radius: 3px;
+}
+/* GtkListBoxRow normally applies the sidebar's horizontal padding around its
+   child. Move that inset into the Miller child box so it fills the outer row
+   allocation exactly, while its contents retain the native 8px inset. */
+.mc-column-list > row.mc-column-row {
+    padding-left: 0;
+    padding-right: 0;
+}
+.mc-column-list > row.mc-column-row > .mc-column-row-content {
+    padding-left: 8px;
+    padding-right: 8px;
+}
+.mc-column-list > row.mc-column-row.mc-row-cut {
+    opacity: 0.50;
+}
+/* Miller columns reuse .navigation-sidebar for its rounded-corner selection
+   shape (see widgets.py's MyComputerColumn), but a sidebar's native
+   :selected fill is a neutral grey, not accent -- correct for a places
+   sidebar, wrong for a browsing view where the last-selected row (folder or
+   file) should read like a normal content-view selection. Re-tint just the
+   selected state to the native accent tokens, keep everything else
+   (hover, shape, spacing) untouched.
+
+   Scoped to .mc-current-column, not plain :selected: only the column that
+   was last clicked (column_view.py's tracked focused_index, applied via
+   MyComputerColumn.set_current_column) reads as accent -- an ancestor
+   column still further back on the committed path keeps its row selected
+   internally (so navigating still works) but falls back to the plain
+   native :selected grey instead of competing for attention with accent
+   color. This is plain Python-tracked state, not GTK keyboard focus -- no
+   dependency on any focus-grabbing. */
+.mc-column-list.navigation-sidebar.mc-current-column row:selected {
+    background-color: @accent_bg_color;
+    color: @accent_fg_color;
 }
 """
 
@@ -1124,7 +1161,7 @@ def _watch_view_mode(ext) -> None:
             "changed::default-folder-viewer", functools.partial(_on_view_mode_changed, ext)
         )
         settings.connect("changed::click-policy", functools.partial(_on_click_policy_changed, ext))
-        ext._nautilus_prefs = settings  # keep reference
+        ext._view_mode_gsettings = settings  # keep reference
     except Exception:
         pass
 

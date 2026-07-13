@@ -22,68 +22,39 @@ from nautilus_my_computer.common import (
     _log,
     _menu_item_index,
     _menu_section_with_action,
+    _native_folder_icon_name,
     _uri_is_hidden,
 )
-from nautilus_my_computer.widgets import MyComputerContextualMenu, MyComputerMenuItem
+from nautilus_my_computer.context_menu import (
+    ContextMenu,
+    my_computer_additions_section,
+    open_section,
+    properties_section,
+)
 
 
-def _open_actions(
-    ext, win, uri: str, open_enabled: bool = True, is_special_place: bool = False
-) -> list:
-    """The three open actions for folder cards, collapsed into a single native
-    "Open" submenu (back arrow), matching native Nautilus folder right-click. Same
-    shortcuts as the disk card menu (Return / Ctrl+Return / Shift+Return)."""
-    submenu = [
-        MyComputerMenuItem(
-            _("Open"),
-            action=lambda: ext._do_open(uri, win),
-            shortcut="Return",
-            enabled=open_enabled,
-        ),
-        MyComputerMenuItem(
-            _("Open in New Tab"),
-            action=lambda: ext._do_open_tab(uri, win),
-            shortcut="<Control>Return",
-        ),
-        MyComputerMenuItem(
-            _("Open in New Window"),
-            action=lambda: ext._do_open_window(uri),
-            shortcut="<Shift>Return",
-        ),
-    ]
-    # Routes through the system app chooser (XDG Desktop Portal OpenURI with
-    # "ask"), see ext._do_open_with(). Never shown on special places (recent://,
-    # trash://, computer://, network, network mounts) — like native Nautilus,
-    # those have no app handler anyway.
-    if not is_special_place and uri.startswith("file://"):
-        submenu.append(
-            MyComputerMenuItem(
-                _("Open With…"), action=lambda: ext._do_open_with(uri, win), section=1
-            )
-        )
-    return [MyComputerMenuItem(_("Open"), submenu=submenu)]
-
-
-def folder_context_menu(ext, win, pf) -> MyComputerContextualMenu:
+def folder_context_menu(ext, win, pf) -> ContextMenu:
     """Preferred-folder card menu: open actions, remove from group, properties."""
-    items = _open_actions(ext, win, pf.nav_uri, is_special_place=pf.is_special_place)
-
-    items.append(
-        MyComputerMenuItem(
-            _("Unpin from My Computer"),
-            action=lambda: ext._do_remove_preferred_folder(pf, win),
-            section=1,
-        )
+    uri = pf.nav_uri
+    return ContextMenu(
+        [
+            open_section(
+                lambda: ext._do_open(uri, win),
+                open_tab_action=lambda: ext._do_open_tab(uri, win),
+                open_window_action=lambda: ext._do_open_window(uri),
+                open_with_action=(
+                    (lambda: ext._do_open_with(uri, win))
+                    if not pf.is_special_place and uri.startswith("file://")
+                    else None
+                ),
+            ),
+            my_computer_additions_section(
+                preferred=True,
+                toggle_preferred_action=lambda: ext._do_remove_preferred_folder(pf, win),
+            ),
+            properties_section(lambda: ext._do_properties(uri, win)),
+        ]
     )
-    items.append(
-        MyComputerMenuItem(
-            _("Properties"),
-            action=lambda: ext._do_properties(pf.nav_uri, win),
-            shortcut="<Alt>Return",
-            section=2,
-        )
-    )
-    return MyComputerContextualMenu(items)
 
 
 @dataclasses.dataclass
@@ -103,7 +74,7 @@ class PreferredFolder:
     # Set by load_preferred_folders(); not persisted as a separate gsettings value.
     index: int = 0
 
-    # Right-click menu factory menu(ext, win, pf) -> MyComputerContextualMenu (built at show-time).
+    # Right-click menu factory menu(ext, win, pf) -> ContextMenu (built at show-time).
     menu: object = folder_context_menu
 
 
@@ -200,7 +171,7 @@ def load_preferred_folders(gsettings) -> list[PreferredFolder]:
                     key=entry,
                     display_name=token["label"],
                     nav_uri=uri,
-                    icon_name=token["icon"],
+                    icon_name=_native_folder_icon_name(uri) or token["icon"],
                     is_special_place=is_special_place,
                     is_hidden=False if is_special_place else _uri_is_hidden(uri),
                     index=len(folders),

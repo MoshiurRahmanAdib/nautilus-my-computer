@@ -1,3 +1,11 @@
+nautilus-my-computer (0.12.0-1) UNRELEASED; urgency=medium
+
+  * Add an early, opt-in Column View (beta): browse folders as
+    Miller-style columns alongside the normal file view and the Computer
+    panel
+
+ -- Yann Masoch <231734284+yannmasoch@users.noreply.github.com>  Mon, 13 Jul 2026 02:20:00 -0700
+
 nautilus-my-computer (0.11.9-1) UNRELEASED; urgency=medium
 
   * Fix the extension failing to load entirely on GNOME Files 47 and 48,

@@ -1,5 +1,5 @@
 Name:           nautilus-my-computer
-Version:        0.11.9
+Version:        0.12.0
 Release:        0
 Summary:        My Computer for Nautilus, what GNOME Files should have always been
 
@@ -42,6 +42,10 @@ make build
 %{_datadir}/glib-2.0/schemas/io.github.yannmasoch.nautilus-my-computer.gschema.xml
 
 %changelog
+* Mon Jul 13 2026 Yann Masoch <231734284+yannmasoch@users.noreply.github.com> - 0.12.0-0
+- Add an early, opt-in Column View (beta): browse folders as Miller-style
+  columns alongside the normal file view and the Computer panel
+
 * Wed Jul 08 2026 Yann Masoch <231734284+yannmasoch@users.noreply.github.com> - 0.11.9-0
 - Fix the extension failing to load entirely on GNOME Files 47 and 48,
   where the Computer view never appeared and no error was visible outside
