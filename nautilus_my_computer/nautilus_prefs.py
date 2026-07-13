@@ -189,7 +189,10 @@ class NautilusPrefs:
         state = ext._windows.get(nautilus_win)
         if not state or state.get("header_motion"):
             return
-        btn = self.find_sort_button(nautilus_win)
+        # Once inject_column_view_entry has run, the view-options popover
+        # lives on our own MenuButton (the native split button's popover was
+        # moved there), not on the native MenuButton find_sort_button locates.
+        btn = state.get("view_options_menu_button") or self.find_sort_button(nautilus_win)
         if btn is None:
             _log("sort button not found in toolbar")
             return

@@ -85,7 +85,7 @@ DETACH_SETTINGS_WINDOW = False  # testing toggle: True opens settings as a stand
 
 # ── Extension metadata (keep in sync with pyproject.toml) ────────────────────
 EXT_NAME = "My Computer for Nautilus"
-EXT_VERSION = "0.12.0"
+EXT_VERSION = "0.12.1"
 EXT_AUTHOR = "Yann Masoch"
 EXT_LICENSE = "MIT"
 EXT_GITHUB = "https://github.com/yannmasoch/nautilus-my-computer"
@@ -1288,8 +1288,9 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
             "panel": panel,
             "column_panel": column_panel,
             "column_native_stopped": False,
-            "column_split_button": None,
-            "native_toggle_icon": None,
+            "native_split_button": None,
+            "view_switcher": None,
+            "view_options_menu_button": None,
             "grid_host": grid_host,
             "grid_box": grid_box,
             "section_flows": [],

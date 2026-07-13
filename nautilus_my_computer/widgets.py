@@ -22,7 +22,7 @@ gi.require_version("GLib", "2.0")
 gi.require_version("Graphene", "1.0")
 gi.require_version("Gtk", "4.0")
 gi.require_version("GdkPixbuf", "2.0")
-from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, Graphene, Gtk, Pango
+from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, GObject, Graphene, Gtk, Pango
 
 # GNOME's own thumbnail engine: it drives the system thumbnailers installed in
 # /usr/share/thumbnailers (Evince/Papers for PDF, glycin for images, gsf-office
@@ -648,6 +648,130 @@ class MyComputerFolderCard(Gtk.Box):
             self.icon.set_opacity(opacity)
         if self.name_label is not None:
             self.name_label.set_opacity(opacity)
+
+
+class MyComputerToggleButton(Gtk.Box):
+    """Dynamic N-way segmented toggle: flat Gtk.ToggleButtons in a light
+    pill, with a 1px separator between adjacent buttons that hides whenever
+    either neighbor is selected or hovered -- that neighbor's own highlight
+    already reads as the boundary, so the divider would be redundant.
+
+    Built from Gtk.Box/Gtk.ToggleButton/Gtk.Separator instead of
+    Adw.ToggleGroup (libadwaita 1.7+ only), so it renders identically on
+    GNOME 47 and 48+. See .mc-toggle-group/.mc-toggle-btn in
+    my_computer_view._CSS for the pill/button styling.
+    """
+
+    __gtype_name__ = "MyComputerToggleButton"
+    __gsignals__ = {"changed": (GObject.SignalFlags.RUN_FIRST, None, (str,))}
+
+    def __init__(self, segments, height: int = -1) -> None:
+        """segments: iterable of (name, icon_name, tooltip_text). height
+        defaults to -1 (natural size, stretched to fill via valign=FILL below
+        so it matches the containing toolbar's height); pass an explicit
+        value to pin it instead."""
+        # 1px spacing matches the separator's own stroke width, so the gap
+        # between buttons stays visually constant whether the separator is
+        # shown or hidden (opacity toggle in _update_separators).
+        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=1)
+        self.add_css_class("mc-toggle-group")
+        self.set_size_request(-1, height)
+        self.set_valign(Gtk.Align.FILL)
+
+        self._buttons: dict[str, Gtk.ToggleButton] = {}
+        self._hovered: dict[str, bool] = {}
+        self._separators: list[Gtk.Separator] = []  # gap i sits between order[i]/order[i+1]
+        self._order: list[str] = []
+        self._active_name: str | None = None
+        self._syncing = False
+
+        first_btn = None
+        for i, (name, icon, tooltip) in enumerate(segments):
+            if i > 0:
+                sep = Gtk.Separator(orientation=Gtk.Orientation.VERTICAL)
+                sep.add_css_class("mc-toggle-sep")
+                sep.set_margin_top(6)
+                sep.set_margin_bottom(6)
+                self.append(sep)
+                self._separators.append(sep)
+
+            image = Gtk.Image.new_from_icon_name(icon)
+            image.set_pixel_size(-1)
+            image.set_margin_start(8)
+            image.set_margin_end(8)
+            image.set_valign(Gtk.Align.CENTER)
+            image.set_halign(Gtk.Align.CENTER)
+
+            btn = Gtk.ToggleButton(child=image, tooltip_text=tooltip)
+            btn.add_css_class("flat")
+            btn.add_css_class("mc-toggle-btn")
+            if first_btn is None:
+                first_btn = btn
+            else:
+                btn.set_group(first_btn)
+            btn.connect("toggled", self._on_button_toggled, name)
+
+            motion = Gtk.EventControllerMotion()
+            motion.connect("enter", self._on_button_enter, name)
+            motion.connect("leave", self._on_button_leave, name)
+            btn.add_controller(motion)
+
+            self.append(btn)
+            self._buttons[name] = btn
+            self._hovered[name] = False
+            self._order.append(name)
+
+        self._update_separators()
+
+    def _on_button_enter(self, _ctrl, _x, _y, name: str) -> None:
+        self._hovered[name] = True
+        self._update_separators()
+
+    def _on_button_leave(self, _ctrl, name: str) -> None:
+        self._hovered[name] = False
+        self._update_separators()
+
+    def _on_button_toggled(self, btn: Gtk.ToggleButton, name: str) -> None:
+        if self._syncing or not btn.get_active():
+            return
+        self._active_name = name
+        self._update_separators()
+        self.emit("changed", name)
+
+    def _update_separators(self) -> None:
+        # Toggling a CSS class (not Widget.set_opacity()) is what lets the
+        # 200ms transition on .mc-toggle-sep actually animate.
+        for i, sep in enumerate(self._separators):
+            left, right = self._order[i], self._order[i + 1]
+            hidden = (
+                self._active_name in (left, right)
+                or self._hovered.get(left)
+                or self._hovered.get(right)
+            )
+            if hidden:
+                sep.add_css_class("mc-toggle-sep-hidden")
+            else:
+                sep.remove_css_class("mc-toggle-sep-hidden")
+
+    def get_active_name(self) -> str | None:
+        return self._active_name
+
+    def set_active_name(self, name: str) -> None:
+        btn = self._buttons.get(name)
+        if btn is None or btn.get_active():
+            return
+        self._syncing = True
+        try:
+            btn.set_active(True)
+        finally:
+            self._syncing = False
+        self._active_name = name
+        self._update_separators()
+
+    def set_segment_enabled(self, name: str, enabled: bool) -> None:
+        btn = self._buttons.get(name)
+        if btn is not None:
+            btn.set_sensitive(enabled)
 
 
 class MyComputerFixedWidthBox(Gtk.Box):

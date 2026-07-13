@@ -211,6 +211,10 @@ Column View sits alongside the native list and grid views as a third option on G
 
 ![Column View](assets/images/column-view-screenshot.png)
 
+The old two-state view-mode button is now a segmented Grid/List/Column switcher, so all three views are one click away instead of being buried behind a cycle button. Its native sorting and view-settings menu still lives right next to it, in its own "View Options" button.
+
+![Column View toggle button](assets/images/column-view-toggle-button.png)
+
 This is an early public beta, marked with a **Beta** badge in the view. The core browsing experience is solid, but it's still fresh and needs real-world use to surface edge cases. Found something rough? [Check details for Column View on GitHub](https://github.com/yannmasoch/nautilus-my-computer/issues/67).
 
 ## Features

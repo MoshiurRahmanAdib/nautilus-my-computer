@@ -574,6 +574,44 @@ _CSS = b"""
     background-color: @accent_bg_color;
     color: @accent_fg_color;
 }
+/* Grid/List/Column segmented switcher (see widgets.MyComputerToggleButton).
+   Hand-built from Gtk.Box/Gtk.ToggleButton/Gtk.Separator, not Adw.ToggleGroup
+   (libadwaita 1.7+ only), so it renders identically on GNOME 47 and 48+.
+   Reuses the same alpha(@window_fg_color, 0.07) hover-overlay formula as
+   .mc-selected above for both the pill background and the button hover tint. */
+.mc-toggle-group {
+    background-color: alpha(@window_fg_color, 0.07);
+    border-radius: 9px;
+    padding: 2px;
+}
+.mc-toggle-btn {
+    border-radius: 7px;
+    /* Overrides the theme's own button padding/min-height, which is taller
+       than our target pill height and otherwise forces the whole group
+       (and its Widget.set_size_request() floor in widgets.py) to grow past
+       it -- a size request is only a minimum, it cannot shrink a child
+       whose CSS-driven natural size already exceeds it. */
+    padding: 0 0;
+    min-height: 0;
+    transition: background-color 200ms ease;
+}
+.mc-toggle-btn:hover {
+    background-color: alpha(@window_fg_color, 0.07);
+}
+.mc-toggle-btn:checked {
+    background-color: @view_bg_color;
+}
+/* Toggled via widgets.MyComputerToggleButton._update_separators() (a CSS
+   class, not a direct opacity property set) so this transition actually
+   animates -- GTK4 only animates CSS-driven property changes, not
+   Widget.set_opacity() calls from code. */
+.mc-toggle-sep {
+    opacity: 1;
+    transition: opacity 200ms ease;
+}
+.mc-toggle-sep.mc-toggle-sep-hidden {
+    opacity: 0;
+}
 """
 
 
