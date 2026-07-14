@@ -20,11 +20,12 @@ gi.require_version("Gtk", "4.0")
 from gi.repository import Gdk, Gio, GLib, GObject, Gtk
 
 _custom_translation = None
-_localedir = os.path.expanduser("~/.local/share/locale")
-try:
-    _custom_translation = gettext.translation("nautilus-my-computer", localedir=_localedir)
-except Exception:
-    pass
+for _localedir in (os.path.expanduser("~/.local/share/locale"), None):
+    try:
+        _custom_translation = gettext.translation("nautilus-my-computer", localedir=_localedir)
+        break
+    except Exception:
+        continue
 
 _nautilus_translation = None
 try:
