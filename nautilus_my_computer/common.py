@@ -83,38 +83,19 @@ def _icon_name_renders(icon_name: str) -> bool:
     return theme.has_icon(icon_name)
 
 
-_SPECIAL_DIR_ICON = {
-    GLib.UserDirectory.DIRECTORY_DOCUMENTS: "folder-documents",
-    GLib.UserDirectory.DIRECTORY_DOWNLOAD: "folder-download",
-    GLib.UserDirectory.DIRECTORY_MUSIC: "folder-music",
-    GLib.UserDirectory.DIRECTORY_VIDEOS: "folder-videos",
-    GLib.UserDirectory.DIRECTORY_PICTURES: "folder-pictures",
-}
-
-
-def _native_folder_icon_name(uri: str) -> str | None:
-    """Canonical native icon name ("user-home", "folder-download", ...) for a
-    URI that is exactly the user's home directory or one of the standard XDG
-    user folders (Documents, Downloads, Music, Videos, Pictures) -- the same
-    fixed names Nautilus itself uses for those special locations. Returns
-    None for any other URI, so callers fall back to the real GIcon from
-    query_info/enumerate_children.
-
-    Single source of truth for this fixed table, shared by
-    preferred_folders.load_preferred_folders() and column_view's row icons --
-    both need the same native icon for the same real path, and neither should
-    hand-roll its own copy of this table.
+def _resolve_custom_gicon(info: Gio.FileInfo) -> Gio.Icon | None:
+    """Mirrors Nautilus's own get_custom_icon() precedence (nautilus-file.c):
+    metadata::custom-icon (a URI) then metadata::custom-icon-name, ahead of
+    the regular content-type icon. Neither key is folded into GIO's
+    standard::icon attribute (confirmed via `gio info`), so callers must
+    request both explicitly alongside standard::icon.
     """
-    if not uri:
-        return None
-    norm = uri.rstrip("/")
-    home_uri = GLib.filename_to_uri(GLib.get_home_dir(), None).rstrip("/")
-    if norm == home_uri:
-        return "user-home"
-    for special_dir, icon_name in _SPECIAL_DIR_ICON.items():
-        path = GLib.get_user_special_dir(special_dir)
-        if path and norm == GLib.filename_to_uri(path, None).rstrip("/"):
-            return icon_name
+    uri = info.get_attribute_as_string("metadata::custom-icon")
+    if uri:
+        return Gio.FileIcon.new(Gio.File.new_for_uri(uri))
+    name = info.get_attribute_as_string("metadata::custom-icon-name")
+    if name:
+        return Gio.ThemedIcon.new_with_default_fallbacks(name)
     return None
 
 

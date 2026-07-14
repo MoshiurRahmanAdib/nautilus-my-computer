@@ -45,6 +45,7 @@ from nautilus_my_computer.common import (
     _find_widget,
     _folder_card_width,
     _log,
+    _resolve_custom_gicon,
     _uri_is_hidden,
 )
 from nautilus_my_computer.context_menu import (
@@ -1568,6 +1569,8 @@ def _populate(ext, win: Gtk.Window) -> None:
         for pf in folders:
             if pf.key not in preferred_folders.PREFERRED_TOKENS:
                 _refresh_folder_metadata_async(ext, pf)
+            elif not pf.is_special_place:
+                _refresh_folder_icon_async(ext, pf)
         _sync_folder_rename_watchers(ext, folders)
         if folders:
             section = MyComputerCardSection(
@@ -1687,7 +1690,8 @@ def _refresh_folder_metadata_async(ext, pf: "PreferredFolder") -> None:
     then patch any rendered cards in place via the folder_card_widgets registry."""
     gfile = Gio.File.new_for_uri(pf.nav_uri)
     gfile.query_info_async(
-        "standard::display-name,standard::icon,standard::is-hidden",
+        "standard::display-name,standard::icon,standard::is-hidden,"
+        "metadata::custom-icon,metadata::custom-icon-name",
         Gio.FileQueryInfoFlags.NONE,
         GLib.PRIORITY_DEFAULT,
         ext._folder_refresh_cancellable,
@@ -1707,11 +1711,45 @@ def _on_folder_metadata_ready(
     if pf is None:
         return
     display_name = info.get_display_name() or pf.display_name
-    gio_icon = info.get_icon()
+    gio_icon = _resolve_custom_gicon(info) or info.get_icon()
     is_hidden = info.get_attribute_boolean("standard::is-hidden")
     new_pf = dataclasses.replace(
         pf, display_name=display_name, gio_icon=gio_icon, is_hidden=is_hidden
     )
+    _folder_data[folder_key] = new_pf
+    for state in ext._windows.values():
+        card = state.get("folder_card_widgets", {}).get(folder_key)
+        if card is not None:
+            card.update_metadata(new_pf)
+
+
+def _refresh_folder_icon_async(ext, pf: "PreferredFolder") -> None:
+    """Icon-only refresh for built-in real-folder tokens (Documents/Downloads/
+    Music/Videos/Pictures/Home). GIO's standard::icon already resolves the
+    correct native icon for these paths (folder-download, user-home, ...) --
+    no hardcoded name table needed -- and metadata::custom-icon(-name) layers
+    a user-set custom icon on top, exactly like Nautilus itself does."""
+    gfile = Gio.File.new_for_uri(pf.nav_uri)
+    gfile.query_info_async(
+        "standard::icon,metadata::custom-icon,metadata::custom-icon-name",
+        Gio.FileQueryInfoFlags.NONE,
+        GLib.PRIORITY_DEFAULT,
+        ext._folder_refresh_cancellable,
+        functools.partial(_on_folder_icon_ready, ext),
+        pf.key,
+    )
+
+
+def _on_folder_icon_ready(ext, gfile: Gio.File, result: Gio.AsyncResult, folder_key: str) -> None:
+    try:
+        info = gfile.query_info_finish(result)
+    except GLib.Error:
+        return
+    pf = _folder_data.get(folder_key)
+    if pf is None:
+        return
+    gio_icon = _resolve_custom_gicon(info) or info.get_icon()
+    new_pf = dataclasses.replace(pf, gio_icon=gio_icon)
     _folder_data[folder_key] = new_pf
     for state in ext._windows.values():
         card = state.get("folder_card_widgets", {}).get(folder_key)

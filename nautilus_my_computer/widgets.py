@@ -98,8 +98,8 @@ from nautilus_my_computer.common import (
     _icon_name_renders,
     _is_activating_click,
     _log,
-    _native_folder_icon_name,
     _nautilus_icon_size,
+    _resolve_custom_gicon,
     _set_regular_icon,
 )
 from nautilus_my_computer.components import set_row_active, set_row_selected
@@ -1010,19 +1010,13 @@ class MyComputerColumnRow(Gtk.ListBoxRow):
         icon.set_halign(Gtk.Align.CENTER)
         icon.set_valign(Gtk.Align.CENTER)
 
-        # Same native icon table Preferred Folders draws from (home/Documents/
-        # Downloads/...): checked first so these rows show the real colored
-        # folder icon Nautilus itself uses, not whatever generic GIcon
-        # enumerate_children happened to return for that path.
-        #
-        # _set_regular_icon (not a plain set_from_icon_name + set_pixel_size)
-        # forces the full-color variant: at this small 24px size GTK would
-        # otherwise auto-select a monochrome/symbolic-looking fixed-size theme
+        # gio_icon is already the fully-resolved icon by the time it gets here (custom
+        # icon if the caller found one, else GIO's own real icon for the path -- see
+        # _populate_rows) -- _set_regular_icon (not a plain set_from_icon_name +
+        # set_pixel_size) forces the full-color variant: at this small 24px size GTK
+        # would otherwise auto-select a monochrome/symbolic-looking fixed-size theme
         # variant on some themes. See common._set_regular_icon.
-        native_icon = _native_folder_icon_name(uri) if is_dir else None
-        if native_icon:
-            _set_regular_icon(icon, _COLUMN_ROW_ICON_SIZE, icon_name=native_icon)
-        elif _gicon_renders(gio_icon):
+        if _gicon_renders(gio_icon):
             _set_regular_icon(icon, _COLUMN_ROW_ICON_SIZE, gicon=gio_icon)
         else:
             _set_regular_icon(
@@ -1516,7 +1510,8 @@ class MyComputerColumn(Gtk.ScrolledWindow):
         gfile.enumerate_children_async(
             "standard::name,standard::display-name,standard::icon,"
             "standard::is-hidden,standard::type,standard::content-type,"
-            "standard::size,time::modified,time::created",
+            "standard::size,time::modified,time::created,"
+            "metadata::custom-icon,metadata::custom-icon-name",
             Gio.FileQueryInfoFlags.NONE,
             GLib.PRIORITY_DEFAULT,
             self._cancellable,
@@ -1661,7 +1656,7 @@ class MyComputerColumn(Gtk.ScrolledWindow):
                     name_lower=(info.get_display_name() or name).lower(),
                     name=name,
                     display_name=info.get_display_name() or name,
-                    icon=info.get_icon(),
+                    icon=_resolve_custom_gicon(info) or info.get_icon(),
                     content_type=info.get_content_type(),
                     is_hidden=is_hidden,
                     size=size,
