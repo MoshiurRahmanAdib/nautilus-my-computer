@@ -17,6 +17,7 @@ from nautilus_my_computer.common import (
     _COLUMN_WIDTH,
     _,
     _all_widgets,
+    _icon_name_renders,
     _log,
 )
 from nautilus_my_computer.context_menu import (
@@ -105,6 +106,9 @@ _COLUMN_RESIZE_ENABLED = True
 # "view-grid-symbolic" while list is showing, "view-list-symbolic" while grid
 # is showing.
 _COLUMN_ICON_NAME = "view-column-symbolic"
+# Not every icon theme ships view-column-symbolic (absent from Adwaita as of
+# GNOME 48) -- resolved against the live icon theme in _resolve_column_icon().
+_COLUMN_ICON_FALLBACK = "view-dual-symbolic"
 _ICON_TARGET_GRID = "view-grid-symbolic"  # shown while sitting on list
 _ICON_TARGET_LIST = "view-list-symbolic"  # shown while sitting on grid (default fallback)
 _NATIVE_TOGGLE_ACTION = "slot.files-view-mode-toggle"
@@ -2201,10 +2205,20 @@ def _ancestor_split_button(widget: Gtk.Widget) -> Adw.SplitButton | None:
     return None
 
 
+def _resolve_column_icon() -> str:
+    """view-column-symbolic is missing from some icon themes (e.g. Adwaita as
+    of GNOME 48); fall back to a name every theme in practice ships."""
+    return _COLUMN_ICON_NAME if _icon_name_renders(_COLUMN_ICON_NAME) else _COLUMN_ICON_FALLBACK
+
+
 def _build_view_switcher(ext, win: Gtk.Window) -> Gtk.Widget:
     """Build the Grid/List/Column segmented control (see
     widgets.MyComputerToggleButton)."""
-    switcher = MyComputerToggleButton((name, icon, _(tooltip)) for name, icon, tooltip in _SEGMENTS)
+    segments = [
+        (name, icon, tooltip) if name != "column" else (name, _resolve_column_icon(), tooltip)
+        for name, icon, tooltip in _SEGMENTS
+    ]
+    switcher = MyComputerToggleButton((name, icon, _(tooltip)) for name, icon, tooltip in segments)
     switcher.connect("changed", lambda _w, name: _on_view_segment_activated(ext, win, name))
     return switcher
 

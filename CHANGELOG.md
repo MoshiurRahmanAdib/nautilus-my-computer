@@ -4,6 +4,16 @@ All notable changes to this project are documented here.
 
 ---
 
+## v0.12.2
+Fix a broken icon in the Grid/List/Column switcher on some systems.
+
+### Fixed
+- The Column View icon in the Grid/List/Column switcher could show up as a
+  broken/missing icon, depending on your icon theme. It now falls back to a
+  different icon automatically when the preferred one isn't available.
+
+---
+
 ## v0.12.1
 Replace the two-state view-mode button with a segmented Grid/List/Column
 switcher.
