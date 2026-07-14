@@ -1,5 +1,5 @@
 Name:           nautilus-my-computer
-Version:        0.12.1
+Version:        0.12.2
 Release:        0
 Summary:        My Computer for Nautilus, what GNOME Files should have always been
 
@@ -42,6 +42,11 @@ make build
 %{_datadir}/glib-2.0/schemas/io.github.yannmasoch.nautilus-my-computer.gschema.xml
 
 %changelog
+* Mon Jul 13 2026 Yann Masoch <231734284+yannmasoch@users.noreply.github.com> - 0.12.2-0
+- Fix the Column View switcher segment showing a broken icon on systems
+  whose icon theme (including Adwaita itself) doesn't ship
+  view-column-symbolic
+
 * Mon Jul 13 2026 Yann Masoch <231734284+yannmasoch@users.noreply.github.com> - 0.12.1-0
 - Replace the two-state view-mode button with a segmented Grid/List/Column
   switcher, so all three views are one click away

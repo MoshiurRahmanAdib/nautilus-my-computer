@@ -1,3 +1,11 @@
+nautilus-my-computer (0.12.2-1) UNRELEASED; urgency=medium
+
+  * Fix the Column View switcher segment showing a broken icon on systems
+    whose icon theme (including Adwaita itself) doesn't ship
+    view-column-symbolic
+
+ -- Yann Masoch <231734284+yannmasoch@users.noreply.github.com>  Mon, 13 Jul 2026 17:23:02 -0700
+
 nautilus-my-computer (0.12.1-1) UNRELEASED; urgency=medium
 
   * Replace the two-state view-mode button with a segmented Grid/List/Column
