@@ -563,6 +563,7 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         self._local_poll_stop: threading.Event | None = None
         self._net_poll_timer_id: int | None = None
         self._net_poll_cancellable: Gio.Cancellable | None = None
+        self._folder_icon_poll_timer_id: int | None = None
         self._folder_refresh_cancellable = Gio.Cancellable()
         self._folder_monitors: dict[str, Gio.FileMonitor] = {}  # keyed by parent dir URI
         self._watched_folder_keys: set[str] = set()

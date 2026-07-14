@@ -78,6 +78,7 @@ _DIRTY_ACTIVE_THRESHOLD = (
 )  # /proc/meminfo Dirty+Writeback ≥ this → poll fast (above resting journal noise ~1–2 MB)
 _USAGE_POLL_NETWORK_MS = 5000  # async D-Bus usage poll interval for GVfs/network mounts
 _SORT_POLL_MS = 250  # gvfs sort-metadata poll cadence (only while header is hovered)
+_FOLDER_ICON_POLL_MS = 2000  # metadata::custom-icon poll cadence (gvfs metadata isn't inotify)
 _STALE_RELEASE_FRAMES = 2  # keep detached panel generations alive across this many frame ticks
 REAL_FSTYPES = {
     "ext4",
@@ -1385,6 +1386,24 @@ def _update_card_usage(ext, state: dict, key: str, total: int, free: int) -> Non
         card.update_usage(_disk_data[key])
 
 
+def _folder_icon_poll_tick(ext) -> bool:
+    """GLib timer callback: re-query display-name/icon metadata for every rendered
+    Preferred Folder. Renames and deletes reach us live via the file monitors in
+    _sync_folder_rename_watchers, but a custom-icon-only change (Nautilus'
+    "Properties > Icon") never fires a file-monitor event at all -- gvfs metadata
+    is an mmap-backed store, not inotify-visible (confirmed empirically; same
+    root cause as the sort-metadata polling need). Re-arming this cheap async
+    query on a timer, scoped to "panel visible" exactly like the network usage
+    poll, is the only way to catch it without waiting for the user to navigate
+    away and back (issue #71)."""
+    for pf in list(_folder_data.values()):
+        if pf.key not in preferred_folders.PREFERRED_TOKENS:
+            _refresh_folder_metadata_async(ext, pf)
+        elif not pf.is_special_place:
+            _refresh_folder_icon_async(ext, pf)
+    return GLib.SOURCE_CONTINUE
+
+
 def _ensure_usage_poll_running(ext) -> None:
     """Arm both usage poll workers if not already running."""
     if ext._local_poll_stop is None:
@@ -1398,6 +1417,10 @@ def _ensure_usage_poll_running(ext) -> None:
         _net_usage_tick(ext)
         ext._net_poll_timer_id = GLib.timeout_add(
             _USAGE_POLL_NETWORK_MS, functools.partial(_net_usage_tick, ext)
+        )
+    if ext._folder_icon_poll_timer_id is None:
+        ext._folder_icon_poll_timer_id = GLib.timeout_add(
+            _FOLDER_ICON_POLL_MS, functools.partial(_folder_icon_poll_tick, ext)
         )
 
 
@@ -1419,6 +1442,9 @@ def _stop_usage_poll_if_idle(ext) -> None:
         if ext._net_poll_cancellable is not None:
             ext._net_poll_cancellable.cancel()
             ext._net_poll_cancellable = None
+        if ext._folder_icon_poll_timer_id is not None:
+            GLib.source_remove(ext._folder_icon_poll_timer_id)
+            ext._folder_icon_poll_timer_id = None
 
 
 def _new_grid_box(ext) -> Gtk.Box:
@@ -1803,16 +1829,38 @@ def _on_preferred_folder_file_changed(
     other_file: Gio.File | None,
     event_type: Gio.FileMonitorEvent,
 ) -> None:
-    if event_type != Gio.FileMonitorEvent.RENAMED or other_file is None:
+    """React to the watched folder itself moving or disappearing so the
+    Preferred Folders group updates live instead of only on next view entry.
+
+    RENAMED (paired: other_file set) covers a move/rename within the same
+    watched parent -- GIO gives us the real destination, so the stored entry
+    is corrected in place.
+
+    DELETED (permanent delete) and MOVED_OUT (unpaired: other_file is None --
+    Nautilus' default "move to Trash", or a move to any directory we aren't
+    also watching) both mean the folder is gone from the one place we can
+    see. GIO/inotify has no way to report a destination outside the watched
+    parent (confirmed: even self-watching the folder's own inode yields a
+    bare DELETED with no path -- see issue #71 investigation), so there is no
+    reliable way to follow it. Per product decision, silently keeping a pin
+    to a location we can no longer verify is worse than dropping it: remove
+    it from Preferred Folders rather than leaving a stale or "missing"
+    placeholder behind."""
+    if not ext._gsettings:
         return
     old_uri = file.get_uri()
-    if old_uri not in ext._watched_folder_keys or not ext._gsettings:
+    if old_uri not in ext._watched_folder_keys:
         return
-    new_uri = other_file.get_uri()
     entries = ext._get_preferred_folders()
     if old_uri not in entries:
         return
-    entries[entries.index(old_uri)] = new_uri
+
+    if event_type == Gio.FileMonitorEvent.RENAMED and other_file is not None:
+        entries[entries.index(old_uri)] = other_file.get_uri()
+    elif event_type in (Gio.FileMonitorEvent.DELETED, Gio.FileMonitorEvent.MOVED_OUT):
+        entries.remove(old_uri)
+    else:
+        return
     ext._gsettings.set_value("preferred-folders", GLib.Variant("as", entries))
 
 
