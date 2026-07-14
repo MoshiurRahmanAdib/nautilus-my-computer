@@ -69,7 +69,17 @@ nix profile install "github:yannmasoch/nautilus-my-computer?dir=packaging/nix"
 <details>
 <summary><b>Arch Linux</b> (AUR)</summary>
 
-Not yet published - AUR is currently blocking submissions from new accounts due to a recent spam wave. Will be added as soon as that's lifted.
+Not yet published on the AUR - AUR is currently blocking submissions from new accounts due to a
+recent spam wave. Will be added as soon as that's lifted.
+
+In the meantime, install it the usual AUR way, straight from the repo:
+```bash
+git clone https://github.com/yannmasoch/nautilus-my-computer.git
+cd nautilus-my-computer/packaging/aur
+makepkg -si
+```
+You'll need to `git pull` and re-run `makepkg -si` manually for each new version. Once the AUR
+submission block is lifted, this will be updated automatically with your usual AUR updates.
 </details>
 
 <details>
