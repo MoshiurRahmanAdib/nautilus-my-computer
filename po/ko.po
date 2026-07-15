@@ -197,6 +197,16 @@ msgid "Choose which locations appear on the sidebar."
 msgstr ""
 
 #——————————————————————————————
+# Preferences - Preferred Folders
+#——————————————————————————————
+
+msgid "Show captions"
+msgstr "캡션 표시"
+
+msgid "Shows or hides the caption lines already configured in Nautilus"
+msgstr "Nautilus에 이미 설정된 캡션 줄을 표시하거나 숨깁니다"
+
+#——————————————————————————————
 # Preferences - About
 #——————————————————————————————
 

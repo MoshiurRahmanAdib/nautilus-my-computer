@@ -195,6 +195,16 @@ msgid "Choose which locations appear on the sidebar."
 msgstr "اختر المواقع التي تظهر في الشريط الجانبي."
 
 #——————————————————————————————
+# Preferences - Preferred Folders
+#——————————————————————————————
+
+msgid "Show captions"
+msgstr "إظهار التسميات التوضيحية"
+
+msgid "Shows or hides the caption lines already configured in Nautilus"
+msgstr "يعرض أو يخفي أسطر التسميات التوضيحية المُعدّة مسبقًا في Nautilus"
+
+#——————————————————————————————
 # Preferences - About
 #——————————————————————————————
 

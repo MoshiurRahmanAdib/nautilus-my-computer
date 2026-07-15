@@ -195,6 +195,16 @@ msgid "Choose which locations appear on the sidebar."
 msgstr "Válassza ki, hogy mely helyek jelenjenek meg az oldalsávon."
 
 # ——————————————————————————————
+# Preferences - Preferred Folders
+# ——————————————————————————————
+
+msgid "Show captions"
+msgstr "Feliratok megjelenítése"
+
+msgid "Shows or hides the caption lines already configured in Nautilus"
+msgstr "Megjeleníti vagy elrejti a Nautilusban már beállított feliratsorokat"
+
+# ——————————————————————————————
 # Preferences - About
 # ——————————————————————————————
 msgid "About"

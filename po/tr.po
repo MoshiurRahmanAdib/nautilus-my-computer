@@ -193,6 +193,16 @@ msgid "Choose which locations appear on the sidebar."
 msgstr "Kenar çubuğunda hangi konumların görüneceğini seçin."
 
 # ——————————————————————————————
+# Preferences - Preferred Folders
+# ——————————————————————————————
+
+msgid "Show captions"
+msgstr "Açıklamaları göster"
+
+msgid "Shows or hides the caption lines already configured in Nautilus"
+msgstr "Nautilus'ta zaten yapılandırılmış açıklama satırlarını gösterir veya gizler"
+
+# ——————————————————————————————
 # Preferences - About
 # ——————————————————————————————
 msgid "About"

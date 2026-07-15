@@ -195,6 +195,16 @@ msgid "Choose which locations appear on the sidebar."
 msgstr "Trieu quines ubicacions apareixen a la barra lateral."
 
 #——————————————————————————————
+# Preferences - Preferred Folders
+#——————————————————————————————
+
+msgid "Show captions"
+msgstr "Mostra llegendes"
+
+msgid "Shows or hides the caption lines already configured in Nautilus"
+msgstr "Mostra o amaga les línies de llegenda ja configurades al Nautilus"
+
+#——————————————————————————————
 # Preferences - About
 #——————————————————————————————
 

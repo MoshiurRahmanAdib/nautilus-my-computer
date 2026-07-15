@@ -195,6 +195,16 @@ msgid "Choose which locations appear on the sidebar."
 msgstr "Scegli quali posizioni mostrare nella barra laterale."
 
 #——————————————————————————————
+# Preferences - Preferred Folders
+#——————————————————————————————
+
+msgid "Show captions"
+msgstr "Mostra didascalie"
+
+msgid "Shows or hides the caption lines already configured in Nautilus"
+msgstr "Mostra o nasconde le righe di didascalia già configurate in Nautilus"
+
+#——————————————————————————————
 # Preferences - About
 #——————————————————————————————
 

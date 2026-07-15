@@ -191,6 +191,16 @@ msgid "Include boot and EFI partitions in the System group"
 msgstr "Включать загрузочные и EFI разделы в группу системных"
 
 #——————————————————————————————
+# Preferences - Preferred Folders
+#——————————————————————————————
+
+msgid "Show captions"
+msgstr "Показывать подписи"
+
+msgid "Shows or hides the caption lines already configured in Nautilus"
+msgstr "Показывает или скрывает строки подписей, уже настроенные в Nautilus"
+
+#——————————————————————————————
 # Preferences - About
 #——————————————————————————————
 
