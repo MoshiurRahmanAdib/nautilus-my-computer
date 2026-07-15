@@ -1808,12 +1808,29 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         if detached:
             pref_win.set_default_size(680, 760)
 
-        page = Adw.PreferencesPage()
-        pref_win.add(page)
+        page_general = Adw.PreferencesPage()
+        page_general.set_title(_("General"))
+        page_general.set_icon_name("preferences-system-symbolic")
+        pref_win.add(page_general)
+
+        page_computer = Adw.PreferencesPage()
+        page_computer.set_title(_("Computer view"))
+        page_computer.set_icon_name("computer-symbolic")
+        pref_win.add(page_computer)
+
+        page_sidebar = Adw.PreferencesPage()
+        page_sidebar.set_title(_("Sidebar"))
+        page_sidebar.set_icon_name("sidebar-show-symbolic")
+        pref_win.add(page_sidebar)
+
+        page_about = Adw.PreferencesPage()
+        page_about.set_title(_("About"))
+        page_about.set_icon_name("help-about-symbolic")
+        pref_win.add(page_about)
 
         gen_group = Adw.PreferencesGroup()
         gen_group.set_title(_("General"))
-        page.add(gen_group)
+        page_general.add(gen_group)
 
         start_row = Adw.SwitchRow()
         start_row.set_title(_("Start on the Computer view"))
@@ -1831,7 +1848,7 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
                 "Hidden: hides the group entirely."
             )
         )
-        page.add(vis_group)
+        page_computer.add(vis_group)
 
         _vis_map = ["visible", "merged", "hidden"]
         _vis_labels = [_("Visible"), _("Merged"), _("Hidden")]
@@ -1885,7 +1902,7 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         sidebar_vis_group = Adw.PreferencesGroup()
         sidebar_vis_group.set_title(_("Sidebar visibility"))
         sidebar_vis_group.set_description(_("Choose which locations appear on the sidebar."))
-        page.add(sidebar_vis_group)
+        page_sidebar.add(sidebar_vis_group)
 
         # One toggle per native place (Computer is always shown, no key, not here).
         for entry in NATIVE_PLACES:
@@ -1901,7 +1918,7 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         color_group = Adw.PreferencesGroup()
         color_group.set_title(_("Bar Color"))
         color_group.set_description(_("Select or customize the bar color."))
-        page.add(color_group)
+        page_computer.add(color_group)
 
         mode_row = Adw.ComboRow()
         mode_row.set_title(_("Color mode"))
@@ -1983,7 +2000,7 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
 
         about_group = Adw.PreferencesGroup()
         about_group.set_title(_("About"))
-        page.add(about_group)
+        page_about.add(about_group)
 
         def _about_row(title: str, value: str) -> Adw.ActionRow:
             row = Adw.ActionRow()
