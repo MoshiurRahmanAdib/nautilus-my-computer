@@ -252,3 +252,92 @@ msgstr "Tercihlere ekle"
 
 msgid "Remove from Preferred"
 msgstr "Tercihlerden kaldır"
+
+#——————————————————————————————
+# Panel - Preferred Folders - Captions
+#——————————————————————————————
+
+msgid "{n} item"
+msgid_plural "{n} items"
+msgstr[0] "{n} öge"
+msgstr[1] "{n} öge"
+
+#——————————————————————————————
+# General - Relative Dates
+#——————————————————————————————
+
+msgid "Today"
+msgstr "Bugün"
+
+msgid "Yesterday"
+msgstr "Dün"
+
+msgid "Tomorrow"
+msgstr "Yarın"
+
+msgid "This week"
+msgstr "Bu hafta"
+
+msgid "Last week"
+msgstr "Geçen hafta"
+
+msgid "Next week"
+msgstr "Gelecek hafta"
+
+msgid "This month"
+msgstr "Bu ay"
+
+msgid "Last month"
+msgstr "Geçen ay"
+
+msgid "Next month"
+msgstr "Gelecek ay"
+
+msgid "This year"
+msgstr "Bu yıl"
+
+msgid "Last year"
+msgstr "Geçen yıl"
+
+msgid "Next year"
+msgstr "Gelecek yıl"
+
+msgid "{n} day ago"
+msgid_plural "{n} days ago"
+msgstr[0] "{n} gün önce"
+msgstr[1] "{n} gün önce"
+
+msgid "In {n} day"
+msgid_plural "In {n} days"
+msgstr[0] "{n} gün sonra"
+msgstr[1] "{n} gün sonra"
+
+msgid "{n} week ago"
+msgid_plural "{n} weeks ago"
+msgstr[0] "{n} hafta önce"
+msgstr[1] "{n} hafta önce"
+
+msgid "In {n} week"
+msgid_plural "In {n} weeks"
+msgstr[0] "{n} hafta sonra"
+msgstr[1] "{n} hafta sonra"
+
+msgid "{n} month ago"
+msgid_plural "{n} months ago"
+msgstr[0] "{n} ay önce"
+msgstr[1] "{n} ay önce"
+
+msgid "In {n} month"
+msgid_plural "In {n} months"
+msgstr[0] "{n} ay sonra"
+msgstr[1] "{n} ay sonra"
+
+msgid "{n} year ago"
+msgid_plural "{n} years ago"
+msgstr[0] "{n} yıl önce"
+msgstr[1] "{n} yıl önce"
+
+msgid "In {n} year"
+msgid_plural "In {n} years"
+msgstr[0] "{n} yıl sonra"
+msgstr[1] "{n} yıl sonra"

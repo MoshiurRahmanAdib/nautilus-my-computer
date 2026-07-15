@@ -255,3 +255,92 @@ msgstr "Afegeix a preferides"
 
 msgid "Remove from Preferred"
 msgstr "Elimina de preferides"
+
+#——————————————————————————————
+# Panel - Preferred Folders - Captions
+#——————————————————————————————
+
+msgid "{n} item"
+msgid_plural "{n} items"
+msgstr[0] "{n} element"
+msgstr[1] "{n} elements"
+
+#——————————————————————————————
+# General - Relative Dates
+#——————————————————————————————
+
+msgid "Today"
+msgstr "Avui"
+
+msgid "Yesterday"
+msgstr "Ahir"
+
+msgid "Tomorrow"
+msgstr "Demà"
+
+msgid "This week"
+msgstr "Aquesta setmana"
+
+msgid "Last week"
+msgstr "La setmana passada"
+
+msgid "Next week"
+msgstr "La setmana vinent"
+
+msgid "This month"
+msgstr "Aquest mes"
+
+msgid "Last month"
+msgstr "El mes passat"
+
+msgid "Next month"
+msgstr "El mes vinent"
+
+msgid "This year"
+msgstr "Aquest any"
+
+msgid "Last year"
+msgstr "L’any passat"
+
+msgid "Next year"
+msgstr "L’any vinent"
+
+msgid "{n} day ago"
+msgid_plural "{n} days ago"
+msgstr[0] "fa {n} dia"
+msgstr[1] "fa {n} dies"
+
+msgid "In {n} day"
+msgid_plural "In {n} days"
+msgstr[0] "d’aquí a {n} dia"
+msgstr[1] "d’aquí a {n} dies"
+
+msgid "{n} week ago"
+msgid_plural "{n} weeks ago"
+msgstr[0] "fa {n} setmana"
+msgstr[1] "fa {n} setmanes"
+
+msgid "In {n} week"
+msgid_plural "In {n} weeks"
+msgstr[0] "d’aquí a {n} setmana"
+msgstr[1] "d’aquí a {n} setmanes"
+
+msgid "{n} month ago"
+msgid_plural "{n} months ago"
+msgstr[0] "fa {n} mes"
+msgstr[1] "fa {n} mesos"
+
+msgid "In {n} month"
+msgid_plural "In {n} months"
+msgstr[0] "d’aquí a {n} mes"
+msgstr[1] "d’aquí a {n} mesos"
+
+msgid "{n} year ago"
+msgid_plural "{n} years ago"
+msgstr[0] "fa {n} any"
+msgstr[1] "fa {n} anys"
+
+msgid "In {n} year"
+msgid_plural "In {n} years"
+msgstr[0] "d’aquí a {n} any"
+msgstr[1] "d’aquí a {n} anys"

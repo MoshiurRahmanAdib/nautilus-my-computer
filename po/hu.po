@@ -254,3 +254,92 @@ msgstr "Hozzáadás a kedveltekhez"
 
 msgid "Remove from Preferred"
 msgstr "Eltávolítás a kedveltek közül"
+
+#——————————————————————————————
+# Panel - Preferred Folders - Captions
+#——————————————————————————————
+
+msgid "{n} item"
+msgid_plural "{n} items"
+msgstr[0] "{n} elem"
+msgstr[1] "{n} elem"
+
+#——————————————————————————————
+# General - Relative Dates
+#——————————————————————————————
+
+msgid "Today"
+msgstr "Ma"
+
+msgid "Yesterday"
+msgstr "Tegnap"
+
+msgid "Tomorrow"
+msgstr "Holnap"
+
+msgid "This week"
+msgstr "Ezen a héten"
+
+msgid "Last week"
+msgstr "Múlt héten"
+
+msgid "Next week"
+msgstr "Jövő héten"
+
+msgid "This month"
+msgstr "Ebben a hónapban"
+
+msgid "Last month"
+msgstr "Múlt hónapban"
+
+msgid "Next month"
+msgstr "Jövő hónapban"
+
+msgid "This year"
+msgstr "Idén"
+
+msgid "Last year"
+msgstr "Tavaly"
+
+msgid "Next year"
+msgstr "Jövőre"
+
+msgid "{n} day ago"
+msgid_plural "{n} days ago"
+msgstr[0] "{n} napja"
+msgstr[1] "{n} napja"
+
+msgid "In {n} day"
+msgid_plural "In {n} days"
+msgstr[0] "{n} nap múlva"
+msgstr[1] "{n} nap múlva"
+
+msgid "{n} week ago"
+msgid_plural "{n} weeks ago"
+msgstr[0] "{n} hete"
+msgstr[1] "{n} hete"
+
+msgid "In {n} week"
+msgid_plural "In {n} weeks"
+msgstr[0] "{n} hét múlva"
+msgstr[1] "{n} hét múlva"
+
+msgid "{n} month ago"
+msgid_plural "{n} months ago"
+msgstr[0] "{n} hónapja"
+msgstr[1] "{n} hónapja"
+
+msgid "In {n} month"
+msgid_plural "In {n} months"
+msgstr[0] "{n} hónap múlva"
+msgstr[1] "{n} hónap múlva"
+
+msgid "{n} year ago"
+msgid_plural "{n} years ago"
+msgstr[0] "{n} éve"
+msgstr[1] "{n} éve"
+
+msgid "In {n} year"
+msgid_plural "In {n} years"
+msgstr[0] "{n} év múlva"
+msgstr[1] "{n} év múlva"

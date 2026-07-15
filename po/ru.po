@@ -251,3 +251,101 @@ msgstr "Добавить в избранное"
 
 msgid "Remove from Preferred"
 msgstr "Удалить из избранного"
+
+#——————————————————————————————
+# Panel - Preferred Folders - Captions
+#——————————————————————————————
+
+msgid "{n} item"
+msgid_plural "{n} items"
+msgstr[0] "{n} объект"
+msgstr[1] "{n} объекта"
+msgstr[2] "{n} объектов"
+
+#——————————————————————————————
+# General - Relative Dates
+#——————————————————————————————
+
+msgid "Today"
+msgstr "Сегодня"
+
+msgid "Yesterday"
+msgstr "Вчера"
+
+msgid "Tomorrow"
+msgstr "Завтра"
+
+msgid "This week"
+msgstr "На этой неделе"
+
+msgid "Last week"
+msgstr "На прошлой неделе"
+
+msgid "Next week"
+msgstr "На следующей неделе"
+
+msgid "This month"
+msgstr "В этом месяце"
+
+msgid "Last month"
+msgstr "В прошлом месяце"
+
+msgid "Next month"
+msgstr "В следующем месяце"
+
+msgid "This year"
+msgstr "В этом году"
+
+msgid "Last year"
+msgstr "В прошлом году"
+
+msgid "Next year"
+msgstr "В следующем году"
+
+msgid "{n} day ago"
+msgid_plural "{n} days ago"
+msgstr[0] "{n} день назад"
+msgstr[1] "{n} дня назад"
+msgstr[2] "{n} дней назад"
+
+msgid "In {n} day"
+msgid_plural "In {n} days"
+msgstr[0] "через {n} день"
+msgstr[1] "через {n} дня"
+msgstr[2] "через {n} дней"
+
+msgid "{n} week ago"
+msgid_plural "{n} weeks ago"
+msgstr[0] "{n} неделю назад"
+msgstr[1] "{n} недели назад"
+msgstr[2] "{n} недель назад"
+
+msgid "In {n} week"
+msgid_plural "In {n} weeks"
+msgstr[0] "через {n} неделю"
+msgstr[1] "через {n} недели"
+msgstr[2] "через {n} недель"
+
+msgid "{n} month ago"
+msgid_plural "{n} months ago"
+msgstr[0] "{n} месяц назад"
+msgstr[1] "{n} месяца назад"
+msgstr[2] "{n} месяцев назад"
+
+msgid "In {n} month"
+msgid_plural "In {n} months"
+msgstr[0] "через {n} месяц"
+msgstr[1] "через {n} месяца"
+msgstr[2] "через {n} месяцев"
+
+msgid "{n} year ago"
+msgid_plural "{n} years ago"
+msgstr[0] "{n} год назад"
+msgstr[1] "{n} года назад"
+msgstr[2] "{n} лет назад"
+
+msgid "In {n} year"
+msgid_plural "In {n} years"
+msgstr[0] "через {n} год"
+msgstr[1] "через {n} года"
+msgstr[2] "через {n} лет"

@@ -251,3 +251,92 @@ msgstr "Zu Favoriten hinzufügen"
 
 msgid "Remove from Preferred"
 msgstr "Aus Favoriten entfernen"
+
+#——————————————————————————————
+# Panel - Preferred Folders - Captions
+#——————————————————————————————
+
+msgid "{n} item"
+msgid_plural "{n} items"
+msgstr[0] "{n} Objekt"
+msgstr[1] "{n} Objekte"
+
+#——————————————————————————————
+# General - Relative Dates
+#——————————————————————————————
+
+msgid "Today"
+msgstr "Heute"
+
+msgid "Yesterday"
+msgstr "Gestern"
+
+msgid "Tomorrow"
+msgstr "Morgen"
+
+msgid "This week"
+msgstr "Diese Woche"
+
+msgid "Last week"
+msgstr "Letzte Woche"
+
+msgid "Next week"
+msgstr "Nächste Woche"
+
+msgid "This month"
+msgstr "Diesen Monat"
+
+msgid "Last month"
+msgstr "Letzten Monat"
+
+msgid "Next month"
+msgstr "Nächsten Monat"
+
+msgid "This year"
+msgstr "Dieses Jahr"
+
+msgid "Last year"
+msgstr "Letztes Jahr"
+
+msgid "Next year"
+msgstr "Nächstes Jahr"
+
+msgid "{n} day ago"
+msgid_plural "{n} days ago"
+msgstr[0] "vor {n} Tag"
+msgstr[1] "vor {n} Tagen"
+
+msgid "In {n} day"
+msgid_plural "In {n} days"
+msgstr[0] "in {n} Tag"
+msgstr[1] "in {n} Tagen"
+
+msgid "{n} week ago"
+msgid_plural "{n} weeks ago"
+msgstr[0] "vor {n} Woche"
+msgstr[1] "vor {n} Wochen"
+
+msgid "In {n} week"
+msgid_plural "In {n} weeks"
+msgstr[0] "in {n} Woche"
+msgstr[1] "in {n} Wochen"
+
+msgid "{n} month ago"
+msgid_plural "{n} months ago"
+msgstr[0] "vor {n} Monat"
+msgstr[1] "vor {n} Monaten"
+
+msgid "In {n} month"
+msgid_plural "In {n} months"
+msgstr[0] "in {n} Monat"
+msgstr[1] "in {n} Monaten"
+
+msgid "{n} year ago"
+msgid_plural "{n} years ago"
+msgstr[0] "vor {n} Jahr"
+msgstr[1] "vor {n} Jahren"
+
+msgid "In {n} year"
+msgid_plural "In {n} years"
+msgstr[0] "in {n} Jahr"
+msgstr[1] "in {n} Jahren"
