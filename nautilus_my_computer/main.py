@@ -2001,6 +2001,23 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         mode_row.connect("notify::selected", _on_mode_changed)
         _update_color_rows(mode_row.get_selected())
 
+        pf_group = Adw.PreferencesGroup()
+        pf_group.set_title(_("Preferred Folders"))
+        page_computer.add(pf_group)
+
+        pf_captions_row = Adw.SwitchRow()
+        pf_captions_row.set_title(_("Show captions"))
+        pf_captions_row.set_subtitle(
+            _("Shows or hides the caption lines already configured in Nautilus")
+        )
+        self._gsettings.bind(
+            "show-preferred-folder-captions",
+            pf_captions_row,
+            "active",
+            Gio.SettingsBindFlags.DEFAULT,
+        )
+        pf_group.add(pf_captions_row)
+
         about_group = Adw.PreferencesGroup()
         about_group.set_title(_("About"))
         page_about.add(about_group)
