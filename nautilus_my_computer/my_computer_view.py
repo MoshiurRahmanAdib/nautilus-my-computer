@@ -1772,14 +1772,19 @@ def _on_folder_metadata_ready(
 
 
 def _refresh_folder_icon_async(ext, pf: "PreferredFolder") -> None:
-    """Icon-only refresh for built-in real-folder tokens (Documents/Downloads/
+    """Icon/name refresh for built-in real-folder tokens (Documents/Downloads/
     Music/Videos/Pictures/Home). GIO's standard::icon already resolves the
     correct native icon for these paths (folder-download, user-home, ...) --
-    no hardcoded name table needed -- and metadata::custom-icon(-name) layers
-    a user-set custom icon on top, exactly like Nautilus itself does."""
+    no hardcoded icon table needed -- and metadata::custom-icon(-name) layers
+    a user-set custom icon on top, exactly like Nautilus itself does.
+    standard::display-name is queried too (issue #64): the real folder name
+    comes from xdg-user-dirs at creation time and can diverge from our own
+    gettext label (renamed by the user, or created under a different locale),
+    so the actual filesystem name must win -- our label is only the initial
+    placeholder in PREFERRED_TOKENS until this query resolves."""
     gfile = Gio.File.new_for_uri(pf.nav_uri)
     gfile.query_info_async(
-        "standard::icon,metadata::custom-icon,metadata::custom-icon-name",
+        "standard::display-name,standard::icon,metadata::custom-icon,metadata::custom-icon-name",
         Gio.FileQueryInfoFlags.NONE,
         GLib.PRIORITY_DEFAULT,
         ext._folder_refresh_cancellable,
@@ -1796,8 +1801,16 @@ def _on_folder_icon_ready(ext, gfile: Gio.File, result: Gio.AsyncResult, folder_
     pf = _folder_data.get(folder_key)
     if pf is None:
         return
+    # "home" has no xdg-user-dirs name to defer to -- its real basename is just
+    # the username, which GIO happily reports but Nautilus itself never shows
+    # (nautilus-file-utilities.c / nautilus-bookmark.c always substitute their
+    # own translated "Home" instead). Keep our _nautilus_string("Home") label there;
+    # only the named special-dir tokens (Documents/Downloads/...) defer to GIO.
+    display_name = (
+        pf.display_name if folder_key == "home" else (info.get_display_name() or pf.display_name)
+    )
     gio_icon = _resolve_custom_gicon(info) or info.get_icon()
-    new_pf = dataclasses.replace(pf, gio_icon=gio_icon)
+    new_pf = dataclasses.replace(pf, display_name=display_name, gio_icon=gio_icon)
     _folder_data[folder_key] = new_pf
     for state in ext._windows.values():
         card = state.get("folder_card_widgets", {}).get(folder_key)

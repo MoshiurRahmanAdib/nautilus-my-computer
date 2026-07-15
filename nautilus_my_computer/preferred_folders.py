@@ -22,6 +22,7 @@ from nautilus_my_computer.common import (
     _log,
     _menu_item_index,
     _menu_section_with_action,
+    _nautilus_string,
     _uri_is_hidden,
 )
 from nautilus_my_computer.context_menu import (
@@ -82,21 +83,21 @@ class PreferredFolder:
 # GLib.UserDirectory enum value (resolved via GLib.get_user_special_dir).
 PREFERRED_TOKENS: dict[str, dict] = {
     "home": {
-        "label": _("Home"),
+        "label": _nautilus_string("Home"),
         "uri": lambda: GLib.filename_to_uri(GLib.get_home_dir(), None),
     },
     "recent": {
-        "label": _("Recent"),
+        "label": _nautilus_string("Recent"),
         "icon": "folder-temp",
         "uri": lambda: "recent:///",
     },
     "starred": {
-        "label": _("Starred"),
+        "label": _nautilus_string("Starred"),
         "icon": "folder-favorites",
         "uri": lambda: "starred:///",
     },
     "network": {
-        "label": _("Network"),
+        "label": _nautilus_string("Network"),
         "icon": "folder-html",
         "uri": lambda: "x-network-view:///",
     },
@@ -165,11 +166,13 @@ def load_preferred_folders(gsettings) -> list[PreferredFolder]:
                     display_name=token["label"],
                     nav_uri=uri,
                     # Real folders (home/documents/downloads/...) start with the plain
-                    # placeholder and get their live icon (native special-folder icon or
-                    # a user-set custom icon) from an async GIO query -- see
-                    # my_computer_view._refresh_folder_icon_async. Only the 3 virtual
-                    # tokens (recent/starred/network) keep a fixed icon name, since they
-                    # aren't real directories GIO can query.
+                    # gettext label as a placeholder and get their live name and icon
+                    # (native special-folder icon or a user-set custom icon) from an
+                    # async GIO query -- see my_computer_view._refresh_folder_icon_async.
+                    # The real xdg-user-dirs name always wins over our label once that
+                    # query resolves (issue #64). Only the 3 virtual tokens
+                    # (recent/starred/network) keep the fixed label, since they aren't
+                    # real directories GIO can query.
                     icon_name=token.get("icon", "folder"),
                     is_special_place=is_special_place,
                     is_hidden=False if is_special_place else _uri_is_hidden(uri),

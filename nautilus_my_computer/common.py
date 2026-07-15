@@ -44,6 +44,17 @@ def _(text: str) -> str:
     return text
 
 
+def _nautilus_string(text: str) -> str:
+    """Translate via Nautilus's own "nautilus" gettext domain only, ignoring our
+    po files. For labels that duplicate a concept Nautilus's native UI already
+    names (Home/Recent/Starred/Network), this guarantees the exact same wording
+    as the native sidebar in every language, rather than risking a differently
+    worded translation from our own translators (issue #64 follow-up)."""
+    if _nautilus_translation is not None:
+        return _nautilus_translation.gettext(text)
+    return text
+
+
 def _n(singular: str, plural: str, n: int) -> str:
     if _custom_translation is not None:
         val = _custom_translation.ngettext(singular, plural, n)
