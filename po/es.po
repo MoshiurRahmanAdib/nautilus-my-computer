@@ -99,6 +99,16 @@ msgid "Trash"
 msgstr "Papelera"
 
 #——————————————————————————————
+# Preferences - Tabs
+#——————————————————————————————
+
+msgid "Computer view"
+msgstr "Vista Equipo"
+
+msgid "Sidebar"
+msgstr "Barra lateral"
+
+#——————————————————————————————
 # Preferences - General
 #——————————————————————————————
 

@@ -99,6 +99,16 @@ msgid "Trash"
 msgstr "Корзина"
 
 #——————————————————————————————
+# Preferences - Tabs
+#——————————————————————————————
+
+msgid "Computer view"
+msgstr "Вид компьютера"
+
+msgid "Sidebar"
+msgstr "Боковая панель"
+
+#——————————————————————————————
 # Preferences - General
 #——————————————————————————————
 

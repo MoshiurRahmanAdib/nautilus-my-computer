@@ -98,6 +98,16 @@ msgid "Trash"
 msgstr "Kuka"
 
 # ——————————————————————————————
+# Preferences - Tabs
+# ——————————————————————————————
+
+msgid "Computer view"
+msgstr "Számítógép nézet"
+
+msgid "Sidebar"
+msgstr "Oldalsáv"
+
+# ——————————————————————————————
 # Preferences - General
 # ——————————————————————————————
 msgid "My Computer Settings"

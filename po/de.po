@@ -99,6 +99,16 @@ msgid "Trash"
 msgstr "Papierkorb"
 
 #——————————————————————————————
+# Preferences - Tabs
+#——————————————————————————————
+
+msgid "Computer view"
+msgstr "Computeransicht"
+
+msgid "Sidebar"
+msgstr "Seitenleiste"
+
+#——————————————————————————————
 # Preferences - General
 #——————————————————————————————
 

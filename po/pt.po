@@ -99,6 +99,16 @@ msgid "Trash"
 msgstr "Lixo"
 
 #——————————————————————————————
+# Preferences - Tabs
+#——————————————————————————————
+
+msgid "Computer view"
+msgstr "Vista Computador"
+
+msgid "Sidebar"
+msgstr "Barra lateral"
+
+#——————————————————————————————
 # Preferences - General
 #——————————————————————————————
 

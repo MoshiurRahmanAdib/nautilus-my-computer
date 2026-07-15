@@ -96,6 +96,16 @@ msgid "Trash"
 msgstr "Çöp"
 
 # ——————————————————————————————
+# Preferences - Tabs
+# ——————————————————————————————
+
+msgid "Computer view"
+msgstr "Bilgisayar görünümü"
+
+msgid "Sidebar"
+msgstr "Kenar çubuğu"
+
+# ——————————————————————————————
 # Preferences - General
 # ——————————————————————————————
 msgid "My Computer Settings"

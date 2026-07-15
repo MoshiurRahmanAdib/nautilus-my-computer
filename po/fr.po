@@ -99,6 +99,16 @@ msgid "Trash"
 msgstr "Corbeille"
 
 #——————————————————————————————
+# Preferences - Tabs
+#——————————————————————————————
+
+msgid "Computer view"
+msgstr "Vue Ordinateur"
+
+msgid "Sidebar"
+msgstr "Barre latérale"
+
+#——————————————————————————————
 # Preferences - General
 #——————————————————————————————
 

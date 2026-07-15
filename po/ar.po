@@ -99,6 +99,16 @@ msgid "Trash"
 msgstr "المهملات"
 
 #——————————————————————————————
+# Preferences - Tabs
+#——————————————————————————————
+
+msgid "Computer view"
+msgstr "عرض الكمبيوتر"
+
+msgid "Sidebar"
+msgstr "الشريط الجانبي"
+
+#——————————————————————————————
 # Preferences - General
 #——————————————————————————————
 

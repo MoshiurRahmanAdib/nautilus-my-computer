@@ -100,6 +100,16 @@ msgid "Trash"
 msgstr ""
 
 #——————————————————————————————
+# Preferences - Tabs
+#——————————————————————————————
+
+msgid "Computer view"
+msgstr "컴퓨터 보기"
+
+msgid "Sidebar"
+msgstr "사이드바"
+
+#——————————————————————————————
 # Preferences - General
 #——————————————————————————————
 
