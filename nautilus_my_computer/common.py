@@ -69,6 +69,164 @@ def _format_permissions(mode: int) -> str:
     return "".join(chars[i % 3] if perm & (1 << (8 - i)) else "-" for i in range(9))
 
 
+# ── Relative date formatting (replica of Nautilus's nautilus_date_to_str) ────
+#
+# Nautilus renders file dates as "Today, 4:45 PM", "Yesterday", "Last month",
+# "3 months ago", ... rather than an absolute timestamp. That formatting lives
+# in src/nautilus-date-utilities.c (nautilus_date_to_str), which is a thin
+# wrapper around ICU's URelativeDateTimeFormatter (libicu). ICU has no
+# GObject-introspection binding, so the extension cannot call that function --
+# this is a pure-Python re-creation of its behaviour: same day/week/month/year
+# bucketing thresholds, same midnight-boundary day math, same "append the time
+# only within +/-2 days" rule, and the same two GSettings inputs Nautilus reads
+# (clock-format for 12h/24h, date-time-format for the detailed/simple toggle).
+# Locale wording comes from our own gettext catalog instead of ICU's CLDR data,
+# so it is not guaranteed pixel-identical in every language, but matches the
+# English forms and overall shape. Like Nautilus's own ICU fallback path, it
+# falls back to an absolute date if anything goes wrong.
+#
+# The two settings handles are cached at module scope, mirroring
+# nautilus-date-utilities.c's file-static use_24_hour / use_detailed_date_format
+# statics. They are read live on each call so a settings change is reflected
+# without needing a "changed" subscription.
+_interface_settings = None
+_nautilus_date_settings = None
+
+
+def _date_prefs() -> tuple[bool, bool]:
+    """(use_24_hour, use_detailed) from the same GSettings keys Nautilus reads."""
+    global _interface_settings, _nautilus_date_settings
+    use_24_hour = False
+    use_detailed = False
+    try:
+        if _interface_settings is None:
+            _interface_settings = Gio.Settings.new("org.gnome.desktop.interface")
+        use_24_hour = _interface_settings.get_string("clock-format") == "24h"
+    except Exception:
+        pass
+    try:
+        if _nautilus_date_settings is None:
+            _nautilus_date_settings = Gio.Settings.new("org.gnome.nautilus.preferences")
+        use_detailed = _nautilus_date_settings.get_string("date-time-format") == "detailed"
+    except Exception:
+        pass
+    return use_24_hour, use_detailed
+
+
+def _format_time_of_day(dt, use_24_hour: bool) -> str:
+    if use_24_hour:
+        return dt.format("%H:%M")
+    # "%I:%M %p" -> "04:45 PM"; strip the leading zero to match ICU/Nautilus ("4:45 PM").
+    return dt.format("%I:%M %p").lstrip("0")
+
+
+def _relative_date_string(unit: str, offset: int) -> str:
+    """One relative-date phrase for (unit, offset), where offset is negative for
+    the past (e.g. unit="month", offset=-3 -> "3 months ago"). Mirrors the
+    strings ICU's URelativeDateTimeFormatter produces at UDAT_STYLE_LONG."""
+    n = -offset  # positive magnitude
+    if unit == "day":
+        if offset == 0:
+            return _("Today")
+        if offset == -1:
+            return _("Yesterday")
+        if offset == 1:
+            return _("Tomorrow")
+        if offset < 0:
+            return _n("{n} day ago", "{n} days ago", n).format(n=n)
+        return _n("In {n} day", "In {n} days", offset).format(n=offset)
+    if unit == "week":
+        if offset == 0:
+            return _("This week")
+        if offset == -1:
+            return _("Last week")
+        if offset == 1:
+            return _("Next week")
+        if offset < 0:
+            return _n("{n} week ago", "{n} weeks ago", n).format(n=n)
+        return _n("In {n} week", "In {n} weeks", offset).format(n=offset)
+    if unit == "month":
+        if offset == 0:
+            return _("This month")
+        if offset == -1:
+            return _("Last month")
+        if offset == 1:
+            return _("Next month")
+        if offset < 0:
+            return _n("{n} month ago", "{n} months ago", n).format(n=n)
+        return _n("In {n} month", "In {n} months", offset).format(n=offset)
+    # year
+    if offset == 0:
+        return _("This year")
+    if offset == -1:
+        return _("Last year")
+    if offset == 1:
+        return _("Next year")
+    if offset < 0:
+        return _n("{n} year ago", "{n} years ago", n).format(n=n)
+    return _n("In {n} year", "In {n} years", offset).format(n=offset)
+
+
+def _mc_date_to_str(unix_time: int) -> str:
+    """Relative, localized date string for a unix timestamp, matching how
+    Nautilus renders file dates ("Today, 4:45 PM", "Last month", "3 months
+    ago", ...). Re-creation of nautilus_date_to_str(); see the block comment
+    above. Returns "" for a zero/missing timestamp (same as an unknown date)."""
+    if not unix_time:
+        return ""
+    timestamp = GLib.DateTime.new_from_unix_local(unix_time)
+    if timestamp is None:
+        return ""
+    use_24_hour, use_detailed = _date_prefs()
+
+    # Detailed mode: Nautilus shows an absolute date+time (with seconds), never
+    # a relative phrase (nautilus-date-utilities.c: the relative branch is gated
+    # on `!detailed_date`).
+    if use_detailed:
+        time_part = (
+            timestamp.format("%H:%M:%S")
+            if use_24_hour
+            else timestamp.format("%I:%M:%S %p").lstrip("0")
+        )
+        return f"{timestamp.format('%x')}, {time_part}"
+
+    now = GLib.DateTime.new_now_local()
+    today_midnight = GLib.DateTime.new_local(
+        now.get_year(), now.get_month(), now.get_day_of_month(), 0, 0, 0
+    )
+    date_midnight = GLib.DateTime.new_local(
+        timestamp.get_year(), timestamp.get_month(), timestamp.get_day_of_month(), 0, 0, 0
+    )
+    if today_midnight is None or date_midnight is None:
+        return timestamp.format("%x")
+
+    # Positive = in the past. Whole days, since both ends are snapped to midnight.
+    midnight_diff = today_midnight.difference(date_midnight)  # microseconds (GTimeSpan)
+    relative_value = midnight_diff / GLib.TIME_SPAN_DAY
+
+    # Same bucketing thresholds and divisors as ICU's get_relative_day_month_year.
+    if relative_value < 7.0:
+        unit = "day"
+    elif relative_value < 31:
+        unit = "week"
+        relative_value /= 7.0
+    elif relative_value < 365:
+        unit = "month"
+        relative_value /= 30.4
+    else:
+        unit = "year"
+        relative_value /= 365.25
+    offset = int(-relative_value)  # truncate toward zero; negative = past
+
+    relative = _relative_date_string(unit, offset)
+
+    # Append the time-of-day only for Today/Yesterday/Tomorrow, matching
+    # Nautilus's `add_time = with_time && |midnight_difference| < 2 days`.
+    if abs(midnight_diff) < 2 * GLib.TIME_SPAN_DAY:
+        return f"{relative}, {_format_time_of_day(timestamp, use_24_hour)}"
+    return relative
+
+
 def _is_activating_click(ext, n_press: int) -> bool:
     """True if a Gtk.GestureClick "pressed" event (n_press) should activate,
     given Nautilus' own click-policy setting (ext._nautilus_prefs.click_policy,

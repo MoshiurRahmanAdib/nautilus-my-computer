@@ -47,6 +47,7 @@ from nautilus_my_computer.common import (
     _format_item_count,
     _format_permissions,
     _log,
+    _mc_date_to_str,
     _resolve_custom_gicon,
     _uri_is_hidden,
 )
@@ -62,7 +63,6 @@ from nautilus_my_computer.widgets import (
     MyComputerCardSection,
     MyComputerDiskCard,
     MyComputerFolderCard,
-    _format_datetime,
 )
 
 DISKS_URI = "computer:///"
@@ -1950,7 +1950,7 @@ def _resolve_caption_line(token: str, pf: "PreferredFolder", data: dict) -> str 
             "recency": "atime",
         }[token]
         unix_time = data.get(field)
-        return _format_datetime(unix_time) if unix_time else None
+        return _mc_date_to_str(unix_time) if unix_time else None
     if token == "owner":
         return data.get("owner")
     if token == "group":
