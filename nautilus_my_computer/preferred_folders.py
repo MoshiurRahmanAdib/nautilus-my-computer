@@ -101,24 +101,28 @@ PREFERRED_TOKENS: dict[str, dict] = {
         "icon": "folder-html",
         "uri": lambda: "x-network-view:///",
     },
+    # Not wrapped in _(): the real xdg-user-dirs name always overwrites this
+    # within one async GIO query (see _refresh_folder_icon_async), so it's
+    # only ever visible for a single frame -- translating it would be
+    # translator effort spent on text no user ever actually reads (#64).
     "documents": {
-        "label": _("Documents"),
+        "label": "Documents",
         "special_dir": GLib.UserDirectory.DIRECTORY_DOCUMENTS,
     },
     "downloads": {
-        "label": _("Downloads"),
+        "label": "Downloads",
         "special_dir": GLib.UserDirectory.DIRECTORY_DOWNLOAD,
     },
     "music": {
-        "label": _("Music"),
+        "label": "Music",
         "special_dir": GLib.UserDirectory.DIRECTORY_MUSIC,
     },
     "videos": {
-        "label": _("Videos"),
+        "label": "Videos",
         "special_dir": GLib.UserDirectory.DIRECTORY_VIDEOS,
     },
     "pictures": {
-        "label": _("Pictures"),
+        "label": "Pictures",
         "special_dir": GLib.UserDirectory.DIRECTORY_PICTURES,
     },
 }

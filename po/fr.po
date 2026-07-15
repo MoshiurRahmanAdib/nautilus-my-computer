@@ -249,21 +249,6 @@ msgstr "Réinitialiser"
 # Panel - Preferred Folders
 #——————————————————————————————
 
-msgid "Documents"
-msgstr "Documents"
-
-msgid "Downloads"
-msgstr "Téléchargements"
-
-msgid "Music"
-msgstr "Musique"
-
-msgid "Videos"
-msgstr "Vidéos"
-
-msgid "Pictures"
-msgstr "Images"
-
 msgid "Preferred Folders"
 msgstr "Dossiers préférés"
 

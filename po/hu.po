@@ -248,21 +248,6 @@ msgstr ""
 # Panel - Preferred Folders
 #——————————————————————————————
 
-msgid "Documents"
-msgstr "Dokumentumok"
-
-msgid "Downloads"
-msgstr "Letöltések"
-
-msgid "Music"
-msgstr "Zene"
-
-msgid "Videos"
-msgstr "Videók"
-
-msgid "Pictures"
-msgstr "Képek"
-
 msgid "Preferred Folders"
 msgstr "Kedvelt mappák"
 

@@ -245,21 +245,6 @@ msgstr ""
 # Panel - Preferred Folders
 #——————————————————————————————
 
-msgid "Documents"
-msgstr "Документы"
-
-msgid "Downloads"
-msgstr "Загрузки"
-
-msgid "Music"
-msgstr "Музыка"
-
-msgid "Videos"
-msgstr "Видео"
-
-msgid "Pictures"
-msgstr "Изображения"
-
 msgid "Preferred Folders"
 msgstr "Избранные папки"
 
