@@ -997,6 +997,8 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
             self._repopulate_visible()
         elif key == "preferred-folders":
             self._repopulate_visible()
+        elif key == "show-preferred-folder-captions":
+            self._reapply_folder_captions()
         elif key.startswith("sidebar-show-"):
             # Sidebar place toggle -- re-apply native row visibility in every window.
             GLib.idle_add(self._reapply_sidebar_visibility)
@@ -1051,7 +1053,7 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         already cached, then kick a fresh async fetch to fill in any field a
         newly-selected token needs that was never queried before."""
         for pf in list(my_computer_view._folder_data.values()):
-            my_computer_view._apply_folder_captions(self, pf.key)
+            my_computer_view._show_folder_captions(self, pf.key)
             my_computer_view._refresh_folder_captions_async(self, pf)
 
     def _repopulate_disk_view_only(self) -> bool:

@@ -1703,7 +1703,7 @@ def _populate(ext, win: Gtk.Window) -> None:
     # Render any already-cached caption data immediately (e.g. re-populate
     # after a live-refresh) rather than waiting for the next async fetch.
     for folder_key in folder_card_widgets:
-        _apply_folder_captions(ext, folder_key)
+        _show_folder_captions(ext, folder_key)
     state["grid_host"].set_child(grid_box)
     if old_grid_box is not None:
         _queue_stale_generation_release(ext, state, old_grid_box)
@@ -1827,10 +1827,10 @@ _CAPTION_TOKEN_ATTRS: dict[str, str] = {
 
 def _refresh_folder_captions_async(ext, pf: "PreferredFolder") -> None:
     """Resolve whichever caption attributes the 3 active tokens need, then
-    patch any rendered card in place via _apply_folder_captions. Virtual
+    patch any rendered card in place via _show_folder_captions. Virtual
     places (recent:///, starred:///, x-network-view:///) have no real file to
     query -- Nautilus itself shows no captions for them either."""
-    if pf.is_special_place:
+    if pf.is_special_place or not ext._gsettings.get_boolean("show-preferred-folder-captions"):
         return
     tokens = ext._nautilus_prefs.captions()
     attrs = {_CAPTION_TOKEN_ATTRS[t] for t in tokens if t in _CAPTION_TOKEN_ATTRS}
@@ -1870,7 +1870,7 @@ def _on_folder_caption_info_ready(
         data["group"] = info.get_attribute_string("owner::group")
     if info.has_attribute("unix::mode"):
         data["mode"] = info.get_attribute_uint32("unix::mode")
-    _apply_folder_captions(ext, folder_key)
+    _show_folder_captions(ext, folder_key)
 
 
 def _count_folder_children_async(ext, gfile: Gio.File, folder_key: str) -> None:
@@ -1921,7 +1921,7 @@ def _on_folder_children_batch(
         return
     enumerator.close_async(GLib.PRIORITY_DEFAULT, None, lambda *_a: None)
     _folder_caption_data.setdefault(folder_key, {})["item_count"] = running_count
-    _apply_folder_captions(ext, folder_key)
+    _show_folder_captions(ext, folder_key)
 
 
 def _resolve_caption_line(token: str, pf: "PreferredFolder", data: dict) -> str | None:
@@ -1961,7 +1961,7 @@ def _resolve_caption_line(token: str, pf: "PreferredFolder", data: dict) -> str 
     return None
 
 
-def _apply_folder_captions(ext, folder_key: str) -> None:
+def _show_folder_captions(ext, folder_key: str) -> None:
     """Recompute the 3 caption lines from cached data + the current GSettings
     tokens and patch any rendered card in place. Called both when fresh data
     arrives (async callbacks above) and when the tokens themselves change
@@ -1969,11 +1969,12 @@ def _apply_folder_captions(ext, folder_key: str) -> None:
     pf = _folder_data.get(folder_key)
     if pf is None:
         return
+    show_captions = ext._gsettings.get_boolean("show-preferred-folder-captions")
     tokens = ext._nautilus_prefs.captions()
     data = _folder_caption_data.get(folder_key, {})
     lines = (
         [None, None, None]
-        if pf.is_special_place
+        if pf.is_special_place or not show_captions
         else [_resolve_caption_line(tok, pf, data) for tok in tokens]
     )
     for state in ext._windows.values():
