@@ -70,6 +70,11 @@ class NautilusPrefs:
     def zoom_px(self, view: str = "icon-view") -> int:
         return _ZOOM_TO_PX.get(self.zoom_level(view), 96)
 
+    def captions(self) -> list[str]:
+        """The up-to-3 caption tokens from icon-view's "captions" key (e.g.
+        ["size", "date_modified", "none"]). "none" means that slot is empty."""
+        return list(self._icon_view.get_strv("captions"))
+
     def default_sort(self) -> tuple[str, bool]:
         return (
             self._prefs.get_string("default-sort-order"),
@@ -156,6 +161,7 @@ class NautilusPrefs:
         self._prefs.connect("changed::default-folder-viewer", self._on_view_mode_changed, ext)
         self._prefs.connect("changed::click-policy", self._on_click_policy_changed, ext)
         self._filechooser.connect("changed::show-hidden", self._on_hidden_files_changed, ext)
+        self._icon_view.connect("changed::captions", self._on_captions_changed, ext)
 
     def _on_view_mode_changed(self, _settings: Gio.Settings, _key: str, ext) -> None:
         if self.refresh_view_mode():
@@ -170,6 +176,10 @@ class NautilusPrefs:
     def _on_hidden_files_changed(self, _settings: Gio.Settings, _key: str, ext) -> None:
         _log(f"show-hidden changed → {self.hidden_files()}")
         ext._repopulate_visible()
+
+    def _on_captions_changed(self, _settings: Gio.Settings, _key: str, ext) -> None:
+        _log(f"captions changed → {self.captions()}")
+        ext._reapply_folder_captions()
 
     def watch_sort_button(self, ext, nautilus_win: Gtk.Window, *, resolve_sort_target) -> None:
         """Watch the sort GtkMenuButton's active state -- arm poll when the sort

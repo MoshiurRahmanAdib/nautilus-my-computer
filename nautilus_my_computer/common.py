@@ -44,8 +44,29 @@ def _(text: str) -> str:
     return text
 
 
+def _n(singular: str, plural: str, n: int) -> str:
+    if _custom_translation is not None:
+        val = _custom_translation.ngettext(singular, plural, n)
+        if val != (singular if n == 1 else plural):
+            return val
+    if _nautilus_translation is not None:
+        return _nautilus_translation.ngettext(singular, plural, n)
+    return singular if n == 1 else plural
+
+
 def _format_size(n: float) -> str:
     return GLib.format_size(int(n))
+
+
+def _format_item_count(n: int) -> str:
+    return _n("{n} item", "{n} items", n).format(n=n)
+
+
+def _format_permissions(mode: int) -> str:
+    """POSIX rwx string (e.g. "rwxr-xr-x") from a unix::mode value."""
+    perm = mode & 0o777
+    chars = "rwx"
+    return "".join(chars[i % 3] if perm & (1 << (8 - i)) else "-" for i in range(9))
 
 
 def _is_activating_click(ext, n_press: int) -> bool:

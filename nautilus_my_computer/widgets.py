@@ -304,6 +304,12 @@ class MyComputerFolderCard(Gtk.Box):
         self.model = model
         self.icon: Gtk.Image | None = None
         self.name_label: Gtk.Label | None = None
+        # Up to 3 caption lines below the name (Nautilus "Captions", icon-view
+        # only -- see _build_grid). None by default; _build_compact_grid (list
+        # mode) never creates them, so set_captions() is a safe no-op there.
+        self.caption_first: Gtk.Label | None = None
+        self.caption_second: Gtk.Label | None = None
+        self.caption_third: Gtk.Label | None = None
 
         self.get_style_context().add_class("nautilus-view-cell")
         self.get_style_context().add_class("mc-folder-card")
@@ -582,8 +588,30 @@ class MyComputerFolderCard(Gtk.Box):
         name_lbl.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
         content.append(name_lbl)
 
+        # Up to 3 caption lines (Nautilus "Captions" feature, icon-view only).
+        # Built empty/hidden -- set_captions() fills them in once resolved.
+        # Style/wrap matches nautilus-grid-cell.c's caption_widget_new() exactly.
+        caption_labels = []
+        for _i in range(3):
+            cap_lbl = Gtk.Label(label="")
+            cap_lbl.get_style_context().add_class("caption")
+            cap_lbl.get_style_context().add_class("dim-label")
+            cap_lbl.set_justify(Gtk.Justification.CENTER)
+            cap_lbl.set_halign(Gtk.Align.CENTER)
+            cap_lbl.set_valign(Gtk.Align.START)
+            cap_lbl.set_wrap(True)
+            cap_lbl.set_wrap_mode(Pango.WrapMode.WORD_CHAR)
+            cap_lbl.set_lines(2)
+            cap_lbl.set_width_chars(label_chars)
+            cap_lbl.set_max_width_chars(label_chars)
+            cap_lbl.set_ellipsize(Pango.EllipsizeMode.END)
+            cap_lbl.set_visible(False)
+            content.append(cap_lbl)
+            caption_labels.append(cap_lbl)
+
         self.icon = icon
         self.name_label = name_lbl
+        self.caption_first, self.caption_second, self.caption_third = caption_labels
 
     def _build_compact_grid(self) -> None:
         """List-view compact cell: keep Preferred Folders multi-column while
@@ -635,6 +663,21 @@ class MyComputerFolderCard(Gtk.Box):
         if self.name_label is not None:
             self.name_label.set_label(pf.display_name)
         self._apply_hidden_state(pf.is_hidden)
+
+    def set_captions(self, lines: list) -> None:
+        """Update the up-to-3 caption lines below the name (Nautilus
+        "Captions", icon view only). lines[i] is None/empty to hide that
+        line. Safe to call on a list-mode card (caption_* are None there)."""
+        for label, text in zip(
+            (self.caption_first, self.caption_second, self.caption_third), lines
+        ):
+            if label is None:
+                continue
+            if text:
+                label.set_label(text)
+                label.set_visible(True)
+            else:
+                label.set_visible(False)
 
     def _apply_hidden_state(self, is_hidden: bool) -> None:
         self._set_content_opacity(0.55 if is_hidden else 1.0)

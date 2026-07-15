@@ -1045,6 +1045,15 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
                 column_view.refresh_column_view(self, win)
         return GLib.SOURCE_REMOVE
 
+    def _reapply_folder_captions(self) -> None:
+        """Preferred Folders "captions" GSettings key changed (NautilusPrefs).
+        Instantly re-render every rendered card from whatever caption data is
+        already cached, then kick a fresh async fetch to fill in any field a
+        newly-selected token needs that was never queried before."""
+        for pf in list(my_computer_view._folder_data.values()):
+            my_computer_view._apply_folder_captions(self, pf.key)
+            my_computer_view._refresh_folder_captions_async(self, pf)
+
     def _repopulate_disk_view_only(self) -> bool:
         """Narrower sibling of _repopulate_visible for click-policy changes
         (see NautilusPrefs.refresh_click_policy): only the disk-view grid

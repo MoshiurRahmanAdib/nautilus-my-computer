@@ -44,6 +44,8 @@ from nautilus_my_computer.common import (
     _all_widgets,
     _find_widget,
     _folder_card_width,
+    _format_item_count,
+    _format_permissions,
     _log,
     _resolve_custom_gicon,
     _uri_is_hidden,
@@ -60,6 +62,7 @@ from nautilus_my_computer.widgets import (
     MyComputerCardSection,
     MyComputerDiskCard,
     MyComputerFolderCard,
+    _format_datetime,
 )
 
 DISKS_URI = "computer:///"
@@ -446,6 +449,12 @@ class PanelGroup:
 _disk_data: dict[str, MountInfo] = {}
 _folder_data: dict[str, "PreferredFolder"] = {}
 _network_places: list[MountInfo] = []  # populated async from network:///
+
+# Raw resolved caption attributes per folder key, independent of which of the
+# 3 GSettings caption tokens are currently active -- so switching tokens never
+# needs to re-query a field already fetched. Keys among "content_type",
+# "mtime", "atime", "ctime", "owner", "group", "mode", "item_count".
+_folder_caption_data: dict[str, dict] = {}
 
 _CSS = b"""
 * {
@@ -1401,6 +1410,7 @@ def _folder_icon_poll_tick(ext) -> bool:
             _refresh_folder_metadata_async(ext, pf)
         elif not pf.is_special_place:
             _refresh_folder_icon_async(ext, pf)
+        _refresh_folder_captions_async(ext, pf)
     return GLib.SOURCE_CONTINUE
 
 
@@ -1592,11 +1602,18 @@ def _populate(ext, win: Gtk.Window) -> None:
         folders = preferred_folders.load_preferred_folders(ext._gsettings)
         _folder_data.clear()
         _folder_data.update({pf.key: pf for pf in folders})
+        # Drop caption data for folders no longer present (removed/renamed) so
+        # a stale entry can't linger under a reused key.
+        live_keys = set(_folder_data.keys())
+        for stale_key in list(_folder_caption_data.keys()):
+            if stale_key not in live_keys:
+                del _folder_caption_data[stale_key]
         for pf in folders:
             if pf.key not in preferred_folders.PREFERRED_TOKENS:
                 _refresh_folder_metadata_async(ext, pf)
             elif not pf.is_special_place:
                 _refresh_folder_icon_async(ext, pf)
+            _refresh_folder_captions_async(ext, pf)
         _sync_folder_rename_watchers(ext, folders)
         if folders:
             section = MyComputerCardSection(
@@ -1621,6 +1638,7 @@ def _populate(ext, win: Gtk.Window) -> None:
             grid_box.append(section)
     else:
         _folder_data.clear()
+        _folder_caption_data.clear()
         _sync_folder_rename_watchers(ext, [])
 
     for gkey, _glabel, _gskey in _GROUP_SPEC:
@@ -1682,6 +1700,10 @@ def _populate(ext, win: Gtk.Window) -> None:
     state["section_flows"] = section_flows
     state["card_widgets"] = card_widgets
     state["folder_card_widgets"] = folder_card_widgets
+    # Render any already-cached caption data immediately (e.g. re-populate
+    # after a live-refresh) rather than waiting for the next async fetch.
+    for folder_key in folder_card_widgets:
+        _apply_folder_captions(ext, folder_key)
     state["grid_host"].set_child(grid_box)
     if old_grid_box is not None:
         _queue_stale_generation_release(ext, state, old_grid_box)
@@ -1781,6 +1803,183 @@ def _on_folder_icon_ready(ext, gfile: Gio.File, result: Gio.AsyncResult, folder_
         card = state.get("folder_card_widgets", {}).get(folder_key)
         if card is not None:
             card.update_metadata(new_pf)
+
+
+# ── Preferred Folders captions (issue #72) ──────────────────────────────────
+
+# Nautilus's "captions" tokens that need a query_info() attribute, mapped to
+# the attribute string to request. "size" (item count) and "where" (parent
+# path) are handled separately below -- size needs enumerate_children, and
+# where is derived from the URI itself with no I/O at all.
+_CAPTION_TOKEN_ATTRS: dict[str, str] = {
+    "type": "standard::content-type",
+    "detailed_type": "standard::content-type",
+    "mime_type": "standard::content-type",
+    "date_modified": "time::modified",
+    "date_accessed": "time::access",
+    "date_created": "time::created",
+    "recency": "time::access",
+    "owner": "owner::user",
+    "group": "owner::group",
+    "permissions": "unix::mode",
+}
+
+
+def _refresh_folder_captions_async(ext, pf: "PreferredFolder") -> None:
+    """Resolve whichever caption attributes the 3 active tokens need, then
+    patch any rendered card in place via _apply_folder_captions. Virtual
+    places (recent:///, starred:///, x-network-view:///) have no real file to
+    query -- Nautilus itself shows no captions for them either."""
+    if pf.is_special_place:
+        return
+    tokens = ext._nautilus_prefs.captions()
+    attrs = {_CAPTION_TOKEN_ATTRS[t] for t in tokens if t in _CAPTION_TOKEN_ATTRS}
+    gfile = Gio.File.new_for_uri(pf.nav_uri)
+    if attrs:
+        gfile.query_info_async(
+            ",".join(attrs),
+            Gio.FileQueryInfoFlags.NONE,
+            GLib.PRIORITY_DEFAULT,
+            ext._folder_refresh_cancellable,
+            functools.partial(_on_folder_caption_info_ready, ext),
+            pf.key,
+        )
+    if "size" in tokens:
+        _count_folder_children_async(ext, gfile, pf.key)
+
+
+def _on_folder_caption_info_ready(
+    ext, gfile: Gio.File, result: Gio.AsyncResult, folder_key: str
+) -> None:
+    try:
+        info = gfile.query_info_finish(result)
+    except GLib.Error:
+        return
+    data = _folder_caption_data.setdefault(folder_key, {})
+    if info.has_attribute("standard::content-type"):
+        data["content_type"] = info.get_content_type()
+    if info.has_attribute("time::modified"):
+        data["mtime"] = info.get_attribute_uint64("time::modified")
+    if info.has_attribute("time::access"):
+        data["atime"] = info.get_attribute_uint64("time::access")
+    if info.has_attribute("time::created"):
+        data["ctime"] = info.get_attribute_uint64("time::created")
+    if info.has_attribute("owner::user"):
+        data["owner"] = info.get_attribute_string("owner::user")
+    if info.has_attribute("owner::group"):
+        data["group"] = info.get_attribute_string("owner::group")
+    if info.has_attribute("unix::mode"):
+        data["mode"] = info.get_attribute_uint32("unix::mode")
+    _apply_folder_captions(ext, folder_key)
+
+
+def _count_folder_children_async(ext, gfile: Gio.File, folder_key: str) -> None:
+    gfile.enumerate_children_async(
+        "standard::name",
+        Gio.FileQueryInfoFlags.NONE,
+        GLib.PRIORITY_DEFAULT,
+        ext._folder_refresh_cancellable,
+        functools.partial(_on_folder_children_enumerated, ext, folder_key, 0),
+    )
+
+
+def _on_folder_children_enumerated(
+    ext, folder_key: str, running_count: int, gfile: Gio.File, result: Gio.AsyncResult
+) -> None:
+    try:
+        enumerator = gfile.enumerate_children_finish(result)
+    except GLib.Error:
+        return
+    _drain_folder_children(ext, enumerator, folder_key, running_count)
+
+
+def _drain_folder_children(
+    ext, enumerator: Gio.FileEnumerator, folder_key: str, running_count: int
+) -> None:
+    enumerator.next_files_async(
+        200,
+        GLib.PRIORITY_DEFAULT,
+        ext._folder_refresh_cancellable,
+        functools.partial(_on_folder_children_batch, ext, folder_key, running_count),
+    )
+
+
+def _on_folder_children_batch(
+    ext,
+    folder_key: str,
+    running_count: int,
+    enumerator: Gio.FileEnumerator,
+    result: Gio.AsyncResult,
+) -> None:
+    try:
+        infos = enumerator.next_files_finish(result)
+    except GLib.Error:
+        return
+    running_count += len(infos)
+    if infos:
+        _drain_folder_children(ext, enumerator, folder_key, running_count)
+        return
+    enumerator.close_async(GLib.PRIORITY_DEFAULT, None, lambda *_a: None)
+    _folder_caption_data.setdefault(folder_key, {})["item_count"] = running_count
+    _apply_folder_captions(ext, folder_key)
+
+
+def _resolve_caption_line(token: str, pf: "PreferredFolder", data: dict) -> str | None:
+    """One caption token's display string, or None if it's "none", not yet
+    resolved, or (for "where") the folder has no meaningful parent."""
+    if token == "none":
+        return None
+    if token == "where":
+        parent = Gio.File.new_for_uri(pf.nav_uri).get_parent()
+        return parent.get_parse_name() if parent is not None else None
+    if token == "size":
+        item_count = data.get("item_count")
+        return _format_item_count(item_count) if item_count is not None else None
+    if token in ("type", "detailed_type", "mime_type"):
+        content_type = data.get("content_type")
+        if content_type is None:
+            return None
+        if token == "mime_type":
+            return content_type
+        return Gio.content_type_get_description(content_type) or content_type
+    if token in ("date_modified", "date_accessed", "date_created", "recency"):
+        field = {
+            "date_modified": "mtime",
+            "date_accessed": "atime",
+            "date_created": "ctime",
+            "recency": "atime",
+        }[token]
+        unix_time = data.get(field)
+        return _format_datetime(unix_time) if unix_time else None
+    if token == "owner":
+        return data.get("owner")
+    if token == "group":
+        return data.get("group")
+    if token == "permissions":
+        mode = data.get("mode")
+        return _format_permissions(mode) if mode is not None else None
+    return None
+
+
+def _apply_folder_captions(ext, folder_key: str) -> None:
+    """Recompute the 3 caption lines from cached data + the current GSettings
+    tokens and patch any rendered card in place. Called both when fresh data
+    arrives (async callbacks above) and when the tokens themselves change
+    (main.py's _reapply_folder_captions)."""
+    pf = _folder_data.get(folder_key)
+    if pf is None:
+        return
+    tokens = ext._nautilus_prefs.captions()
+    data = _folder_caption_data.get(folder_key, {})
+    lines = (
+        [None, None, None]
+        if pf.is_special_place
+        else [_resolve_caption_line(tok, pf, data) for tok in tokens]
+    )
+    for state in ext._windows.values():
+        card = state.get("folder_card_widgets", {}).get(folder_key)
+        if card is not None:
+            card.set_captions(lines)
 
 
 def _sync_folder_rename_watchers(ext, folders: list) -> None:
