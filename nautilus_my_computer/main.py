@@ -1818,9 +1818,12 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         page_computer.set_icon_name("computer-symbolic")
         pref_win.add(page_computer)
 
+        is_rtl = Gtk.Widget.get_default_direction() == Gtk.TextDirection.RTL
         page_sidebar = Adw.PreferencesPage()
         page_sidebar.set_title(_("Sidebar"))
-        page_sidebar.set_icon_name("sidebar-show-symbolic")
+        page_sidebar.set_icon_name(
+            "sidebar-show-right-symbolic" if is_rtl else "sidebar-show-right-symbolic-rtl"
+        )
         pref_win.add(page_sidebar)
 
         page_about = Adw.PreferencesPage()
