@@ -83,7 +83,6 @@ from nautilus_my_computer.common import (
     _DISK_CARD_MARGIN_END,
     _DISK_CARD_MARGIN_START,
     _DISK_CARD_MARGIN_TOP,
-    _DISK_ICON_SIZE,
     _FOLDER_CARD_MARGIN_BOTTOM,
     _FOLDER_CARD_MARGIN_END,
     _FOLDER_CARD_MARGIN_START,
@@ -92,6 +91,8 @@ from nautilus_my_computer.common import (
     _INTERNAL_FSTYPES,
     _LIST_BAR_MAX_WIDTH,
     _,
+    _disk_icon_size,
+    _disk_list_icon_size,
     _folder_card_width,
     _format_size,
     _gicon_renders,
@@ -99,6 +100,7 @@ from nautilus_my_computer.common import (
     _is_activating_click,
     _log,
     _nautilus_icon_size,
+    _nautilus_list_icon_size,
     _resolve_custom_gicon,
     _set_regular_icon,
 )
@@ -183,7 +185,7 @@ class MyComputerDiskCard(Gtk.Box):
         self.set_size_request(_CARD_WIDTH, -1)
 
         icon = Gtk.Image()
-        icon.set_pixel_size(_DISK_ICON_SIZE)
+        icon.set_pixel_size(_disk_icon_size())
         icon.set_valign(Gtk.Align.CENTER)
         # icon.set_margin_end(12)
         if _gicon_renders(m.gio_icon):
@@ -236,7 +238,7 @@ class MyComputerDiskCard(Gtk.Box):
         self.set_hexpand(True)
 
         icon = Gtk.Image()
-        icon.set_pixel_size(36)
+        icon.set_pixel_size(_disk_list_icon_size())
         icon.set_valign(Gtk.Align.CENTER)
         if _gicon_renders(m.gio_icon):
             icon.set_from_gicon(m.gio_icon)
@@ -500,7 +502,7 @@ class MyComputerFolderCard(Gtk.Box):
             ghost.set_halign(Gtk.Align.START)
 
             icon = Gtk.Image()
-            icon.set_pixel_size(42)
+            icon.set_pixel_size(_nautilus_list_icon_size())
             icon.set_valign(Gtk.Align.CENTER)
             self._set_icon(icon)
             ghost.append(icon)
@@ -635,7 +637,7 @@ class MyComputerFolderCard(Gtk.Box):
         content.set_valign(Gtk.Align.CENTER)
 
         icon = Gtk.Image()
-        icon.set_pixel_size(42)
+        icon.set_pixel_size(_nautilus_list_icon_size())
         icon.set_valign(Gtk.Align.CENTER)
         self._set_icon(icon)
         content.append(icon)

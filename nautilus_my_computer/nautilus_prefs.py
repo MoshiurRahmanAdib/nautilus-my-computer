@@ -12,7 +12,13 @@ from __future__ import annotations
 
 from gi.repository import Adw, Gio, GLib, Gtk
 
-from nautilus_my_computer.common import _ZOOM_TO_PX, _all_widgets, _find_widget, _log
+from nautilus_my_computer.common import (
+    _GRID_ZOOM_PX,
+    _LIST_ZOOM_PX,
+    _all_widgets,
+    _find_widget,
+    _log,
+)
 
 # Per-folder sort override, stored as GVfs metadata (not GSettings -- there is
 # no signal for this; the metadata daemon writes via mmap so file monitors
@@ -68,7 +74,9 @@ class NautilusPrefs:
         return settings.get_string("default-zoom-level")
 
     def zoom_px(self, view: str = "icon-view") -> int:
-        return _ZOOM_TO_PX.get(self.zoom_level(view), 96)
+        if view == "list-view":
+            return _LIST_ZOOM_PX.get(self.zoom_level(view), 32)
+        return _GRID_ZOOM_PX.get(self.zoom_level(view), 96)
 
     def captions(self) -> list[str]:
         """The up-to-3 caption tokens from icon-view's "captions" key (e.g.
@@ -162,6 +170,11 @@ class NautilusPrefs:
         self._prefs.connect("changed::click-policy", self._on_click_policy_changed, ext)
         self._filechooser.connect("changed::show-hidden", self._on_hidden_files_changed, ext)
         self._icon_view.connect("changed::captions", self._on_captions_changed, ext)
+        # Zoom is per-view (grid uses icon-view, list uses list-view); either
+        # can change via Ctrl+scroll / +/-. Cards read px from the active view's
+        # zoom, so repopulate whatever is visible when the matching key changes.
+        self._icon_view.connect("changed::default-zoom-level", self._on_zoom_changed, ext)
+        self._list_view.connect("changed::default-zoom-level", self._on_zoom_changed, ext)
 
     def _on_view_mode_changed(self, _settings: Gio.Settings, _key: str, ext) -> None:
         if self.refresh_view_mode():
@@ -180,6 +193,10 @@ class NautilusPrefs:
     def _on_captions_changed(self, _settings: Gio.Settings, _key: str, ext) -> None:
         _log(f"captions changed → {self.captions()}")
         ext._reapply_folder_captions()
+
+    def _on_zoom_changed(self, settings: Gio.Settings, _key: str, ext) -> None:
+        _log(f"zoom changed → {settings.get_string('default-zoom-level')}")
+        ext._repopulate_visible()
 
     def watch_sort_button(self, ext, nautilus_win: Gtk.Window, *, resolve_sort_target) -> None:
         """Watch the sort GtkMenuButton's active state -- arm poll when the sort

@@ -602,16 +602,45 @@ def _find_row_start_image(row: Gtk.Widget) -> Gtk.Image | None:
     return None
 
 
-_ZOOM_TO_PX = {"small": 48, "small-plus": 64, "medium": 96, "large": 168, "extra-large": 256}
+# ── Zoom -> icon px ──────────────────────────────────────────────────────────────
+# Zoom -> icon px, one table per (card kind, view). Grid and list are separate
+# native scales (different keys/stops/px -- see nautilus-enums.h). Folder cards
+# mirror native px exactly; disk cards aren't native grid cells (own width,
+# usage bars) so they ride a gentler curve of our own, anchored at medium = the
+# sizes they used before (64 grid / 36 list). Tweak the disk tables to taste.
+_ICON_VIEW_SCHEMA = "org.gnome.nautilus.icon-view"  # grid zoom key
+_LIST_VIEW_SCHEMA = "org.gnome.nautilus.list-view"  # list zoom key
+
+# Folder cards - native px.
+_GRID_ZOOM_PX = {"small": 48, "small-plus": 64, "medium": 96, "large": 168, "extra-large": 256}
+_LIST_ZOOM_PX = {"small": 16, "medium": 32, "large": 64}
+# Disk cards - our own curve.
+_DISK_GRID_ZOOM_PX = {"small": 42, "small-plus": 48, "medium": 64, "large": 112, "extra-large": 168}
+_DISK_LIST_ZOOM_PX = {"small": 24, "medium": 36, "large": 48}
+
+
+def _zoom_icon_px(schema: str, table: dict[str, int], default: int) -> int:
+    try:
+        zoom = Gio.Settings.new(schema).get_string("default-zoom-level")
+        return table.get(zoom, default)
+    except Exception:
+        return default
 
 
 def _nautilus_icon_size() -> int:
-    try:
-        settings = Gio.Settings.new("org.gnome.nautilus.icon-view")
-        zoom = settings.get_string("default-zoom-level")
-        return _ZOOM_TO_PX.get(zoom, 96)
-    except Exception:
-        return 96
+    return _zoom_icon_px(_ICON_VIEW_SCHEMA, _GRID_ZOOM_PX, 96)
+
+
+def _nautilus_list_icon_size() -> int:
+    return _zoom_icon_px(_LIST_VIEW_SCHEMA, _LIST_ZOOM_PX, 32)
+
+
+def _disk_icon_size() -> int:
+    return _zoom_icon_px(_ICON_VIEW_SCHEMA, _DISK_GRID_ZOOM_PX, 64)
+
+
+def _disk_list_icon_size() -> int:
+    return _zoom_icon_px(_LIST_VIEW_SCHEMA, _DISK_LIST_ZOOM_PX, 36)
 
 
 def _folder_card_width() -> int:
@@ -620,8 +649,8 @@ def _folder_card_width() -> int:
     return _nautilus_icon_size() + _FOLDER_CARD_MARGIN_START + _FOLDER_CARD_MARGIN_END
 
 
-# ── Card geometry constants ───────────────────────────────────────────────────
-_DISK_ICON_SIZE = 64  # disk cards aren't native grid cells; keep our own fixed icon size
+# ── Card geometry constants ──────────────────────────────────────────────────────
+# (disk icon px now comes from _disk_icon_size()/_disk_list_icon_size() above)
 _FLOW_COLS_GRID = 8  # max columns in grid (FlowBox) view
 _CARD_WIDTH = 280  # disk grid card width cap (px); beyond this,
 # the grid gains another column instead of stretching cards further
