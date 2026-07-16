@@ -1518,7 +1518,35 @@ def _build_panel(ext, win: Gtk.Window) -> tuple:
     bg_deselect.connect("pressed", functools.partial(_on_panel_clicked, ext), win)
     scroll.add_controller(bg_deselect)
 
+    # Ctrl+scroll zoom passthrough. Native Nautilus wires this on its own
+    # NautilusListBase, which is the hidden "files" child while our panel shows,
+    # so the gesture never reaches us and the ScrolledWindow just pages up/down.
+    # Forward to Nautilus's real "view.zoom-in"/"view.zoom-out" actions (they
+    # live on the window, an ancestor of this panel) instead of reimplementing
+    # the zoom stepping. Ctrl+= / Ctrl+- already work via the window accelerator.
+    zoom_scroll = Gtk.EventControllerScroll()
+    # DISCRETE makes GTK accumulate smooth (touchpad) deltas internally and emit
+    # one unit step per notch, so we get native "one zoom step per notch" feel
+    # without a manual accumulator/reset timer.
+    zoom_scroll.set_flags(
+        Gtk.EventControllerScrollFlags.VERTICAL | Gtk.EventControllerScrollFlags.DISCRETE
+    )
+    zoom_scroll.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+    zoom_scroll.connect("scroll", _on_ctrl_scroll_zoom, panel)
+    scroll.add_controller(zoom_scroll)
+
     return panel, scroll, grid_box
+
+
+def _on_ctrl_scroll_zoom(
+    controller: Gtk.EventControllerScroll, _dx: float, dy: float, panel: Gtk.Widget
+) -> bool:
+    """Ctrl+scroll -> step Nautilus's own zoom action; plain scroll passes through."""
+    state = controller.get_current_event_state()
+    if not (state & Gdk.ModifierType.CONTROL_MASK) or dy == 0:
+        return Gdk.EVENT_PROPAGATE
+    panel.activate_action("view.zoom-in" if dy < 0 else "view.zoom-out", None)
+    return Gdk.EVENT_STOP
 
 
 def _populate(ext, win: Gtk.Window) -> None:
