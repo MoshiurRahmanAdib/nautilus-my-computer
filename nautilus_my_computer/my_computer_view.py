@@ -1643,7 +1643,7 @@ def _populate(ext, win: Gtk.Window) -> None:
             )
             section_flows.append(section.flow)
             for pf in folders:
-                card = MyComputerFolderCard(ext, win, pf)
+                card = MyComputerFolderCard(ext, win, ext._view_mode, pf)
                 section.add_card(card)
                 folder_card_widgets[pf.key] = card
             grid_box.append(section)

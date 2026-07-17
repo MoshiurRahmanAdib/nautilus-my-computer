@@ -97,6 +97,7 @@ from nautilus_my_computer.common import (
     _is_activating_click,
     _log,
     _nautilus_icon_size,
+    _nautilus_list_icon_size,
     _resolve_custom_gicon,
     _set_regular_icon,
 )
@@ -290,21 +291,27 @@ class MyComputerDiskCard(Gtk.Box):
 
 
 class MyComputerFolderCard(Gtk.Widget):
-    """Self-contained card: renders one PreferredFolder in the native grid."""
+    """Self-contained card: renders one PreferredFolder as a grid card
+    (native grid layout, mirroring NautilusGridCell) or a list row."""
 
     __gtype_name__ = "MyComputerFolderCard"
 
-    def __init__(self, ext, win: Gtk.Window, model) -> None:
+    def __init__(self, ext, win: Gtk.Window, view_mode: str, model) -> None:
         super().__init__()
         self._ext = ext
         self._win = win
+        self.view_mode = view_mode
         self.model = model
         self.icon: Gtk.Image | None = None
         self.name_label: Gtk.Label | None = None
-        # Up to 3 caption lines below the name (Nautilus "Captions").
+        # Up to 3 caption lines below the name (Nautilus "Captions", grid
+        # mode only -- list mode never creates them, so set_captions() is a
+        # safe no-op there).
         self.caption_first: Gtk.Label | None = None
         self.caption_second: Gtk.Label | None = None
         self.caption_third: Gtk.Label | None = None
+        # Only populated in list mode -- see _build_list/do_measure etc.
+        self._list_box: Gtk.Box | None = None
 
         self.get_style_context().add_class("nautilus-view-cell")
         self._build()
@@ -317,6 +324,10 @@ class MyComputerFolderCard(Gtk.Widget):
 
         self._wire_drag()
         self._wire_reorder_preview()
+
+    @property
+    def is_list(self) -> bool:
+        return self.view_mode == "list-view"
 
     @property
     def nav_uri(self) -> str:
@@ -424,14 +435,19 @@ class MyComputerFolderCard(Gtk.Widget):
         return False
 
     def _build_drag_ghost(self) -> Gtk.Widget:
-        """Return a full-size icon-and-name clone for folder sorting."""
-        ghost = MyComputerFolderCard(self._ext, self._win, self.model)
+        """Return a full-size clone for folder sorting, in the same mode
+        (grid or list) as the card being dragged."""
+        ghost = MyComputerFolderCard(self._ext, self._win, self.view_mode, self.model)
         ghost.set_focusable(False)
         ghost.set_captions([None, None, None])
         return ghost
 
     def do_measure(self, orientation, for_size):
-        """Mirror NautilusGridCell's fixed-width, height-for-width measure."""
+        """Mirror NautilusGridCell's fixed-width, height-for-width measure
+        (grid mode), or delegate straight through to the list row's box."""
+        if self.is_list:
+            return self._list_box.measure(orientation, for_size)
+
         icon_size = _nautilus_icon_size()
         width = _folder_card_width()
         if orientation == Gtk.Orientation.HORIZONTAL:
@@ -465,7 +481,12 @@ class MyComputerFolderCard(Gtk.Widget):
         return Gsk.Transform.new().translate(Graphene.Point().init(x, y))
 
     def do_size_allocate(self, width: int, height: int, baseline: int) -> None:
-        """Allocate the icon, emblem gutter, and labels exactly as Nautilus does."""
+        """Allocate the icon, emblem gutter, and labels exactly as Nautilus
+        does (grid mode), or the list row's box across the full cell."""
+        if self.is_list:
+            self._list_box.allocate(width, height, baseline, None)
+            return
+
         icon_size = _nautilus_icon_size()
         self.icon.allocate(
             width - 36,
@@ -489,12 +510,18 @@ class MyComputerFolderCard(Gtk.Widget):
         )
 
     def do_snapshot(self, snapshot: Gtk.Snapshot) -> None:
+        if self.is_list:
+            self.snapshot_child(self._list_box, snapshot)
+            return
         for child in (self.icon, self._emblems_box, self._labels_box):
             self.snapshot_child(child, snapshot)
 
     def do_dispose(self) -> None:
+        if self._list_box is not None:
+            self._list_box.unparent()
         for child in (self.icon, self._emblems_box, self._labels_box):
-            child.unparent()
+            if child is not None:
+                child.unparent()
         super().do_dispose()
 
     def _set_icon(self, icon: Gtk.Image) -> None:
@@ -507,7 +534,47 @@ class MyComputerFolderCard(Gtk.Widget):
             icon.set_from_icon_name("folder")
 
     def _build(self) -> None:
-        self._build_grid()
+        if self.is_list:
+            self._build_list()
+        else:
+            self._build_grid()
+
+    def _build_list(self) -> None:
+        """List-view compact cell: keep Preferred Folders multi-column (the
+        section's FlowBox stays in grid layout -- see always_grid on its
+        MyComputerCardSection) while rendering each card as a compact
+        horizontal icon+name row instead of the full icon-grid cell."""
+        pf = self.model
+        self.set_valign(Gtk.Align.FILL)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        box.set_margin_start(6)
+        box.set_margin_end(6)
+        box.set_margin_top(3)
+        box.set_margin_bottom(3)
+        box.set_halign(Gtk.Align.START)
+        box.set_valign(Gtk.Align.CENTER)
+        box.set_parent(self)
+
+        icon = Gtk.Image()
+        icon.set_pixel_size(_nautilus_list_icon_size())
+        icon.set_valign(Gtk.Align.CENTER)
+        self._set_icon(icon)
+        box.append(icon)
+
+        labels_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        labels_box.set_valign(Gtk.Align.CENTER)
+        name_lbl = Gtk.Label(label=pf.display_name)
+        name_lbl.set_xalign(0.0)
+        name_lbl.set_valign(Gtk.Align.CENTER)
+        name_lbl.set_max_width_chars(14)
+        name_lbl.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
+        labels_box.append(name_lbl)
+        box.append(labels_box)
+
+        self._list_box = box
+        self.icon = icon
+        self.name_label = name_lbl
 
     def _build_grid(self) -> None:
         pf = self.model
