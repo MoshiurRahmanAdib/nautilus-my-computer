@@ -644,9 +644,8 @@ def _disk_list_icon_size() -> int:
 
 
 def _folder_card_width() -> int:
-    """Total folder-card width (px), owned by the widget: icon width plus the
-    widget's own start/end margins."""
-    return _nautilus_icon_size() + _FOLDER_CARD_MARGIN_START + _FOLDER_CARD_MARGIN_END
+    """Native Nautilus grid-cell width: icon plus two 18px emblem gutters."""
+    return _nautilus_icon_size() + 36
 
 
 # ── Card geometry constants ──────────────────────────────────────────────────────
@@ -664,13 +663,8 @@ _DISK_CARD_MARGIN_TOP = 6  # disk card own top inset inside its total height (px
 _DISK_CARD_MARGIN_BOTTOM = 6  # disk card own bottom inset inside its total height (px)
 
 _FOLDER_FLOW_COLS_GRID = 20  # matches native Nautilus folder view's max column count
-_FOLDER_CARD_SPACING = 24  # folder card FlowBox column spacing (px); min gap the justified
-# flow stretches from once a row is full (see MyComputerJustifiedFlowBox)
-_FOLDER_CARD_ROW_SPACING = 6  # folder card FlowBox row spacing (px)
-_FOLDER_CARD_MARGIN_START = 8  # folder card own start inset inside its total width (px)
-_FOLDER_CARD_MARGIN_END = 8  # folder card own end inset inside its total width (px)
-_FOLDER_CARD_MARGIN_TOP = 8  # folder card own top inset inside its total height (px)
-_FOLDER_CARD_MARGIN_BOTTOM = 4  # folder card own bottom inset inside its total height (px)
+_FOLDER_CARD_SPACING = 6  # matches Nautilus gridview's border-spacing
+_FOLDER_CARD_ROW_SPACING = 6
 
 # ── Column View geometry constants ───────────────────────────────────────────────
 _COLUMN_WIDTH = 300  # column view: default/fixed folder column width (px)

@@ -43,7 +43,6 @@ from nautilus_my_computer.common import (
     _,
     _all_widgets,
     _find_widget,
-    _folder_card_width,
     _format_item_count,
     _format_permissions,
     _log,
@@ -505,24 +504,11 @@ _CSS = b"""
     padding: 0;
     margin: 0;
 }
-/* Folder cards already show the reorder via live drag-move (see
-   _wire_reorder_preview), so the native drop-target border is redundant.
-   Mirrors Nautilus's own .nautilus-list-view .nautilus-view-cell:drop(active)
-   reset (style.css), just scoped to our panel's grid cells instead. */
+/* Reordering moves the dragged card into its new slot live, so GTK's default
+   active-drop outline is redundant and visually conflicts with that preview. */
 .diskinfo-panel .nautilus-view-cell:drop(active) {
     box-shadow: none;
 }
-/* Folder cards own their gutters via widget spacing/FlowBox spacing, so strip
-   Nautilus's native cell inset from that card class only. */
-.diskinfo-panel .mc-folder-card {
-    padding: 0;
-    margin: 0;
-}
-/* Reusable highlight for any card type. Applied programmatically (e.g. on
-   the dragged folder card during reorder) to show the current landing slot.
-   alpha(@window_fg_color, 0.07) is Adwaita's hover overlay: subtle dark tint
-   in light mode, subtle white tint in dark mode -- matches the hover bg on
-   activatable grid/list rows. Border-radius matches .nautilus-view-cell (12px). */
 .mc-selected {
     background-color: alpha(@window_fg_color, 0.07);
     border-radius: 12px;
@@ -589,7 +575,8 @@ _CSS = b"""
    Hand-built from Gtk.Box/Gtk.ToggleButton/Gtk.Separator, not Adw.ToggleGroup
    (libadwaita 1.7+ only), so it renders identically on GNOME 47 and 48+.
    Reuses the same alpha(@window_fg_color, 0.07) hover-overlay formula as
-   .mc-selected above for both the pill background and the button hover tint. */
+   the panel's grid-cell hover overlay for both the pill background and the
+   button hover tint. */
 .mc-toggle-group {
     background-color: alpha(@window_fg_color, 0.07);
     border-radius: 9px;
@@ -1653,16 +1640,12 @@ def _populate(ext, win: Gtk.Window) -> None:
                 col_spacing=_FOLDER_CARD_SPACING,
                 row_spacing=_FOLDER_CARD_ROW_SPACING,
                 always_grid=True,
-                justify=True,
-                card_width=_folder_card_width(),
             )
             section_flows.append(section.flow)
-
             for pf in folders:
-                card = MyComputerFolderCard(ext, win, ext._view_mode, pf)
+                card = MyComputerFolderCard(ext, win, pf)
                 section.add_card(card)
                 folder_card_widgets[pf.key] = card
-
             grid_box.append(section)
     else:
         _folder_data.clear()
@@ -2192,9 +2175,17 @@ def _on_card_right_clicked(ext, gesture, _n, x, y, win: Gtk.Window, row: Gtk.Box
     else:
         return
 
-    popover = ctx_menu.build_popover(row, "diskrow")
+    # A Preferred Folder lives below the panel's scrolling viewport. Parenting
+    # its menu to the card lets GTK constrain the popover to that tiny viewport
+    # subtree; anchor it to the full panel instead, as Column View does for its
+    # scrollable content, and translate the click point into panel coordinates.
+    state = ext._windows.get(win)
+    popover_parent = state.get("panel") if isinstance(row, MyComputerFolderCard) and state else row
+    point = row.translate_coordinates(popover_parent, x, y)
+    point_x, point_y = point if point is not None else (x, y)
+    popover = ctx_menu.build_popover(popover_parent, "diskrow")
     rect = Gdk.Rectangle()
-    rect.x, rect.y, rect.width, rect.height = int(x), int(y), 1, 1
+    rect.x, rect.y, rect.width, rect.height = int(point_x), int(point_y), 1, 1
     popover.set_pointing_to(rect)
     popover.popup()
 
