@@ -1,5 +1,5 @@
 Name:           nautilus-my-computer
-Version:        0.12.2
+Version:        0.12.3
 Release:        0
 Summary:        My Computer for Nautilus, what GNOME Files should have always been
 
@@ -42,6 +42,20 @@ make build
 %{_datadir}/glib-2.0/schemas/io.github.yannmasoch.nautilus-my-computer.gschema.xml
 
 %changelog
+* Sun Jul 19 2026 Yann Masoch <231734284+yannmasoch@users.noreply.github.com> - 0.12.3-0
+- Add captions to Preferred Folders, showing item count and last-modified
+  date, toggleable from Settings
+- Resize Preferred Folders and disk cards together with Nautilus's own
+  zoom level, forwarding Ctrl+scroll to zoom the Computer view
+- Split the Settings dialog into tabs by category
+- Add a --help flag to the install script
+- Fix Preferred Folders and disk cards to align to the same grid Nautilus
+  uses, fixing sizing and padding mismatches
+- Fix Preferred Folders not updating immediately on rename, delete, or move
+- Fix custom folder icons not showing in the My Computer panel
+- Fix home folders showing system language names instead of the real name
+- Fix German (de_DE) translations not loading
+
 * Mon Jul 13 2026 Yann Masoch <231734284+yannmasoch@users.noreply.github.com> - 0.12.2-0
 - Fix the Column View switcher segment showing a broken icon on systems
   whose icon theme (including Adwaita itself) doesn't ship

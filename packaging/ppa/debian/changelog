@@ -1,3 +1,20 @@
+nautilus-my-computer (0.12.3-1) UNRELEASED; urgency=medium
+
+  * Add captions to Preferred Folders, showing item count and last-modified
+    date, toggleable from Settings
+  * Resize Preferred Folders and disk cards together with Nautilus's own
+    zoom level, forwarding Ctrl+scroll to zoom the Computer view
+  * Split the Settings dialog into tabs by category
+  * Add a --help flag to the install script
+  * Fix Preferred Folders and disk cards to align to the same grid Nautilus
+    uses, fixing sizing and padding mismatches
+  * Fix Preferred Folders not updating immediately on rename, delete, or move
+  * Fix custom folder icons not showing in the My Computer panel
+  * Fix home folders showing system language names instead of the real name
+  * Fix German (de_DE) translations not loading
+
+ -- Yann Masoch <231734284+yannmasoch@users.noreply.github.com>  Sun, 19 Jul 2026 16:34:22 -0700
+
 nautilus-my-computer (0.12.2-1) UNRELEASED; urgency=medium
 
   * Fix the Column View switcher segment showing a broken icon on systems

@@ -4,6 +4,46 @@ All notable changes to this project are documented here.
 
 ---
 
+## v0.12.3
+Add captions and zoom-aware sizing to Preferred Folders, tabbed settings, and
+fix several sizing and translation bugs.
+
+### Added
+- Preferred Folders can now show a caption under each card with the folder's
+  item count and last-modified date, matching Nautilus's own captions. Turn
+  it on or off from Settings.
+- Preferred Folders and disk cards now resize together with Nautilus's own
+  zoom level, and Ctrl+scroll zooms the Computer view the same way it does
+  in a normal folder.
+- The install script now supports a `--help` flag listing all available
+  options.
+
+### Changed
+- The Settings dialog is now split into tabs by category instead of one
+  long scrolling page, making it easier to find what you're looking for.
+
+### Fixed
+- Preferred Folders and disk cards now align to the same grid Nautilus
+  itself uses, fixing folder sizes and padding that didn't quite match the
+  native view.
+- Preferred Folders now update immediately when you rename, delete, or move
+  a folder, instead of requiring a restart.
+- Custom folder icons now show up correctly in the My Computer panel
+  instead of falling back to the generic folder icon.
+- Home folders (Documents, Downloads, Music, etc.) now always show their
+  real name, whether that's the system language default or one you've
+  renamed yourself.
+- German (de_DE) translations now load correctly.
+
+Credit to @MoshiurRahmanAdib for contributing the install script's `--help` flag.
+Credit to @caioolivv for reporting the folder icon, folder naming, and sizing
+bugs, and to @unaibenidorm for reporting the grid sizing issue, with @aushamim
+confirming it independently. Credit to @YoMama78 for reporting the German
+translation bug, confirmed by @mikpinky and @Naezr, who also confirmed the
+folder icon and naming bugs.
+
+---
+
 ## v0.12.2
 Fix a broken icon in the Grid/List/Column switcher on some systems.
 
