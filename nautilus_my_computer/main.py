@@ -600,6 +600,19 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         else:
             self._start_on_disks = False
 
+        # Adw.StyleManager's "accent-color" property (libadwaita 1.6+) changes
+        # when the user picks a new system accent in GNOME Settings. GTK's
+        # named color @accent_bg_color is updated in its global symbol table
+        # at that point, but already-realized widgets referencing it through
+        # our own CssProvider (_apply_bar_color's ".diskinfo-bar block.filled"
+        # rule) don't get repainted automatically -- unlike GTK's own themed
+        # widgets, which are restyled as part of the same settings-change
+        # cascade. Reloading the provider (same CSS text) forces that repaint.
+        # Guarded: the property doesn't exist on libadwaita < 1.6.
+        style_manager = Adw.StyleManager.get_default()
+        if hasattr(style_manager.props, "accent_color"):
+            style_manager.connect("notify::accent-color", lambda *_a: self._apply_bar_color())
+
         my_computer_view.init_data_watchers(self)
         GLib.idle_add(self._late_init)
 
