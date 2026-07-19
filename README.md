@@ -69,7 +69,17 @@ nix profile install "github:yannmasoch/nautilus-my-computer?dir=packaging/nix"
 <details>
 <summary><b>Arch Linux</b> (AUR)</summary>
 
-Not yet published - AUR is currently blocking submissions from new accounts due to a recent spam wave. Will be added as soon as that's lifted.
+Not yet published on the AUR - AUR is currently blocking submissions from new accounts due to a
+recent spam wave. Will be added as soon as that's lifted.
+
+In the meantime, install it the usual AUR way, straight from the repo:
+```bash
+git clone https://github.com/yannmasoch/nautilus-my-computer.git
+cd nautilus-my-computer/packaging/aur
+makepkg -si
+```
+You'll need to `git pull` and re-run `makepkg -si` manually for each new version. Once the AUR
+submission block is lifted, this will be updated automatically with your usual AUR updates.
 </details>
 
 <details>
@@ -121,6 +131,10 @@ This group can be hidden if you'd rather not see it. Pin or unpin any folder as 
 Reorder your Preferred Folders by dragging cards into place, right in the Computer view, and the new order is saved automatically.
 
 ![Preferred Folders drag-and-drop](assets/images/preferred-folders-dnd.png)
+
+Captions follow native Nautilus captions support, show or hide them per your preference.
+
+![Preferred Folders captions](assets/images/preferred-folders-captions.png)
 
 ### Settings page
 

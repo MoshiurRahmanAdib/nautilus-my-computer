@@ -43,8 +43,11 @@ from nautilus_my_computer.common import (
     _,
     _all_widgets,
     _find_widget,
-    _folder_card_width,
+    _format_item_count,
+    _format_permissions,
     _log,
+    _mc_date_to_str,
+    _resolve_custom_gicon,
     _uri_is_hidden,
 )
 from nautilus_my_computer.context_menu import (
@@ -77,6 +80,7 @@ _DIRTY_ACTIVE_THRESHOLD = (
 )  # /proc/meminfo Dirty+Writeback ≥ this → poll fast (above resting journal noise ~1–2 MB)
 _USAGE_POLL_NETWORK_MS = 5000  # async D-Bus usage poll interval for GVfs/network mounts
 _SORT_POLL_MS = 250  # gvfs sort-metadata poll cadence (only while header is hovered)
+_FOLDER_ICON_POLL_MS = 2000  # metadata::custom-icon poll cadence (gvfs metadata isn't inotify)
 _STALE_RELEASE_FRAMES = 2  # keep detached panel generations alive across this many frame ticks
 REAL_FSTYPES = {
     "ext4",
@@ -445,6 +449,12 @@ _disk_data: dict[str, MountInfo] = {}
 _folder_data: dict[str, "PreferredFolder"] = {}
 _network_places: list[MountInfo] = []  # populated async from network:///
 
+# Raw resolved caption attributes per folder key, independent of which of the
+# 3 GSettings caption tokens are currently active -- so switching tokens never
+# needs to re-query a field already fetched. Keys among "content_type",
+# "mtime", "atime", "ctime", "owner", "group", "mode", "item_count".
+_folder_caption_data: dict[str, dict] = {}
+
 _CSS = b"""
 * {
     /* Mirrors Nautilus's own --accent-bg-color override from its bundled style.css
@@ -494,24 +504,11 @@ _CSS = b"""
     padding: 0;
     margin: 0;
 }
-/* Folder cards already show the reorder via live drag-move (see
-   _wire_reorder_preview), so the native drop-target border is redundant.
-   Mirrors Nautilus's own .nautilus-list-view .nautilus-view-cell:drop(active)
-   reset (style.css), just scoped to our panel's grid cells instead. */
+/* Reordering moves the dragged card into its new slot live, so GTK's default
+   active-drop outline is redundant and visually conflicts with that preview. */
 .diskinfo-panel .nautilus-view-cell:drop(active) {
     box-shadow: none;
 }
-/* Folder cards own their gutters via widget spacing/FlowBox spacing, so strip
-   Nautilus's native cell inset from that card class only. */
-.diskinfo-panel .mc-folder-card {
-    padding: 0;
-    margin: 0;
-}
-/* Reusable highlight for any card type. Applied programmatically (e.g. on
-   the dragged folder card during reorder) to show the current landing slot.
-   alpha(@window_fg_color, 0.07) is Adwaita's hover overlay: subtle dark tint
-   in light mode, subtle white tint in dark mode -- matches the hover bg on
-   activatable grid/list rows. Border-radius matches .nautilus-view-cell (12px). */
 .mc-selected {
     background-color: alpha(@window_fg_color, 0.07);
     border-radius: 12px;
@@ -578,7 +575,8 @@ _CSS = b"""
    Hand-built from Gtk.Box/Gtk.ToggleButton/Gtk.Separator, not Adw.ToggleGroup
    (libadwaita 1.7+ only), so it renders identically on GNOME 47 and 48+.
    Reuses the same alpha(@window_fg_color, 0.07) hover-overlay formula as
-   .mc-selected above for both the pill background and the button hover tint. */
+   the panel's grid-cell hover overlay for both the pill background and the
+   button hover tint. */
 .mc-toggle-group {
     background-color: alpha(@window_fg_color, 0.07);
     border-radius: 9px;
@@ -1384,6 +1382,25 @@ def _update_card_usage(ext, state: dict, key: str, total: int, free: int) -> Non
         card.update_usage(_disk_data[key])
 
 
+def _folder_icon_poll_tick(ext) -> bool:
+    """GLib timer callback: re-query display-name/icon metadata for every rendered
+    Preferred Folder. Renames and deletes reach us live via the file monitors in
+    _sync_folder_rename_watchers, but a custom-icon-only change (Nautilus'
+    "Properties > Icon") never fires a file-monitor event at all -- gvfs metadata
+    is an mmap-backed store, not inotify-visible (confirmed empirically; same
+    root cause as the sort-metadata polling need). Re-arming this cheap async
+    query on a timer, scoped to "panel visible" exactly like the network usage
+    poll, is the only way to catch it without waiting for the user to navigate
+    away and back (issue #71)."""
+    for pf in list(_folder_data.values()):
+        if pf.key not in preferred_folders.PREFERRED_TOKENS:
+            _refresh_folder_metadata_async(ext, pf)
+        elif not pf.is_special_place:
+            _refresh_folder_icon_async(ext, pf)
+        _refresh_folder_captions_async(ext, pf)
+    return GLib.SOURCE_CONTINUE
+
+
 def _ensure_usage_poll_running(ext) -> None:
     """Arm both usage poll workers if not already running."""
     if ext._local_poll_stop is None:
@@ -1397,6 +1414,10 @@ def _ensure_usage_poll_running(ext) -> None:
         _net_usage_tick(ext)
         ext._net_poll_timer_id = GLib.timeout_add(
             _USAGE_POLL_NETWORK_MS, functools.partial(_net_usage_tick, ext)
+        )
+    if ext._folder_icon_poll_timer_id is None:
+        ext._folder_icon_poll_timer_id = GLib.timeout_add(
+            _FOLDER_ICON_POLL_MS, functools.partial(_folder_icon_poll_tick, ext)
         )
 
 
@@ -1418,6 +1439,9 @@ def _stop_usage_poll_if_idle(ext) -> None:
         if ext._net_poll_cancellable is not None:
             ext._net_poll_cancellable.cancel()
             ext._net_poll_cancellable = None
+        if ext._folder_icon_poll_timer_id is not None:
+            GLib.source_remove(ext._folder_icon_poll_timer_id)
+            ext._folder_icon_poll_timer_id = None
 
 
 def _new_grid_box(ext) -> Gtk.Box:
@@ -1481,7 +1505,35 @@ def _build_panel(ext, win: Gtk.Window) -> tuple:
     bg_deselect.connect("pressed", functools.partial(_on_panel_clicked, ext), win)
     scroll.add_controller(bg_deselect)
 
+    # Ctrl+scroll zoom passthrough. Native Nautilus wires this on its own
+    # NautilusListBase, which is the hidden "files" child while our panel shows,
+    # so the gesture never reaches us and the ScrolledWindow just pages up/down.
+    # Forward to Nautilus's real "view.zoom-in"/"view.zoom-out" actions (they
+    # live on the window, an ancestor of this panel) instead of reimplementing
+    # the zoom stepping. Ctrl+= / Ctrl+- already work via the window accelerator.
+    zoom_scroll = Gtk.EventControllerScroll()
+    # DISCRETE makes GTK accumulate smooth (touchpad) deltas internally and emit
+    # one unit step per notch, so we get native "one zoom step per notch" feel
+    # without a manual accumulator/reset timer.
+    zoom_scroll.set_flags(
+        Gtk.EventControllerScrollFlags.VERTICAL | Gtk.EventControllerScrollFlags.DISCRETE
+    )
+    zoom_scroll.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+    zoom_scroll.connect("scroll", _on_ctrl_scroll_zoom, panel)
+    scroll.add_controller(zoom_scroll)
+
     return panel, scroll, grid_box
+
+
+def _on_ctrl_scroll_zoom(
+    controller: Gtk.EventControllerScroll, _dx: float, dy: float, panel: Gtk.Widget
+) -> bool:
+    """Ctrl+scroll -> step Nautilus's own zoom action; plain scroll passes through."""
+    state = controller.get_current_event_state()
+    if not (state & Gdk.ModifierType.CONTROL_MASK) or dy == 0:
+        return Gdk.EVENT_PROPAGATE
+    panel.activate_action("view.zoom-in" if dy < 0 else "view.zoom-out", None)
+    return Gdk.EVENT_STOP
 
 
 def _populate(ext, win: Gtk.Window) -> None:
@@ -1565,9 +1617,18 @@ def _populate(ext, win: Gtk.Window) -> None:
         folders = preferred_folders.load_preferred_folders(ext._gsettings)
         _folder_data.clear()
         _folder_data.update({pf.key: pf for pf in folders})
+        # Drop caption data for folders no longer present (removed/renamed) so
+        # a stale entry can't linger under a reused key.
+        live_keys = set(_folder_data.keys())
+        for stale_key in list(_folder_caption_data.keys()):
+            if stale_key not in live_keys:
+                del _folder_caption_data[stale_key]
         for pf in folders:
             if pf.key not in preferred_folders.PREFERRED_TOKENS:
                 _refresh_folder_metadata_async(ext, pf)
+            elif not pf.is_special_place:
+                _refresh_folder_icon_async(ext, pf)
+            _refresh_folder_captions_async(ext, pf)
         _sync_folder_rename_watchers(ext, folders)
         if folders:
             section = MyComputerCardSection(
@@ -1579,19 +1640,16 @@ def _populate(ext, win: Gtk.Window) -> None:
                 col_spacing=_FOLDER_CARD_SPACING,
                 row_spacing=_FOLDER_CARD_ROW_SPACING,
                 always_grid=True,
-                justify=True,
-                card_width=_folder_card_width(),
             )
             section_flows.append(section.flow)
-
             for pf in folders:
                 card = MyComputerFolderCard(ext, win, ext._view_mode, pf)
                 section.add_card(card)
                 folder_card_widgets[pf.key] = card
-
             grid_box.append(section)
     else:
         _folder_data.clear()
+        _folder_caption_data.clear()
         _sync_folder_rename_watchers(ext, [])
 
     for gkey, _glabel, _gskey in _GROUP_SPEC:
@@ -1653,6 +1711,10 @@ def _populate(ext, win: Gtk.Window) -> None:
     state["section_flows"] = section_flows
     state["card_widgets"] = card_widgets
     state["folder_card_widgets"] = folder_card_widgets
+    # Render any already-cached caption data immediately (e.g. re-populate
+    # after a live-refresh) rather than waiting for the next async fetch.
+    for folder_key in folder_card_widgets:
+        _show_folder_captions(ext, folder_key)
     state["grid_host"].set_child(grid_box)
     if old_grid_box is not None:
         _queue_stale_generation_release(ext, state, old_grid_box)
@@ -1687,7 +1749,8 @@ def _refresh_folder_metadata_async(ext, pf: "PreferredFolder") -> None:
     then patch any rendered cards in place via the folder_card_widgets registry."""
     gfile = Gio.File.new_for_uri(pf.nav_uri)
     gfile.query_info_async(
-        "standard::display-name,standard::icon,standard::is-hidden",
+        "standard::display-name,standard::icon,standard::is-hidden,"
+        "metadata::custom-icon,metadata::custom-icon-name",
         Gio.FileQueryInfoFlags.NONE,
         GLib.PRIORITY_DEFAULT,
         ext._folder_refresh_cancellable,
@@ -1707,7 +1770,7 @@ def _on_folder_metadata_ready(
     if pf is None:
         return
     display_name = info.get_display_name() or pf.display_name
-    gio_icon = info.get_icon()
+    gio_icon = _resolve_custom_gicon(info) or info.get_icon()
     is_hidden = info.get_attribute_boolean("standard::is-hidden")
     new_pf = dataclasses.replace(
         pf, display_name=display_name, gio_icon=gio_icon, is_hidden=is_hidden
@@ -1717,6 +1780,231 @@ def _on_folder_metadata_ready(
         card = state.get("folder_card_widgets", {}).get(folder_key)
         if card is not None:
             card.update_metadata(new_pf)
+
+
+def _refresh_folder_icon_async(ext, pf: "PreferredFolder") -> None:
+    """Icon/name refresh for built-in real-folder tokens (Documents/Downloads/
+    Music/Videos/Pictures/Home). GIO's standard::icon already resolves the
+    correct native icon for these paths (folder-download, user-home, ...) --
+    no hardcoded icon table needed -- and metadata::custom-icon(-name) layers
+    a user-set custom icon on top, exactly like Nautilus itself does.
+    standard::display-name is queried too (issue #64): the real folder name
+    comes from xdg-user-dirs at creation time and can diverge from our own
+    gettext label (renamed by the user, or created under a different locale),
+    so the actual filesystem name must win -- our label is only the initial
+    placeholder in PREFERRED_TOKENS until this query resolves."""
+    gfile = Gio.File.new_for_uri(pf.nav_uri)
+    gfile.query_info_async(
+        "standard::display-name,standard::icon,metadata::custom-icon,metadata::custom-icon-name",
+        Gio.FileQueryInfoFlags.NONE,
+        GLib.PRIORITY_DEFAULT,
+        ext._folder_refresh_cancellable,
+        functools.partial(_on_folder_icon_ready, ext),
+        pf.key,
+    )
+
+
+def _on_folder_icon_ready(ext, gfile: Gio.File, result: Gio.AsyncResult, folder_key: str) -> None:
+    try:
+        info = gfile.query_info_finish(result)
+    except GLib.Error:
+        return
+    pf = _folder_data.get(folder_key)
+    if pf is None:
+        return
+    # "home" has no xdg-user-dirs name to defer to -- its real basename is just
+    # the username, which GIO happily reports but Nautilus itself never shows
+    # (nautilus-file-utilities.c / nautilus-bookmark.c always substitute their
+    # own translated "Home" instead). Keep our _nautilus_string("Home") label there;
+    # only the named special-dir tokens (Documents/Downloads/...) defer to GIO.
+    display_name = (
+        pf.display_name if folder_key == "home" else (info.get_display_name() or pf.display_name)
+    )
+    gio_icon = _resolve_custom_gicon(info) or info.get_icon()
+    new_pf = dataclasses.replace(pf, display_name=display_name, gio_icon=gio_icon)
+    _folder_data[folder_key] = new_pf
+    for state in ext._windows.values():
+        card = state.get("folder_card_widgets", {}).get(folder_key)
+        if card is not None:
+            card.update_metadata(new_pf)
+
+
+# ── Preferred Folders captions (issue #72) ──────────────────────────────────
+
+# Nautilus's "captions" tokens that need a query_info() attribute, mapped to
+# the attribute string to request. "size" (item count) and "where" (parent
+# path) are handled separately below -- size needs enumerate_children, and
+# where is derived from the URI itself with no I/O at all.
+_CAPTION_TOKEN_ATTRS: dict[str, str] = {
+    "type": "standard::content-type",
+    "detailed_type": "standard::content-type",
+    "mime_type": "standard::content-type",
+    "date_modified": "time::modified",
+    "date_accessed": "time::access",
+    "date_created": "time::created",
+    "recency": "time::access",
+    "owner": "owner::user",
+    "group": "owner::group",
+    "permissions": "unix::mode",
+}
+
+
+def _refresh_folder_captions_async(ext, pf: "PreferredFolder") -> None:
+    """Resolve whichever caption attributes the 3 active tokens need, then
+    patch any rendered card in place via _show_folder_captions. Virtual
+    places (recent:///, starred:///, x-network-view:///) have no real file to
+    query -- Nautilus itself shows no captions for them either."""
+    if pf.is_special_place or not ext._gsettings.get_boolean("show-preferred-folder-captions"):
+        return
+    tokens = ext._nautilus_prefs.captions()
+    attrs = {_CAPTION_TOKEN_ATTRS[t] for t in tokens if t in _CAPTION_TOKEN_ATTRS}
+    gfile = Gio.File.new_for_uri(pf.nav_uri)
+    if attrs:
+        gfile.query_info_async(
+            ",".join(attrs),
+            Gio.FileQueryInfoFlags.NONE,
+            GLib.PRIORITY_DEFAULT,
+            ext._folder_refresh_cancellable,
+            functools.partial(_on_folder_caption_info_ready, ext),
+            pf.key,
+        )
+    if "size" in tokens:
+        _count_folder_children_async(ext, gfile, pf.key)
+
+
+def _on_folder_caption_info_ready(
+    ext, gfile: Gio.File, result: Gio.AsyncResult, folder_key: str
+) -> None:
+    try:
+        info = gfile.query_info_finish(result)
+    except GLib.Error:
+        return
+    data = _folder_caption_data.setdefault(folder_key, {})
+    if info.has_attribute("standard::content-type"):
+        data["content_type"] = info.get_content_type()
+    if info.has_attribute("time::modified"):
+        data["mtime"] = info.get_attribute_uint64("time::modified")
+    if info.has_attribute("time::access"):
+        data["atime"] = info.get_attribute_uint64("time::access")
+    if info.has_attribute("time::created"):
+        data["ctime"] = info.get_attribute_uint64("time::created")
+    if info.has_attribute("owner::user"):
+        data["owner"] = info.get_attribute_string("owner::user")
+    if info.has_attribute("owner::group"):
+        data["group"] = info.get_attribute_string("owner::group")
+    if info.has_attribute("unix::mode"):
+        data["mode"] = info.get_attribute_uint32("unix::mode")
+    _show_folder_captions(ext, folder_key)
+
+
+def _count_folder_children_async(ext, gfile: Gio.File, folder_key: str) -> None:
+    gfile.enumerate_children_async(
+        "standard::name",
+        Gio.FileQueryInfoFlags.NONE,
+        GLib.PRIORITY_DEFAULT,
+        ext._folder_refresh_cancellable,
+        functools.partial(_on_folder_children_enumerated, ext, folder_key, 0),
+    )
+
+
+def _on_folder_children_enumerated(
+    ext, folder_key: str, running_count: int, gfile: Gio.File, result: Gio.AsyncResult
+) -> None:
+    try:
+        enumerator = gfile.enumerate_children_finish(result)
+    except GLib.Error:
+        return
+    _drain_folder_children(ext, enumerator, folder_key, running_count)
+
+
+def _drain_folder_children(
+    ext, enumerator: Gio.FileEnumerator, folder_key: str, running_count: int
+) -> None:
+    enumerator.next_files_async(
+        200,
+        GLib.PRIORITY_DEFAULT,
+        ext._folder_refresh_cancellable,
+        functools.partial(_on_folder_children_batch, ext, folder_key, running_count),
+    )
+
+
+def _on_folder_children_batch(
+    ext,
+    folder_key: str,
+    running_count: int,
+    enumerator: Gio.FileEnumerator,
+    result: Gio.AsyncResult,
+) -> None:
+    try:
+        infos = enumerator.next_files_finish(result)
+    except GLib.Error:
+        return
+    running_count += len(infos)
+    if infos:
+        _drain_folder_children(ext, enumerator, folder_key, running_count)
+        return
+    enumerator.close_async(GLib.PRIORITY_DEFAULT, None, lambda *_a: None)
+    _folder_caption_data.setdefault(folder_key, {})["item_count"] = running_count
+    _show_folder_captions(ext, folder_key)
+
+
+def _resolve_caption_line(token: str, pf: "PreferredFolder", data: dict) -> str | None:
+    """One caption token's display string, or None if it's "none", not yet
+    resolved, or (for "where") the folder has no meaningful parent."""
+    if token == "none":
+        return None
+    if token == "where":
+        parent = Gio.File.new_for_uri(pf.nav_uri).get_parent()
+        return parent.get_parse_name() if parent is not None else None
+    if token == "size":
+        item_count = data.get("item_count")
+        return _format_item_count(item_count) if item_count is not None else None
+    if token in ("type", "detailed_type", "mime_type"):
+        content_type = data.get("content_type")
+        if content_type is None:
+            return None
+        if token == "mime_type":
+            return content_type
+        return Gio.content_type_get_description(content_type) or content_type
+    if token in ("date_modified", "date_accessed", "date_created", "recency"):
+        field = {
+            "date_modified": "mtime",
+            "date_accessed": "atime",
+            "date_created": "ctime",
+            "recency": "atime",
+        }[token]
+        unix_time = data.get(field)
+        return _mc_date_to_str(unix_time) if unix_time else None
+    if token == "owner":
+        return data.get("owner")
+    if token == "group":
+        return data.get("group")
+    if token == "permissions":
+        mode = data.get("mode")
+        return _format_permissions(mode) if mode is not None else None
+    return None
+
+
+def _show_folder_captions(ext, folder_key: str) -> None:
+    """Recompute the 3 caption lines from cached data + the current GSettings
+    tokens and patch any rendered card in place. Called both when fresh data
+    arrives (async callbacks above) and when the tokens themselves change
+    (main.py's _reapply_folder_captions)."""
+    pf = _folder_data.get(folder_key)
+    if pf is None:
+        return
+    show_captions = ext._gsettings.get_boolean("show-preferred-folder-captions")
+    tokens = ext._nautilus_prefs.captions()
+    data = _folder_caption_data.get(folder_key, {})
+    lines = (
+        [None, None, None]
+        if pf.is_special_place or not show_captions
+        else [_resolve_caption_line(tok, pf, data) for tok in tokens]
+    )
+    for state in ext._windows.values():
+        card = state.get("folder_card_widgets", {}).get(folder_key)
+        if card is not None:
+            card.set_captions(lines)
 
 
 def _sync_folder_rename_watchers(ext, folders: list) -> None:
@@ -1765,16 +2053,38 @@ def _on_preferred_folder_file_changed(
     other_file: Gio.File | None,
     event_type: Gio.FileMonitorEvent,
 ) -> None:
-    if event_type != Gio.FileMonitorEvent.RENAMED or other_file is None:
+    """React to the watched folder itself moving or disappearing so the
+    Preferred Folders group updates live instead of only on next view entry.
+
+    RENAMED (paired: other_file set) covers a move/rename within the same
+    watched parent -- GIO gives us the real destination, so the stored entry
+    is corrected in place.
+
+    DELETED (permanent delete) and MOVED_OUT (unpaired: other_file is None --
+    Nautilus' default "move to Trash", or a move to any directory we aren't
+    also watching) both mean the folder is gone from the one place we can
+    see. GIO/inotify has no way to report a destination outside the watched
+    parent (confirmed: even self-watching the folder's own inode yields a
+    bare DELETED with no path -- see issue #71 investigation), so there is no
+    reliable way to follow it. Per product decision, silently keeping a pin
+    to a location we can no longer verify is worse than dropping it: remove
+    it from Preferred Folders rather than leaving a stale or "missing"
+    placeholder behind."""
+    if not ext._gsettings:
         return
     old_uri = file.get_uri()
-    if old_uri not in ext._watched_folder_keys or not ext._gsettings:
+    if old_uri not in ext._watched_folder_keys:
         return
-    new_uri = other_file.get_uri()
     entries = ext._get_preferred_folders()
     if old_uri not in entries:
         return
-    entries[entries.index(old_uri)] = new_uri
+
+    if event_type == Gio.FileMonitorEvent.RENAMED and other_file is not None:
+        entries[entries.index(old_uri)] = other_file.get_uri()
+    elif event_type in (Gio.FileMonitorEvent.DELETED, Gio.FileMonitorEvent.MOVED_OUT):
+        entries.remove(old_uri)
+    else:
+        return
     ext._gsettings.set_value("preferred-folders", GLib.Variant("as", entries))
 
 
@@ -1865,9 +2175,17 @@ def _on_card_right_clicked(ext, gesture, _n, x, y, win: Gtk.Window, row: Gtk.Box
     else:
         return
 
-    popover = ctx_menu.build_popover(row, "diskrow")
+    # A Preferred Folder lives below the panel's scrolling viewport. Parenting
+    # its menu to the card lets GTK constrain the popover to that tiny viewport
+    # subtree; anchor it to the full panel instead, as Column View does for its
+    # scrollable content, and translate the click point into panel coordinates.
+    state = ext._windows.get(win)
+    popover_parent = state.get("panel") if isinstance(row, MyComputerFolderCard) and state else row
+    point = row.translate_coordinates(popover_parent, x, y)
+    point_x, point_y = point if point is not None else (x, y)
+    popover = ctx_menu.build_popover(popover_parent, "diskrow")
     rect = Gdk.Rectangle()
-    rect.x, rect.y, rect.width, rect.height = int(x), int(y), 1, 1
+    rect.x, rect.y, rect.width, rect.height = int(point_x), int(point_y), 1, 1
     popover.set_pointing_to(rect)
     popover.popup()
 

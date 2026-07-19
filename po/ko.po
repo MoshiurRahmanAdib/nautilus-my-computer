@@ -100,6 +100,16 @@ msgid "Trash"
 msgstr ""
 
 #——————————————————————————————
+# Preferences - Tabs
+#——————————————————————————————
+
+msgid "Computer view"
+msgstr "컴퓨터 보기"
+
+msgid "Sidebar"
+msgstr "사이드바"
+
+#——————————————————————————————
 # Preferences - General
 #——————————————————————————————
 
@@ -187,6 +197,16 @@ msgid "Choose which locations appear on the sidebar."
 msgstr ""
 
 #——————————————————————————————
+# Preferences - Preferred Folders
+#——————————————————————————————
+
+msgid "Show captions"
+msgstr "캡션 표시"
+
+msgid "Shows or hides the caption lines already configured in Nautilus"
+msgstr "Nautilus에 이미 설정된 캡션 줄을 표시하거나 숨깁니다"
+
+#——————————————————————————————
 # Preferences - About
 #——————————————————————————————
 
@@ -231,21 +251,6 @@ msgstr ""
 # Panel - Preferred Folders
 #——————————————————————————————
 
-msgid "Documents"
-msgstr "문서"
-
-msgid "Downloads"
-msgstr "다운로드"
-
-msgid "Music"
-msgstr "음악"
-
-msgid "Videos"
-msgstr "동영상"
-
-msgid "Pictures"
-msgstr "사진"
-
 msgid "Preferred Folders"
 msgstr "기본 폴더"
 
@@ -257,3 +262,83 @@ msgstr "기본 폴더에 추가"
 
 msgid "Remove from Preferred"
 msgstr "기본 폴더에서 제거"
+
+#——————————————————————————————
+# Panel - Preferred Folders - Captions
+#——————————————————————————————
+
+msgid "{n} item"
+msgid_plural "{n} items"
+msgstr[0] "항목 {n}개"
+
+#——————————————————————————————
+# General - Relative Dates
+#——————————————————————————————
+
+msgid "Today"
+msgstr "오늘"
+
+msgid "Yesterday"
+msgstr "어제"
+
+msgid "Tomorrow"
+msgstr "내일"
+
+msgid "This week"
+msgstr "이번 주"
+
+msgid "Last week"
+msgstr "지난주"
+
+msgid "Next week"
+msgstr "다음 주"
+
+msgid "This month"
+msgstr "이번 달"
+
+msgid "Last month"
+msgstr "지난달"
+
+msgid "Next month"
+msgstr "다음 달"
+
+msgid "This year"
+msgstr "올해"
+
+msgid "Last year"
+msgstr "작년"
+
+msgid "Next year"
+msgstr "내년"
+
+msgid "{n} day ago"
+msgid_plural "{n} days ago"
+msgstr[0] "{n}일 전"
+
+msgid "In {n} day"
+msgid_plural "In {n} days"
+msgstr[0] "{n}일 후"
+
+msgid "{n} week ago"
+msgid_plural "{n} weeks ago"
+msgstr[0] "{n}주 전"
+
+msgid "In {n} week"
+msgid_plural "In {n} weeks"
+msgstr[0] "{n}주 후"
+
+msgid "{n} month ago"
+msgid_plural "{n} months ago"
+msgstr[0] "{n}개월 전"
+
+msgid "In {n} month"
+msgid_plural "In {n} months"
+msgstr[0] "{n}개월 후"
+
+msgid "{n} year ago"
+msgid_plural "{n} years ago"
+msgstr[0] "{n}년 전"
+
+msgid "In {n} year"
+msgid_plural "In {n} years"
+msgstr[0] "{n}년 후"

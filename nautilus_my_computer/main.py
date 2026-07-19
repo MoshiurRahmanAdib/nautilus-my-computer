@@ -85,7 +85,7 @@ DETACH_SETTINGS_WINDOW = False  # testing toggle: True opens settings as a stand
 
 # ── Extension metadata (keep in sync with pyproject.toml) ────────────────────
 EXT_NAME = "My Computer for Nautilus"
-EXT_VERSION = "0.12.2"
+EXT_VERSION = "0.12.3"
 EXT_AUTHOR = "Yann Masoch"
 EXT_LICENSE = "MIT"
 EXT_GITHUB = "https://github.com/yannmasoch/nautilus-my-computer"
@@ -563,6 +563,7 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         self._local_poll_stop: threading.Event | None = None
         self._net_poll_timer_id: int | None = None
         self._net_poll_cancellable: Gio.Cancellable | None = None
+        self._folder_icon_poll_timer_id: int | None = None
         self._folder_refresh_cancellable = Gio.Cancellable()
         self._folder_monitors: dict[str, Gio.FileMonitor] = {}  # keyed by parent dir URI
         self._watched_folder_keys: set[str] = set()
@@ -598,6 +599,19 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
             self._gsettings.connect("changed", self._on_settings_changed)
         else:
             self._start_on_disks = False
+
+        # Adw.StyleManager's "accent-color" property (libadwaita 1.6+) changes
+        # when the user picks a new system accent in GNOME Settings. GTK's
+        # named color @accent_bg_color is updated in its global symbol table
+        # at that point, but already-realized widgets referencing it through
+        # our own CssProvider (_apply_bar_color's ".diskinfo-bar block.filled"
+        # rule) don't get repainted automatically -- unlike GTK's own themed
+        # widgets, which are restyled as part of the same settings-change
+        # cascade. Reloading the provider (same CSS text) forces that repaint.
+        # Guarded: the property doesn't exist on libadwaita < 1.6.
+        style_manager = Adw.StyleManager.get_default()
+        if hasattr(style_manager.props, "accent_color"):
+            style_manager.connect("notify::accent-color", lambda *_a: self._apply_bar_color())
 
         my_computer_view.init_data_watchers(self)
         GLib.idle_add(self._late_init)
@@ -996,6 +1010,8 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
             self._repopulate_visible()
         elif key == "preferred-folders":
             self._repopulate_visible()
+        elif key == "show-preferred-folder-captions":
+            self._reapply_folder_captions()
         elif key.startswith("sidebar-show-"):
             # Sidebar place toggle -- re-apply native row visibility in every window.
             GLib.idle_add(self._reapply_sidebar_visibility)
@@ -1043,6 +1059,15 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
             elif state.get("visible_view") == VIEW_COLUMN:
                 column_view.refresh_column_view(self, win)
         return GLib.SOURCE_REMOVE
+
+    def _reapply_folder_captions(self) -> None:
+        """Preferred Folders "captions" GSettings key changed (NautilusPrefs).
+        Instantly re-render every rendered card from whatever caption data is
+        already cached, then kick a fresh async fetch to fill in any field a
+        newly-selected token needs that was never queried before."""
+        for pf in list(my_computer_view._folder_data.values()):
+            my_computer_view._show_folder_captions(self, pf.key)
+            my_computer_view._refresh_folder_captions_async(self, pf)
 
     def _repopulate_disk_view_only(self) -> bool:
         """Narrower sibling of _repopulate_visible for click-policy changes
@@ -1798,12 +1823,32 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         if detached:
             pref_win.set_default_size(680, 760)
 
-        page = Adw.PreferencesPage()
-        pref_win.add(page)
+        page_general = Adw.PreferencesPage()
+        page_general.set_title(_("General"))
+        page_general.set_icon_name("preferences-system-symbolic")
+        pref_win.add(page_general)
+
+        page_computer = Adw.PreferencesPage()
+        page_computer.set_title(_("Computer view"))
+        page_computer.set_icon_name("computer-symbolic")
+        pref_win.add(page_computer)
+
+        is_rtl = Gtk.Widget.get_default_direction() == Gtk.TextDirection.RTL
+        page_sidebar = Adw.PreferencesPage()
+        page_sidebar.set_title(_("Sidebar"))
+        page_sidebar.set_icon_name(
+            "sidebar-show-right-symbolic" if is_rtl else "sidebar-show-right-symbolic-rtl"
+        )
+        pref_win.add(page_sidebar)
+
+        page_about = Adw.PreferencesPage()
+        page_about.set_title(_("About"))
+        page_about.set_icon_name("help-about-symbolic")
+        pref_win.add(page_about)
 
         gen_group = Adw.PreferencesGroup()
         gen_group.set_title(_("General"))
-        page.add(gen_group)
+        page_general.add(gen_group)
 
         start_row = Adw.SwitchRow()
         start_row.set_title(_("Start on the Computer view"))
@@ -1821,7 +1866,7 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
                 "Hidden: hides the group entirely."
             )
         )
-        page.add(vis_group)
+        page_computer.add(vis_group)
 
         _vis_map = ["visible", "merged", "hidden"]
         _vis_labels = [_("Visible"), _("Merged"), _("Hidden")]
@@ -1875,7 +1920,7 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         sidebar_vis_group = Adw.PreferencesGroup()
         sidebar_vis_group.set_title(_("Sidebar visibility"))
         sidebar_vis_group.set_description(_("Choose which locations appear on the sidebar."))
-        page.add(sidebar_vis_group)
+        page_sidebar.add(sidebar_vis_group)
 
         # One toggle per native place (Computer is always shown, no key, not here).
         for entry in NATIVE_PLACES:
@@ -1891,7 +1936,7 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         color_group = Adw.PreferencesGroup()
         color_group.set_title(_("Bar Color"))
         color_group.set_description(_("Select or customize the bar color."))
-        page.add(color_group)
+        page_computer.add(color_group)
 
         mode_row = Adw.ComboRow()
         mode_row.set_title(_("Color mode"))
@@ -1971,9 +2016,26 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         mode_row.connect("notify::selected", _on_mode_changed)
         _update_color_rows(mode_row.get_selected())
 
+        pf_group = Adw.PreferencesGroup()
+        pf_group.set_title(_("Preferred Folders"))
+        page_computer.add(pf_group)
+
+        pf_captions_row = Adw.SwitchRow()
+        pf_captions_row.set_title(_("Show captions"))
+        pf_captions_row.set_subtitle(
+            _("Shows or hides the caption lines already configured in Nautilus")
+        )
+        self._gsettings.bind(
+            "show-preferred-folder-captions",
+            pf_captions_row,
+            "active",
+            Gio.SettingsBindFlags.DEFAULT,
+        )
+        pf_group.add(pf_captions_row)
+
         about_group = Adw.PreferencesGroup()
         about_group.set_title(_("About"))
-        page.add(about_group)
+        page_about.add(about_group)
 
         def _about_row(title: str, value: str) -> Adw.ActionRow:
             row = Adw.ActionRow()

@@ -22,7 +22,7 @@ from nautilus_my_computer.common import (
     _log,
     _menu_item_index,
     _menu_section_with_action,
-    _native_folder_icon_name,
+    _nautilus_string,
     _uri_is_hidden,
 )
 from nautilus_my_computer.context_menu import (
@@ -83,48 +83,46 @@ class PreferredFolder:
 # GLib.UserDirectory enum value (resolved via GLib.get_user_special_dir).
 PREFERRED_TOKENS: dict[str, dict] = {
     "home": {
-        "label": _("Home"),
-        "icon": "user-home",
+        "label": _nautilus_string("Home"),
         "uri": lambda: GLib.filename_to_uri(GLib.get_home_dir(), None),
     },
     "recent": {
-        "label": _("Recent"),
+        "label": _nautilus_string("Recent"),
         "icon": "folder-temp",
         "uri": lambda: "recent:///",
     },
     "starred": {
-        "label": _("Starred"),
+        "label": _nautilus_string("Starred"),
         "icon": "folder-favorites",
         "uri": lambda: "starred:///",
     },
     "network": {
-        "label": _("Network"),
+        "label": _nautilus_string("Network"),
         "icon": "folder-html",
         "uri": lambda: "x-network-view:///",
     },
+    # Not wrapped in _(): the real xdg-user-dirs name always overwrites this
+    # within one async GIO query (see _refresh_folder_icon_async), so it's
+    # only ever visible for a single frame -- translating it would be
+    # translator effort spent on text no user ever actually reads (#64).
     "documents": {
-        "label": _("Documents"),
-        "icon": "folder-documents",
+        "label": "Documents",
         "special_dir": GLib.UserDirectory.DIRECTORY_DOCUMENTS,
     },
     "downloads": {
-        "label": _("Downloads"),
-        "icon": "folder-download",
+        "label": "Downloads",
         "special_dir": GLib.UserDirectory.DIRECTORY_DOWNLOAD,
     },
     "music": {
-        "label": _("Music"),
-        "icon": "folder-music",
+        "label": "Music",
         "special_dir": GLib.UserDirectory.DIRECTORY_MUSIC,
     },
     "videos": {
-        "label": _("Videos"),
-        "icon": "folder-videos",
+        "label": "Videos",
         "special_dir": GLib.UserDirectory.DIRECTORY_VIDEOS,
     },
     "pictures": {
-        "label": _("Pictures"),
-        "icon": "folder-pictures",
+        "label": "Pictures",
         "special_dir": GLib.UserDirectory.DIRECTORY_PICTURES,
     },
 }
@@ -171,7 +169,15 @@ def load_preferred_folders(gsettings) -> list[PreferredFolder]:
                     key=entry,
                     display_name=token["label"],
                     nav_uri=uri,
-                    icon_name=_native_folder_icon_name(uri) or token["icon"],
+                    # Real folders (home/documents/downloads/...) start with the plain
+                    # gettext label as a placeholder and get their live name and icon
+                    # (native special-folder icon or a user-set custom icon) from an
+                    # async GIO query -- see my_computer_view._refresh_folder_icon_async.
+                    # The real xdg-user-dirs name always wins over our label once that
+                    # query resolves (issue #64). Only the 3 virtual tokens
+                    # (recent/starred/network) keep the fixed label, since they aren't
+                    # real directories GIO can query.
+                    icon_name=token.get("icon", "folder"),
                     is_special_place=is_special_place,
                     is_hidden=False if is_special_place else _uri_is_hidden(uri),
                     index=len(folders),

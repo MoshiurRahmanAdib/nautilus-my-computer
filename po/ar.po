@@ -99,6 +99,16 @@ msgid "Trash"
 msgstr "المهملات"
 
 #——————————————————————————————
+# Preferences - Tabs
+#——————————————————————————————
+
+msgid "Computer view"
+msgstr "عرض الكمبيوتر"
+
+msgid "Sidebar"
+msgstr "الشريط الجانبي"
+
+#——————————————————————————————
 # Preferences - General
 #——————————————————————————————
 
@@ -185,6 +195,16 @@ msgid "Choose which locations appear on the sidebar."
 msgstr "اختر المواقع التي تظهر في الشريط الجانبي."
 
 #——————————————————————————————
+# Preferences - Preferred Folders
+#——————————————————————————————
+
+msgid "Show captions"
+msgstr "إظهار التسميات التوضيحية"
+
+msgid "Shows or hides the caption lines already configured in Nautilus"
+msgstr "يعرض أو يخفي أسطر التسميات التوضيحية المُعدّة مسبقًا في Nautilus"
+
+#——————————————————————————————
 # Preferences - About
 #——————————————————————————————
 
@@ -229,21 +249,6 @@ msgstr ""
 # Panel - Preferred Folders
 #——————————————————————————————
 
-msgid "Documents"
-msgstr "المستندات"
-
-msgid "Downloads"
-msgstr "التنزيلات"
-
-msgid "Music"
-msgstr "الموسيقى"
-
-msgid "Videos"
-msgstr "الفيديوهات"
-
-msgid "Pictures"
-msgstr "الصور"
-
 msgid "Preferred Folders"
 msgstr "المجلدات المفضلة"
 
@@ -255,3 +260,128 @@ msgstr "أضف إلى المفضلة"
 
 msgid "Remove from Preferred"
 msgstr "أزل من المفضلة"
+
+#——————————————————————————————
+# Panel - Preferred Folders - Captions
+#——————————————————————————————
+
+msgid "{n} item"
+msgid_plural "{n} items"
+msgstr[0] "لا عناصر"
+msgstr[1] "عنصرٌ واحد"
+msgstr[2] "عنصرين"
+msgstr[3] "{n} عناصر"
+msgstr[4] "{n} عنصرًا"
+msgstr[5] "{n} عنصر"
+
+#——————————————————————————————
+# General - Relative Dates
+#——————————————————————————————
+
+msgid "Today"
+msgstr "اليوم"
+
+msgid "Yesterday"
+msgstr "أمس"
+
+msgid "Tomorrow"
+msgstr "غدًا"
+
+msgid "This week"
+msgstr "هذا الأسبوع"
+
+msgid "Last week"
+msgstr "الأسبوع الماضي"
+
+msgid "Next week"
+msgstr "الأسبوع القادم"
+
+msgid "This month"
+msgstr "هذا الشهر"
+
+msgid "Last month"
+msgstr "الشهر الماضي"
+
+msgid "Next month"
+msgstr "الشهر القادم"
+
+msgid "This year"
+msgstr "هذا العام"
+
+msgid "Last year"
+msgstr "العام الماضي"
+
+msgid "Next year"
+msgstr "العام القادم"
+
+msgid "{n} day ago"
+msgid_plural "{n} days ago"
+msgstr[0] "منذ {n} يوم"
+msgstr[1] "منذ يوم واحد"
+msgstr[2] "منذ يومين"
+msgstr[3] "منذ {n} أيام"
+msgstr[4] "منذ {n} يومًا"
+msgstr[5] "منذ {n} يوم"
+
+msgid "In {n} day"
+msgid_plural "In {n} days"
+msgstr[0] "خلال {n} يوم"
+msgstr[1] "خلال يوم واحد"
+msgstr[2] "خلال يومين"
+msgstr[3] "خلال {n} أيام"
+msgstr[4] "خلال {n} يومًا"
+msgstr[5] "خلال {n} يوم"
+
+msgid "{n} week ago"
+msgid_plural "{n} weeks ago"
+msgstr[0] "منذ {n} أسبوع"
+msgstr[1] "منذ أسبوع واحد"
+msgstr[2] "منذ أسبوعين"
+msgstr[3] "منذ {n} أسابيع"
+msgstr[4] "منذ {n} أسبوعًا"
+msgstr[5] "منذ {n} أسبوع"
+
+msgid "In {n} week"
+msgid_plural "In {n} weeks"
+msgstr[0] "خلال {n} أسبوع"
+msgstr[1] "خلال أسبوع واحد"
+msgstr[2] "خلال أسبوعين"
+msgstr[3] "خلال {n} أسابيع"
+msgstr[4] "خلال {n} أسبوعًا"
+msgstr[5] "خلال {n} أسبوع"
+
+msgid "{n} month ago"
+msgid_plural "{n} months ago"
+msgstr[0] "منذ {n} شهر"
+msgstr[1] "منذ شهر واحد"
+msgstr[2] "منذ شهرين"
+msgstr[3] "منذ {n} أشهر"
+msgstr[4] "منذ {n} شهرًا"
+msgstr[5] "منذ {n} شهر"
+
+msgid "In {n} month"
+msgid_plural "In {n} months"
+msgstr[0] "خلال {n} شهر"
+msgstr[1] "خلال شهر واحد"
+msgstr[2] "خلال شهرين"
+msgstr[3] "خلال {n} أشهر"
+msgstr[4] "خلال {n} شهرًا"
+msgstr[5] "خلال {n} شهر"
+
+msgid "{n} year ago"
+msgid_plural "{n} years ago"
+msgstr[0] "منذ {n} سنة"
+msgstr[1] "منذ سنة واحدة"
+msgstr[2] "منذ سنتين"
+msgstr[3] "منذ {n} سنوات"
+msgstr[4] "منذ {n} سنة"
+msgstr[5] "منذ {n} سنة"
+
+msgid "In {n} year"
+msgid_plural "In {n} years"
+msgstr[0] "خلال {n} سنة"
+msgstr[1] "خلال سنة واحدة"
+msgstr[2] "خلال سنتين"
+msgstr[3] "خلال {n} سنوات"
+msgstr[4] "خلال {n} سنة"
+msgstr[5] "خلال {n} سنة"

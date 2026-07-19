@@ -17,12 +17,13 @@ import gi
 
 gi.require_version("Adw", "1")
 gi.require_version("Gdk", "4.0")
+gi.require_version("Gsk", "4.0")
 gi.require_version("Gio", "2.0")
 gi.require_version("GLib", "2.0")
 gi.require_version("Graphene", "1.0")
 gi.require_version("Gtk", "4.0")
 gi.require_version("GdkPixbuf", "2.0")
-from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, GObject, Graphene, Gtk, Pango
+from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, GObject, Graphene, Gsk, Gtk, Pango
 
 # GNOME's own thumbnail engine: it drives the system thumbnailers installed in
 # /usr/share/thumbnailers (Evince/Papers for PDF, glycin for images, gsf-office
@@ -83,23 +84,21 @@ from nautilus_my_computer.common import (
     _DISK_CARD_MARGIN_END,
     _DISK_CARD_MARGIN_START,
     _DISK_CARD_MARGIN_TOP,
-    _DISK_ICON_SIZE,
-    _FOLDER_CARD_MARGIN_BOTTOM,
-    _FOLDER_CARD_MARGIN_END,
-    _FOLDER_CARD_MARGIN_START,
-    _FOLDER_CARD_MARGIN_TOP,
     _GROUP_ICON,
     _INTERNAL_FSTYPES,
     _LIST_BAR_MAX_WIDTH,
     _,
+    _disk_icon_size,
+    _disk_list_icon_size,
     _folder_card_width,
     _format_size,
     _gicon_renders,
     _icon_name_renders,
     _is_activating_click,
     _log,
-    _native_folder_icon_name,
     _nautilus_icon_size,
+    _nautilus_list_icon_size,
+    _resolve_custom_gicon,
     _set_regular_icon,
 )
 from nautilus_my_computer.components import set_row_active, set_row_selected
@@ -183,7 +182,7 @@ class MyComputerDiskCard(Gtk.Box):
         self.set_size_request(_CARD_WIDTH, -1)
 
         icon = Gtk.Image()
-        icon.set_pixel_size(_DISK_ICON_SIZE)
+        icon.set_pixel_size(_disk_icon_size())
         icon.set_valign(Gtk.Align.CENTER)
         # icon.set_margin_end(12)
         if _gicon_renders(m.gio_icon):
@@ -236,7 +235,7 @@ class MyComputerDiskCard(Gtk.Box):
         self.set_hexpand(True)
 
         icon = Gtk.Image()
-        icon.set_pixel_size(36)
+        icon.set_pixel_size(_disk_list_icon_size())
         icon.set_valign(Gtk.Align.CENTER)
         if _gicon_renders(m.gio_icon):
             icon.set_from_gicon(m.gio_icon)
@@ -291,8 +290,9 @@ class MyComputerDiskCard(Gtk.Box):
             )
 
 
-class MyComputerFolderCard(Gtk.Box):
-    """Self-contained card: renders one PreferredFolder as a grid card or a list row."""
+class MyComputerFolderCard(Gtk.Widget):
+    """Self-contained card: renders one PreferredFolder as a grid card
+    (native grid layout, mirroring NautilusGridCell) or a list row."""
 
     __gtype_name__ = "MyComputerFolderCard"
 
@@ -304,11 +304,16 @@ class MyComputerFolderCard(Gtk.Box):
         self.model = model
         self.icon: Gtk.Image | None = None
         self.name_label: Gtk.Label | None = None
+        # Up to 3 caption lines below the name (Nautilus "Captions", grid
+        # mode only -- list mode never creates them, so set_captions() is a
+        # safe no-op there).
+        self.caption_first: Gtk.Label | None = None
+        self.caption_second: Gtk.Label | None = None
+        self.caption_third: Gtk.Label | None = None
+        # Only populated in list mode -- see _build_list/do_measure etc.
+        self._list_box: Gtk.Box | None = None
 
         self.get_style_context().add_class("nautilus-view-cell")
-        self.get_style_context().add_class("mc-folder-card")
-        self.set_focusable(True)
-        self.set_focus_on_click(True)
         self._build()
         self._apply_hidden_state(model.is_hidden)
 
@@ -328,21 +333,8 @@ class MyComputerFolderCard(Gtk.Box):
     def nav_uri(self) -> str:
         return self.model.nav_uri
 
-    def do_measure(self, orientation, for_size):
-        if not self.is_list and orientation == Gtk.Orientation.HORIZONTAL:
-            width = _folder_card_width()
-            return (width, width, -1, -1)
-        return Gtk.Box.do_measure(self, orientation, for_size)
-
     def _wire_reorder_preview(self) -> None:
-        """Drop side: when a folder-card drag enters this card (the target),
-        move the dragged card to this card's position in the FlowBox for a
-        live preview, and reindex every card to match the new order.
-        DropControllerMotion's "enter" fires once per card the cursor crosses
-        onto; it never claims the drop, so the separate DropTarget below owns
-        committing the result. The DropTarget accepts the dragged card's own
-        GType so its "drop" fires (and the drag ends as a successful MOVE, no
-        snap-back), then persists the FlowBox's final order to gsettings."""
+        """Persist a FlowBox reorder only after a successful MOVE drop."""
         motion = Gtk.DropControllerMotion()
         motion.connect("enter", self._on_reorder_enter)
         self.add_controller(motion)
@@ -354,7 +346,7 @@ class MyComputerFolderCard(Gtk.Box):
     def _on_reorder_drop(self, _target, value, _x, _y) -> bool:
         dst_child = self.get_parent()
         flow = dst_child.get_parent() if dst_child is not None else None
-        if flow is None:
+        if not isinstance(flow, Gtk.FlowBox):
             return False
         keys = []
         child = flow.get_first_child()
@@ -367,57 +359,36 @@ class MyComputerFolderCard(Gtk.Box):
             f"preferred folders dragging dropped: {value.model.display_name}/ "
             f"position {value.model.index}"
         )
-        # Defer the gsettings write (which repopulates the panel, destroying
-        # these cards) until the drag has fully finished -- doing it inside the
-        # drop callback would tear down the very widget running this handler.
         GLib.idle_add(self._ext._commit_preferred_order, keys)
         return True
 
     def _on_reorder_enter(self, _ctrl, _x, _y) -> None:
-        # Re-entrancy guard: moving widgets under the pointer makes GTK synthesize
-        # crossing events that re-fire "enter" synchronously mid-move. Without this
-        # the nested call removes the dragged card while the outer insert is still
-        # on the stack, corrupting the FlowBox (card goes blank, then vanishes on a
-        # fast drag). Same pattern as _diskinfo_restoring for icon pinning.
         if getattr(self._ext, "_folder_reordering", False):
             return
         src = getattr(self._ext, "_dragging_folder_card", None)
         if src is None or src is self:
             return
-        src_child = src.get_parent()  # FlowBoxChild wrapping the dragged card
-        dst_child = self.get_parent()  # FlowBoxChild wrapping this target card
-        if src_child is None or dst_child is None:
+        src_child = src.get_parent()
+        dst_child = self.get_parent()
+        if not isinstance(src_child, Gtk.FlowBoxChild) or not isinstance(
+            dst_child, Gtk.FlowBoxChild
+        ):
             return
-        flow = dst_child.get_parent()  # the section's Gtk.FlowBox
-        if flow is None:
+        flow = dst_child.get_parent()
+        if not isinstance(flow, Gtk.FlowBox):
             return
-
-        # Step 1: take the target card's index. Skip if the dragged card is
-        # already there -- avoids needless remove/insert churn on fast moves.
         dst_index = dst_child.get_index()
         if src_child.get_index() == dst_index:
             return
 
-        # Step 2: move the dragged card to the target's position. Detach the card
-        # from its FlowBoxChild wrapper *first* (set_child(None) unparents it
-        # synchronously), then drop the now-empty wrapper and re-wrap the card at
-        # the new index. Removing by the inner card instead would leave it briefly
-        # parented to the dying wrapper, so the re-insert hits "already has parent"
-        # and the card is orphaned (blank, then gone on drop).
         self._ext._folder_reordering = True
         try:
             src_child.set_child(None)
             flow.remove(src_child)
             flow.insert(src, dst_index)
-            # flow.insert() wraps src in a brand-new FlowBoxChild, so the "mc-selected"
-            # highlight applied to the old wrapper at drag-begin was destroyed along
-            # with it. Reapply it here or the dragged card's gutter highlight vanishes
-            # after its first move.
             new_child = src.get_parent()
-            if new_child is not None:
+            if isinstance(new_child, Gtk.FlowBoxChild):
                 new_child.add_css_class("mc-selected")
-
-            # Step 3: rewrite every card's .index to match the new FlowBox order.
             child = flow.get_first_child()
             while child is not None:
                 card = child.get_child()
@@ -428,12 +399,6 @@ class MyComputerFolderCard(Gtk.Box):
             self._ext._folder_reordering = False
 
     def _wire_drag(self) -> None:
-        """Drag source ("select the folder"): the card itself is the drag
-        payload -- its model carries the index/position, nav_uri, and
-        display_name the drop side needs. A ghost copy of the card (icon +
-        label) is shown under the cursor for the whole drag, and the card
-        left behind in the list is ghosted (dimmed) via a CSS class -- no
-        extra state needed, just toggle the class on begin/end/cancel."""
         drag = Gtk.DragSource()
         drag.set_actions(Gdk.DragAction.MOVE)
         drag.connect("prepare", self._on_drag_prepare)
@@ -448,10 +413,6 @@ class MyComputerFolderCard(Gtk.Box):
     def _on_drag_begin(self, _source, drag) -> None:
         Gtk.DragIcon.get_for_drag(drag).set_child(self._build_drag_ghost())
         self._set_content_opacity(0.55)
-        # Painted on the FlowBoxChild, not self: self's own margins (the card's
-        # gutter) sit outside its CSS box, so a highlight on self would be drawn
-        # smaller than the native :hover highlight, which GTK paints on the
-        # FlowBoxChild and therefore spans the full cell including that gutter.
         parent = self.get_parent()
         if parent is not None:
             parent.add_css_class("mc-selected")
@@ -459,14 +420,9 @@ class MyComputerFolderCard(Gtk.Box):
             f"preferred folders dragging started: {self.model.display_name}/ "
             f"position {self.model.index}"
         )
-        # The drop side can't read the payload mid-hover (Gtk.DropTarget.get_value()
-        # is None during motion for in-process GObject drags), so stash the dragged
-        # card here for the target's reorder-preview handler to read.
         self._ext._dragging_folder_card = self
 
     def _on_drag_end(self, _source, _drag, _delete_data) -> None:
-        # Only clear if the model itself isn't hidden -- _apply_hidden_state owns
-        # this opacity for genuinely hidden folders.
         if not self.model.is_hidden:
             self._set_content_opacity(1.0)
         parent = self.get_parent()
@@ -475,60 +431,98 @@ class MyComputerFolderCard(Gtk.Box):
         self._ext._dragging_folder_card = None
 
     def _on_drag_cancel(self, _source, _drag, _reason) -> bool:
-        if not self.model.is_hidden:
-            self._set_content_opacity(1.0)
-        parent = self.get_parent()
-        if parent is not None:
-            parent.remove_css_class("mc-selected")
-        self._ext._dragging_folder_card = None
+        self._on_drag_end(_source, _drag, False)
         return False
 
     def _build_drag_ghost(self) -> Gtk.Widget:
-        """Copy of the card shown under the cursor while dragging.
-
-        Match the active card layout so list-view drags show the compact
-        horizontal cell instead of the grid-style icon-over-label ghost.
-        """
-        if self.is_list:
-            ghost = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-            ghost.set_halign(Gtk.Align.START)
-
-            icon = Gtk.Image()
-            icon.set_pixel_size(42)
-            icon.set_valign(Gtk.Align.CENTER)
-            self._set_icon(icon)
-            ghost.append(icon)
-
-            labels_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-            labels_box.set_valign(Gtk.Align.CENTER)
-            name_lbl = Gtk.Label(label=self.model.display_name)
-            name_lbl.set_xalign(0.0)
-            name_lbl.set_valign(Gtk.Align.CENTER)
-            name_lbl.set_max_width_chars(14)
-            name_lbl.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
-            labels_box.append(name_lbl)
-            ghost.append(labels_box)
-        else:
-            ghost = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
-            ghost.set_halign(Gtk.Align.CENTER)
-
-            icon = Gtk.Image()
-            icon.set_pixel_size(_nautilus_icon_size())
-            icon.set_halign(Gtk.Align.CENTER)
-            self._set_icon(icon)
-            ghost.append(icon)
-
-            name_lbl = Gtk.Label(label=self.model.display_name)
-            name_lbl.set_justify(Gtk.Justification.CENTER)
-            name_lbl.set_halign(Gtk.Align.CENTER)
-            label_chars = max(6, _nautilus_icon_size() // 11)
-            name_lbl.set_width_chars(label_chars)
-            name_lbl.set_max_width_chars(label_chars)
-            name_lbl.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
-            ghost.append(name_lbl)
-
-        ghost.get_style_context().add_class("nautilus-view-cell")
+        """Return a full-size clone for folder sorting, in the same mode
+        (grid or list) as the card being dragged."""
+        ghost = MyComputerFolderCard(self._ext, self._win, self.view_mode, self.model)
+        ghost.set_focusable(False)
+        ghost.set_captions([None, None, None])
         return ghost
+
+    def do_measure(self, orientation, for_size):
+        """Mirror NautilusGridCell's fixed-width, height-for-width measure
+        (grid mode), or delegate straight through to the list row's box."""
+        if self.is_list:
+            return self._list_box.measure(orientation, for_size)
+
+        icon_size = _nautilus_icon_size()
+        width = _folder_card_width()
+        if orientation == Gtk.Orientation.HORIZONTAL:
+            labels_min, _, _, _ = self._labels_box.measure(orientation, -1)
+            if labels_min > width:
+                width = labels_min
+            icon_min, _, _, _ = self.icon.measure(orientation, -1)
+            if icon_min > icon_size:
+                width += icon_min - icon_size
+            emblems_min, _, _, _ = self._emblems_box.measure(orientation, -1)
+            if emblems_min > 18:
+                width += 2 * (emblems_min - 18)
+            return (width, width, -1, -1)
+
+        labels_min, labels_natural, min_baseline, nat_baseline = self._labels_box.measure(
+            Gtk.Orientation.VERTICAL, width
+        )
+        if min_baseline != -1:
+            min_baseline += icon_size + 6
+        if nat_baseline != -1:
+            nat_baseline += icon_size + 6
+        return (
+            icon_size + 6 + labels_min,
+            icon_size + 6 + labels_natural,
+            min_baseline,
+            nat_baseline,
+        )
+
+    @staticmethod
+    def _allocation_transform(x: int, y: int):
+        return Gsk.Transform.new().translate(Graphene.Point().init(x, y))
+
+    def do_size_allocate(self, width: int, height: int, baseline: int) -> None:
+        """Allocate the icon, emblem gutter, and labels exactly as Nautilus
+        does (grid mode), or the list row's box across the full cell."""
+        if self.is_list:
+            self._list_box.allocate(width, height, baseline, None)
+            return
+
+        icon_size = _nautilus_icon_size()
+        self.icon.allocate(
+            width - 36,
+            icon_size,
+            -1,
+            self._allocation_transform(18, 0),
+        )
+        emblem_x = width - 18 if self.get_direction() == Gtk.TextDirection.LTR else 0
+        self._emblems_box.allocate(
+            18,
+            icon_size,
+            -1,
+            self._allocation_transform(emblem_x, 0),
+        )
+        labels_baseline = baseline - icon_size - 6 if baseline != -1 else -1
+        self._labels_box.allocate(
+            width,
+            max(0, height - icon_size - 6),
+            labels_baseline,
+            self._allocation_transform(0, icon_size + 6),
+        )
+
+    def do_snapshot(self, snapshot: Gtk.Snapshot) -> None:
+        if self.is_list:
+            self.snapshot_child(self._list_box, snapshot)
+            return
+        for child in (self.icon, self._emblems_box, self._labels_box):
+            self.snapshot_child(child, snapshot)
+
+    def do_dispose(self) -> None:
+        if self._list_box is not None:
+            self._list_box.unparent()
+        for child in (self.icon, self._emblems_box, self._labels_box):
+            if child is not None:
+                child.unparent()
+        super().do_dispose()
 
     def _set_icon(self, icon: Gtk.Image) -> None:
         pf = self.model
@@ -541,76 +535,32 @@ class MyComputerFolderCard(Gtk.Box):
 
     def _build(self) -> None:
         if self.is_list:
-            self._build_compact_grid()
+            self._build_list()
         else:
             self._build_grid()
-        self.set_tooltip_text(Gio.File.new_for_uri(self.model.nav_uri).get_parse_name())
 
-    def _build_grid(self) -> None:
+    def _build_list(self) -> None:
+        """List-view compact cell: keep Preferred Folders multi-column (the
+        section's FlowBox stays in grid layout -- see always_grid on its
+        MyComputerCardSection) while rendering each card as a compact
+        horizontal icon+name row instead of the full icon-grid cell."""
         pf = self.model
-        self.set_orientation(Gtk.Orientation.VERTICAL)
-        self.set_spacing(0)
-        self.set_margin_start(_FOLDER_CARD_MARGIN_START)
-        self.set_margin_end(_FOLDER_CARD_MARGIN_END)
-        self.set_margin_top(_FOLDER_CARD_MARGIN_TOP)
-        self.set_margin_bottom(_FOLDER_CARD_MARGIN_BOTTOM)
-        self.set_halign(Gtk.Align.CENTER)
-        self.set_valign(Gtk.Align.CENTER)
-
-        content = MyComputerFixedWidthBox(_nautilus_icon_size(), spacing=2)
-        content.set_halign(Gtk.Align.CENTER)
-        self.append(content)
-
-        icon = Gtk.Image()
-        icon.set_pixel_size(_nautilus_icon_size())
-        icon.set_halign(Gtk.Align.CENTER)
-        self._set_icon(icon)
-        content.append(icon)
-
-        name_lbl = Gtk.Label(label=pf.display_name)
-        name_lbl.set_justify(Gtk.Justification.CENTER)
-        name_lbl.set_halign(Gtk.Align.CENTER)
-        name_lbl.set_wrap(True)
-        name_lbl.set_wrap_mode(Pango.WrapMode.WORD_CHAR)
-        name_lbl.set_lines(1)
-        label_chars = max(6, _nautilus_icon_size() // 11)
-        name_lbl.set_width_chars(label_chars)
-        # Cap the wrap width to the icon's own width (scaled with zoom level), like
-        # native Nautilus grid cells -- otherwise a long name stretches the whole
-        # FlowBox column since the label has no natural width limit.
-        name_lbl.set_max_width_chars(label_chars)
-        name_lbl.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
-        content.append(name_lbl)
-
-        self.icon = icon
-        self.name_label = name_lbl
-
-    def _build_compact_grid(self) -> None:
-        """List-view compact cell: keep Preferred Folders multi-column while
-        keeping the content aligned like the pre-wrapper layout."""
-        pf = self.model
-        self.set_orientation(Gtk.Orientation.HORIZONTAL)
-        self.set_spacing(0)
-        self.set_margin_start(0)
-        self.set_margin_end(0)
-        self.set_margin_top(0)
-        self.set_margin_bottom(0)
-        self.set_vexpand(True)
         self.set_valign(Gtk.Align.FILL)
 
-        content = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        content.set_margin_start(6)
-        content.set_margin_end(6)
-        content.set_margin_top(3)
-        content.set_margin_bottom(3)
-        content.set_halign(Gtk.Align.START)
-        content.set_valign(Gtk.Align.CENTER)
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        box.set_margin_start(6)
+        box.set_margin_end(6)
+        box.set_margin_top(3)
+        box.set_margin_bottom(3)
+        box.set_halign(Gtk.Align.START)
+        box.set_valign(Gtk.Align.CENTER)
+        box.set_parent(self)
 
         icon = Gtk.Image()
-        icon.set_pixel_size(42)
+        icon.set_pixel_size(_nautilus_list_icon_size())
         icon.set_valign(Gtk.Align.CENTER)
         self._set_icon(icon)
-        content.append(icon)
+        box.append(icon)
 
         labels_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         labels_box.set_valign(Gtk.Align.CENTER)
@@ -620,12 +570,69 @@ class MyComputerFolderCard(Gtk.Box):
         name_lbl.set_max_width_chars(14)
         name_lbl.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
         labels_box.append(name_lbl)
-        content.append(labels_box)
+        box.append(labels_box)
 
-        self.append(content)
-
+        self._list_box = box
         self.icon = icon
         self.name_label = name_lbl
+
+    def _build_grid(self) -> None:
+        pf = self.model
+        self.set_valign(Gtk.Align.START)
+
+        icon = Gtk.Image()
+        icon.set_pixel_size(_nautilus_icon_size())
+        icon.set_halign(Gtk.Align.CENTER)
+        icon.set_valign(Gtk.Align.CENTER)
+        self._set_icon(icon)
+        icon.set_parent(self)
+
+        emblems_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        emblems_box.set_halign(Gtk.Align.END)
+        emblems_box.set_margin_start(2)
+        emblems_box.add_css_class("dim-label")
+        emblems_box.set_parent(self)
+
+        labels_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        labels_box.add_css_class("icon-ui-labels-box")
+        labels_box.set_parent(self)
+
+        name_lbl = Gtk.Label(label=pf.display_name)
+        name_lbl.set_justify(Gtk.Justification.CENTER)
+        name_lbl.set_halign(Gtk.Align.CENTER)
+        name_lbl.set_wrap(True)
+        name_lbl.set_wrap_mode(Pango.WrapMode.WORD)
+        name_lbl.set_lines(3)
+        name_lbl.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
+        attributes = Pango.AttrList()
+        attributes.insert(Pango.attr_insert_hyphens_new(False))
+        name_lbl.set_attributes(attributes)
+        labels_box.append(name_lbl)
+
+        # Up to 3 caption lines (Nautilus "Captions" feature, icon-view only).
+        # Built empty/hidden -- set_captions() fills them in once resolved.
+        # Style/wrap matches nautilus-grid-cell.c's caption_widget_new() exactly.
+        caption_labels = []
+        for _i in range(3):
+            cap_lbl = Gtk.Label(label="")
+            cap_lbl.get_style_context().add_class("caption")
+            cap_lbl.get_style_context().add_class("dim-label")
+            cap_lbl.set_justify(Gtk.Justification.CENTER)
+            cap_lbl.set_halign(Gtk.Align.CENTER)
+            cap_lbl.set_valign(Gtk.Align.START)
+            cap_lbl.set_wrap(True)
+            cap_lbl.set_wrap_mode(Pango.WrapMode.WORD_CHAR)
+            cap_lbl.set_lines(2)
+            cap_lbl.set_ellipsize(Pango.EllipsizeMode.END)
+            cap_lbl.set_visible(False)
+            labels_box.append(cap_lbl)
+            caption_labels.append(cap_lbl)
+
+        self.icon = icon
+        self._emblems_box = emblems_box
+        self._labels_box = labels_box
+        self.name_label = name_lbl
+        self.caption_first, self.caption_second, self.caption_third = caption_labels
 
     def update_metadata(self, pf) -> None:
         """Patch the icon + name label in place; called once async metadata resolves."""
@@ -635,6 +642,20 @@ class MyComputerFolderCard(Gtk.Box):
         if self.name_label is not None:
             self.name_label.set_label(pf.display_name)
         self._apply_hidden_state(pf.is_hidden)
+
+    def set_captions(self, lines: list) -> None:
+        """Update the up-to-3 caption lines below the name (Nautilus
+        "Captions"). lines[i] is None/empty to hide that line."""
+        for label, text in zip(
+            (self.caption_first, self.caption_second, self.caption_third), lines
+        ):
+            if label is None:
+                continue
+            if text:
+                label.set_label(text)
+                label.set_visible(True)
+            else:
+                label.set_visible(False)
 
     def _apply_hidden_state(self, is_hidden: bool) -> None:
         self._set_content_opacity(0.55 if is_hidden else 1.0)
@@ -774,82 +795,6 @@ class MyComputerToggleButton(Gtk.Box):
             btn.set_sensitive(enabled)
 
 
-class MyComputerFixedWidthBox(Gtk.Box):
-    """Box whose horizontal size is hard-capped to a single fixed width."""
-
-    __gtype_name__ = "MyComputerFixedWidthBox"
-
-    def __init__(self, width: int, *, spacing: int = 0) -> None:
-        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=spacing)
-        self._width = width
-
-    def do_measure(self, orientation, for_size):
-        if orientation == Gtk.Orientation.HORIZONTAL:
-            return (self._width, self._width, -1, -1)
-        return Gtk.Box.do_measure(self, orientation, for_size)
-
-
-class MyComputerJustifiedFlowBox(Gtk.FlowBox):
-    """FlowBox of constant-width cards whose column spacing stretches to fill
-    each row's full width on resize, instead of a fixed gutter that leaves
-    empty space at the end of the row. Cards stay halign=START and a fixed
-    width; only the gaps between them grow or shrink."""
-
-    __gtype_name__ = "MyComputerJustifiedFlowBox"
-
-    def __init__(self, card_width: int, min_spacing: int) -> None:
-        super().__init__()
-        self._card_width = card_width
-        self._min_spacing = min_spacing
-
-    def _child_count(self) -> int:
-        n = 0
-        child = self.get_first_child()
-        while child is not None:
-            n += 1
-            child = child.get_next_sibling()
-        return n
-
-    def _apply_spacing_for_width(self, width: int) -> None:
-        step = self._card_width + self._min_spacing
-        width_cols = max(1, (width + self._min_spacing) // step) if step > 0 else 1
-        # If the width could fit more columns than we actually have children for,
-        # every card already fits on a single row: there's no second row to save
-        # by stretching the gaps, so stay at min_spacing and leave the remainder
-        # as trailing blank space, same as native Nautilus grid view. This is
-        # recomputed from scratch every time (not "frozen" from a prior wider
-        # layout), so it stays correct across DnD reordering and re-populating
-        # the panel after switching away and back.
-        if width_cols >= self._child_count():
-            spacing = self._min_spacing
-        else:
-            cols = min(width_cols, self.get_max_children_per_line())
-            spacing = self._min_spacing
-            if cols > 1:
-                spacing = max(self._min_spacing, (width - cols * self._card_width) // (cols - 1))
-        if spacing != self.get_column_spacing():
-            self.set_column_spacing(spacing)
-
-    def do_measure(self, orientation, for_size):
-        # FlowBox's own height-for-width measurement uses whatever column_spacing
-        # is currently set, which may be stale from the previous width. If that
-        # stale spacing makes FlowBox's internal row-fit calculation disagree with
-        # the column count _apply_spacing_for_width will use at allocate time, the
-        # reserved height ends up sized for one row more than what's actually laid
-        # out, leaving empty space at the bottom of the section. Syncing spacing
-        # here, before the measurement, keeps both passes in agreement about how
-        # many cards fit per row at this width. PyGObject vfunc override: returns
-        # a 4-tuple, does NOT take minimum/natural as out-params (unlike the C
-        # signature) -- get this wrong and measurement silently breaks.
-        if orientation == Gtk.Orientation.VERTICAL and for_size > 0:
-            self._apply_spacing_for_width(for_size)
-        return Gtk.FlowBox.do_measure(self, orientation, for_size)
-
-    def do_size_allocate(self, width: int, height: int, baseline: int) -> None:
-        self._apply_spacing_for_width(width)
-        Gtk.FlowBox.do_size_allocate(self, width, height, baseline)
-
-
 class MyComputerCappedGridFlowBox(Gtk.FlowBox):
     """Homogeneous FlowBox that raises its column count as the window widens,
     capping each card's stretched width at max_card_width instead of letting a
@@ -897,8 +842,6 @@ class MyComputerCardSection(Gtk.Box):
         col_spacing: int,
         row_spacing: int,
         always_grid: bool = False,
-        justify: bool = False,
-        card_width: int = 0,
         homogeneous: bool = False,
         max_card_width: int = 0,
     ) -> None:
@@ -915,9 +858,7 @@ class MyComputerCardSection(Gtk.Box):
 
         is_list = view_mode == "list-view" and not always_grid
         is_capped_grid = homogeneous and max_card_width > 0 and not is_list
-        if justify and not is_list:
-            self.flow = MyComputerJustifiedFlowBox(card_width, col_spacing)
-        elif is_capped_grid:
+        if is_capped_grid:
             self.flow = MyComputerCappedGridFlowBox(max_card_width, col_spacing, max_cols)
         else:
             self.flow = Gtk.FlowBox()
@@ -1010,19 +951,13 @@ class MyComputerColumnRow(Gtk.ListBoxRow):
         icon.set_halign(Gtk.Align.CENTER)
         icon.set_valign(Gtk.Align.CENTER)
 
-        # Same native icon table Preferred Folders draws from (home/Documents/
-        # Downloads/...): checked first so these rows show the real colored
-        # folder icon Nautilus itself uses, not whatever generic GIcon
-        # enumerate_children happened to return for that path.
-        #
-        # _set_regular_icon (not a plain set_from_icon_name + set_pixel_size)
-        # forces the full-color variant: at this small 24px size GTK would
-        # otherwise auto-select a monochrome/symbolic-looking fixed-size theme
+        # gio_icon is already the fully-resolved icon by the time it gets here (custom
+        # icon if the caller found one, else GIO's own real icon for the path -- see
+        # _populate_rows) -- _set_regular_icon (not a plain set_from_icon_name +
+        # set_pixel_size) forces the full-color variant: at this small 24px size GTK
+        # would otherwise auto-select a monochrome/symbolic-looking fixed-size theme
         # variant on some themes. See common._set_regular_icon.
-        native_icon = _native_folder_icon_name(uri) if is_dir else None
-        if native_icon:
-            _set_regular_icon(icon, _COLUMN_ROW_ICON_SIZE, icon_name=native_icon)
-        elif _gicon_renders(gio_icon):
+        if _gicon_renders(gio_icon):
             _set_regular_icon(icon, _COLUMN_ROW_ICON_SIZE, gicon=gio_icon)
         else:
             _set_regular_icon(
@@ -1516,7 +1451,8 @@ class MyComputerColumn(Gtk.ScrolledWindow):
         gfile.enumerate_children_async(
             "standard::name,standard::display-name,standard::icon,"
             "standard::is-hidden,standard::type,standard::content-type,"
-            "standard::size,time::modified,time::created",
+            "standard::size,time::modified,time::created,"
+            "metadata::custom-icon,metadata::custom-icon-name",
             Gio.FileQueryInfoFlags.NONE,
             GLib.PRIORITY_DEFAULT,
             self._cancellable,
@@ -1661,7 +1597,7 @@ class MyComputerColumn(Gtk.ScrolledWindow):
                     name_lower=(info.get_display_name() or name).lower(),
                     name=name,
                     display_name=info.get_display_name() or name,
-                    icon=info.get_icon(),
+                    icon=_resolve_custom_gicon(info) or info.get_icon(),
                     content_type=info.get_content_type(),
                     is_hidden=is_hidden,
                     size=size,

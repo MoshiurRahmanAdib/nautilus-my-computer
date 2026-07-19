@@ -99,6 +99,16 @@ msgid "Trash"
 msgstr "Lixo"
 
 #——————————————————————————————
+# Preferences - Tabs
+#——————————————————————————————
+
+msgid "Computer view"
+msgstr "Vista Computador"
+
+msgid "Sidebar"
+msgstr "Barra lateral"
+
+#——————————————————————————————
 # Preferences - General
 #——————————————————————————————
 
@@ -185,6 +195,16 @@ msgid "Choose which locations appear on the sidebar."
 msgstr "Escolha quais localizações aparecem na barra lateral."
 
 #——————————————————————————————
+# Preferences - Preferred Folders
+#——————————————————————————————
+
+msgid "Show captions"
+msgstr "Mostrar legendas"
+
+msgid "Shows or hides the caption lines already configured in Nautilus"
+msgstr "Mostra ou oculta as linhas de legenda já configuradas no Nautilus"
+
+#——————————————————————————————
 # Preferences - About
 #——————————————————————————————
 
@@ -229,21 +249,6 @@ msgstr ""
 # Panel - Preferred Folders
 #——————————————————————————————
 
-msgid "Documents"
-msgstr "Documentos"
-
-msgid "Downloads"
-msgstr "Transferências"
-
-msgid "Music"
-msgstr "Música"
-
-msgid "Videos"
-msgstr "Vídeos"
-
-msgid "Pictures"
-msgstr "Imagens"
-
 msgid "Preferred Folders"
 msgstr "Pastas preferidas"
 
@@ -255,3 +260,92 @@ msgstr "Adicionar às preferidas"
 
 msgid "Remove from Preferred"
 msgstr "Remover das preferidas"
+
+#——————————————————————————————
+# Panel - Preferred Folders - Captions
+#——————————————————————————————
+
+msgid "{n} item"
+msgid_plural "{n} items"
+msgstr[0] "{n} item"
+msgstr[1] "{n} itens"
+
+#——————————————————————————————
+# General - Relative Dates
+#——————————————————————————————
+
+msgid "Today"
+msgstr "Hoje"
+
+msgid "Yesterday"
+msgstr "Ontem"
+
+msgid "Tomorrow"
+msgstr "Amanhã"
+
+msgid "This week"
+msgstr "Esta semana"
+
+msgid "Last week"
+msgstr "Semana passada"
+
+msgid "Next week"
+msgstr "Próxima semana"
+
+msgid "This month"
+msgstr "Este mês"
+
+msgid "Last month"
+msgstr "Mês passado"
+
+msgid "Next month"
+msgstr "Próximo mês"
+
+msgid "This year"
+msgstr "Este ano"
+
+msgid "Last year"
+msgstr "Ano passado"
+
+msgid "Next year"
+msgstr "Próximo ano"
+
+msgid "{n} day ago"
+msgid_plural "{n} days ago"
+msgstr[0] "há {n} dia"
+msgstr[1] "há {n} dias"
+
+msgid "In {n} day"
+msgid_plural "In {n} days"
+msgstr[0] "daqui a {n} dia"
+msgstr[1] "daqui a {n} dias"
+
+msgid "{n} week ago"
+msgid_plural "{n} weeks ago"
+msgstr[0] "há {n} semana"
+msgstr[1] "há {n} semanas"
+
+msgid "In {n} week"
+msgid_plural "In {n} weeks"
+msgstr[0] "daqui a {n} semana"
+msgstr[1] "daqui a {n} semanas"
+
+msgid "{n} month ago"
+msgid_plural "{n} months ago"
+msgstr[0] "há {n} mês"
+msgstr[1] "há {n} meses"
+
+msgid "In {n} month"
+msgid_plural "In {n} months"
+msgstr[0] "daqui a {n} mês"
+msgstr[1] "daqui a {n} meses"
+
+msgid "{n} year ago"
+msgid_plural "{n} years ago"
+msgstr[0] "há {n} ano"
+msgstr[1] "há {n} anos"
+
+msgid "In {n} year"
+msgid_plural "In {n} years"
+msgstr[0] "daqui a {n} ano"
+msgstr[1] "daqui a {n} anos"
