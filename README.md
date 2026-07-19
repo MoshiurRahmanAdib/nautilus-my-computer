@@ -132,6 +132,10 @@ Reorder your Preferred Folders by dragging cards into place, right in the Comput
 
 ![Preferred Folders drag-and-drop](assets/images/preferred-folders-dnd.png)
 
+Captions follow native Nautilus captions support, show or hide them per your preference.
+
+![Preferred Folders captions](assets/images/preferred-folders-captions.png)
+
 ### Settings page
 
 My Computer Settings let you:
