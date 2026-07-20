@@ -1395,7 +1395,9 @@ def _folder_icon_poll_tick(ext) -> bool:
     for pf in list(_folder_data.values()):
         if pf.key not in preferred_folders.PREFERRED_TOKENS:
             _refresh_folder_metadata_async(ext, pf)
-        elif not pf.is_special_place:
+        elif pf.is_special_place:
+            _refresh_special_place_icon_async(ext, pf)
+        else:
             _refresh_folder_icon_async(ext, pf)
         _refresh_folder_captions_async(ext, pf)
     return GLib.SOURCE_CONTINUE
@@ -1626,7 +1628,9 @@ def _populate(ext, win: Gtk.Window) -> None:
         for pf in folders:
             if pf.key not in preferred_folders.PREFERRED_TOKENS:
                 _refresh_folder_metadata_async(ext, pf)
-            elif not pf.is_special_place:
+            elif pf.is_special_place:
+                _refresh_special_place_icon_async(ext, pf)
+            else:
                 _refresh_folder_icon_async(ext, pf)
             _refresh_folder_captions_async(ext, pf)
         _sync_folder_rename_watchers(ext, folders)
@@ -1775,6 +1779,44 @@ def _on_folder_metadata_ready(
     new_pf = dataclasses.replace(
         pf, display_name=display_name, gio_icon=gio_icon, is_hidden=is_hidden
     )
+    _folder_data[folder_key] = new_pf
+    for state in ext._windows.values():
+        card = state.get("folder_card_widgets", {}).get(folder_key)
+        if card is not None:
+            card.update_metadata(new_pf)
+
+
+def _refresh_special_place_icon_async(ext, pf: "PreferredFolder") -> None:
+    """Custom-icon-only refresh for the Recent/Starred/Network virtual tokens
+    (issue #83). Unlike _refresh_folder_icon_async, this never touches
+    display_name or falls back to standard::icon -- these locations have no
+    real filesystem content-type icon to defer to, only the fixed token icon
+    in PREFERRED_TOKENS (icon_name) and, layered on top of it, whatever the
+    user set via Properties > Icon (gio_icon). metadata::custom-icon(-name)
+    is keyed by URI, so it works for recent:/// exactly like a real folder."""
+    gfile = Gio.File.new_for_uri(pf.nav_uri)
+    gfile.query_info_async(
+        "metadata::custom-icon,metadata::custom-icon-name",
+        Gio.FileQueryInfoFlags.NONE,
+        GLib.PRIORITY_DEFAULT,
+        ext._folder_refresh_cancellable,
+        functools.partial(_on_special_place_icon_ready, ext),
+        pf.key,
+    )
+
+
+def _on_special_place_icon_ready(
+    ext, gfile: Gio.File, result: Gio.AsyncResult, folder_key: str
+) -> None:
+    try:
+        info = gfile.query_info_finish(result)
+    except GLib.Error:
+        return
+    pf = _folder_data.get(folder_key)
+    if pf is None:
+        return
+    gio_icon = _resolve_custom_gicon(info)
+    new_pf = dataclasses.replace(pf, gio_icon=gio_icon)
     _folder_data[folder_key] = new_pf
     for state in ext._windows.values():
         card = state.get("folder_card_widgets", {}).get(folder_key)

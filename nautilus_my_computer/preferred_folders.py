@@ -98,7 +98,7 @@ PREFERRED_TOKENS: dict[str, dict] = {
     },
     "network": {
         "label": _nautilus_string("Network"),
-        "icon": "folder-html",
+        "icon": "folder-network",
         "uri": lambda: "x-network-view:///",
     },
     # Not wrapped in _(): the real xdg-user-dirs name always overwrites this

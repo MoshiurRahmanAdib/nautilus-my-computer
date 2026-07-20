@@ -637,8 +637,12 @@ class MyComputerFolderCard(Gtk.Widget):
     def update_metadata(self, pf) -> None:
         """Patch the icon + name label in place; called once async metadata resolves."""
         self.model = pf
-        if self.icon is not None and _gicon_renders(pf.gio_icon):
-            self.icon.set_from_gicon(pf.gio_icon)
+        # Full precedence (gicon -> icon_name -> "folder"), not just set_from_gicon:
+        # a special place (recent/starred/network) whose custom icon was removed
+        # comes back with gio_icon=None and must revert to its token icon_name
+        # default, not keep the stale custom gicon (issue #83).
+        if self.icon is not None:
+            self._set_icon(self.icon)
         if self.name_label is not None:
             self.name_label.set_label(pf.display_name)
         self._apply_hidden_state(pf.is_hidden)
