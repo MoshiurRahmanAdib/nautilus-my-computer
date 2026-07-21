@@ -80,7 +80,6 @@ _DIRTY_ACTIVE_THRESHOLD = (
 )  # /proc/meminfo Dirty+Writeback ≥ this → poll fast (above resting journal noise ~1–2 MB)
 _USAGE_POLL_NETWORK_MS = 5000  # async D-Bus usage poll interval for GVfs/network mounts
 _SORT_POLL_MS = 250  # gvfs sort-metadata poll cadence (only while header is hovered)
-_FOLDER_ICON_POLL_MS = 2000  # metadata::custom-icon poll cadence (gvfs metadata isn't inotify)
 _STALE_RELEASE_FRAMES = 2  # keep detached panel generations alive across this many frame ticks
 REAL_FSTYPES = {
     "ext4",
@@ -1382,16 +1381,18 @@ def _update_card_usage(ext, state: dict, key: str, total: int, free: int) -> Non
         card.update_usage(_disk_data[key])
 
 
-def _folder_icon_poll_tick(ext) -> bool:
-    """GLib timer callback: re-query display-name/icon metadata for every rendered
-    Preferred Folder. Renames and deletes reach us live via the file monitors in
+def _sweep_folder_icons(ext) -> None:
+    """Re-query display-name/icon/caption metadata for every rendered Preferred
+    Folder. Renames and deletes reach us live via the file monitors in
     _sync_folder_rename_watchers, but a custom-icon-only change (Nautilus'
     "Properties > Icon") never fires a file-monitor event at all -- gvfs metadata
     is an mmap-backed store, not inotify-visible (confirmed empirically; same
-    root cause as the sort-metadata polling need). Re-arming this cheap async
-    query on a timer, scoped to "panel visible" exactly like the network usage
-    poll, is the only way to catch it without waiting for the user to navigate
-    away and back (issue #71)."""
+    root cause as the sort-metadata polling need). There is no change signal we
+    can subscribe to either (org.gtk.vfs.Metadata.AttributeChanged does not fire
+    for these writes, confirmed empirically -- issue #78). Firing this cheap
+    async query on window focus-in, scoped to "panel visible", catches the
+    common case (user edits the icon via Properties, then returns to the
+    Nautilus window) without an always-on timer (issue #71, #78)."""
     for pf in list(_folder_data.values()):
         if pf.key not in preferred_folders.PREFERRED_TOKENS:
             _refresh_folder_metadata_async(ext, pf)
@@ -1400,7 +1401,18 @@ def _folder_icon_poll_tick(ext) -> bool:
         else:
             _refresh_folder_icon_async(ext, pf)
         _refresh_folder_captions_async(ext, pf)
-    return GLib.SOURCE_CONTINUE
+
+
+def _on_window_active_changed(ext, win: Gtk.Window) -> None:
+    """notify::is-active handler: sweep folder icons/captions when a window
+    showing the disk panel regains focus (issue #78 -- see _sweep_folder_icons
+    for why this replaces a poll instead of a change signal)."""
+    state = ext._windows.get(win)
+    if not state or not win.get_property("is-active"):
+        return
+    if state.get("visible_view") != VIEW_DISKINFO:
+        return
+    _sweep_folder_icons(ext)
 
 
 def _ensure_usage_poll_running(ext) -> None:
@@ -1416,10 +1428,6 @@ def _ensure_usage_poll_running(ext) -> None:
         _net_usage_tick(ext)
         ext._net_poll_timer_id = GLib.timeout_add(
             _USAGE_POLL_NETWORK_MS, functools.partial(_net_usage_tick, ext)
-        )
-    if ext._folder_icon_poll_timer_id is None:
-        ext._folder_icon_poll_timer_id = GLib.timeout_add(
-            _FOLDER_ICON_POLL_MS, functools.partial(_folder_icon_poll_tick, ext)
         )
 
 
@@ -1441,9 +1449,6 @@ def _stop_usage_poll_if_idle(ext) -> None:
         if ext._net_poll_cancellable is not None:
             ext._net_poll_cancellable.cancel()
             ext._net_poll_cancellable = None
-        if ext._folder_icon_poll_timer_id is not None:
-            GLib.source_remove(ext._folder_icon_poll_timer_id)
-            ext._folder_icon_poll_timer_id = None
 
 
 def _new_grid_box(ext) -> Gtk.Box:

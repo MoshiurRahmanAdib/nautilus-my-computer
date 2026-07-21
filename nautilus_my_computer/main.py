@@ -563,7 +563,6 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         self._local_poll_stop: threading.Event | None = None
         self._net_poll_timer_id: int | None = None
         self._net_poll_cancellable: Gio.Cancellable | None = None
-        self._folder_icon_poll_timer_id: int | None = None
         self._folder_refresh_cancellable = Gio.Cancellable()
         self._folder_monitors: dict[str, Gio.FileMonitor] = {}  # keyed by parent dir URI
         self._watched_folder_keys: set[str] = set()
@@ -652,6 +651,9 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
 
     def _stop_usage_poll_if_idle(self) -> None:
         my_computer_view._stop_usage_poll_if_idle(self)
+
+    def _on_window_active_changed(self, win: Gtk.Window) -> None:
+        my_computer_view._on_window_active_changed(self, win)
 
     def _on_card_activated(self, flow_box, child: Gtk.FlowBoxChild, win: Gtk.Window) -> None:
         my_computer_view._on_card_activated(self, flow_box, child, win)
@@ -818,6 +820,7 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
             self._attach_pathbar_menu_watch(win)
             self._attach_file_view_context_menu(win)
             self._inject_column_view_entry(win)
+            win.connect("notify::is-active", lambda w, _pspec: self._on_window_active_changed(w))
             self._on_navigation(win)
 
             if DEBUG_SELFTEST and not getattr(self, "_selftest_started", False):
