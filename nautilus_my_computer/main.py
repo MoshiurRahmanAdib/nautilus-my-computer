@@ -551,6 +551,20 @@ _WINDOW_SHORTCUTS: dict[tuple[int, int], str] = {
     (0, Gdk.KEY_Delete): "_trash_column_focused_folder",
 }
 
+# Unmodified keys that must reach the toolbar's own MANAGED GtkShortcutController
+# (nautilus-toolbar.c) so it can open the location entry, same as native Nautilus:
+# "/" prompts the root location, "~" prompts home. Both are printable with no
+# modifier, so without this list the disk panel's type-ahead swallow in
+# _on_window_key_capture would eat them first.
+_LOCATION_ENTRY_KEYVALS = frozenset(
+    {
+        Gdk.KEY_slash,
+        Gdk.KEY_KP_Divide,
+        Gdk.KEY_asciitilde,
+        Gdk.KEY_dead_tilde,
+    }
+)
+
 
 class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
     def __init__(self):
@@ -1393,6 +1407,11 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         if gtk_state & (
             Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.ALT_MASK | Gdk.ModifierType.SUPER_MASK
         ):
+            return False
+        # Address-bar trigger keys must reach the toolbar's MANAGED shortcut
+        # controller (nautilus-toolbar.c): "/" -> root, "~" -> home, like native.
+        # Without this the printable-char swallow below eats them first.
+        if keyval in _LOCATION_ENTRY_KEYVALS:
             return False
         # Only swallow printable characters (>= space). Control keys — arrows,
         # Tab, Enter, Esc, function keys — map to unicode < 0x20 and pass through.
