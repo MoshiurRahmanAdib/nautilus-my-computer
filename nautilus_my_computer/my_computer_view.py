@@ -1178,6 +1178,21 @@ def _poll_sort(ext) -> bool:
     return GLib.SOURCE_CONTINUE
 
 
+def apply_card_filter(ext, win: Gtk.Window, query: str) -> None:
+    """Forward `query` to every section's own filter (see
+    MyComputerCardSection.set_query in widgets.py -- each group filters its
+    own cards and self-hides when empty). Stored on state so _populate()
+    re-applies it after a live refresh or a navigate-away-and-back."""
+    state = ext._windows.get(win)
+    if not state:
+        return
+    state["filter_query"] = query
+    for flow in state.get("section_flows", []):
+        section = flow.get_parent()
+        if section is not None and hasattr(section, "set_query"):
+            section.set_query(query)
+
+
 def _read_view_mode(ext) -> None:
     """Read current view mode and click policy from Nautilus preferences."""
     try:
@@ -1720,6 +1735,11 @@ def _populate(ext, win: Gtk.Window) -> None:
     state["section_flows"] = section_flows
     state["card_widgets"] = card_widgets
     state["folder_card_widgets"] = folder_card_widgets
+    # Sections are rebuilt from scratch every populate, so a filter active
+    # before a live-refresh (or a navigate-away-and-back) must be re-applied
+    # to the freshly-built section widgets here.
+    if state.get("filter_query"):
+        apply_card_filter(ext, win, state["filter_query"])
     # Render any already-cached caption data immediately (e.g. re-populate
     # after a live-refresh) rather than waiting for the next async fetch.
     for folder_key in folder_card_widgets:

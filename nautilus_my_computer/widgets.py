@@ -959,11 +959,39 @@ class MyComputerCardSection(Gtk.Box):
         self.flow.connect("selected-children-changed", ext._on_flow_selection_changed, win)
         ext._attach_flow_shortcuts(self.flow, win)
 
+        self._query = ""
+        self.flow.set_filter_func(self._filter_child)
+
         self.append(self.flow)
 
     def add_card(self, card: Gtk.Widget) -> None:
         self._size_group.add_widget(card)
         self.flow.append(card)
+
+    def _filter_child(self, child: Gtk.FlowBoxChild) -> bool:
+        if not self._query:
+            return True
+        inner = child.get_child()
+        display_name = getattr(getattr(inner, "model", None), "display_name", None)
+        if display_name is None:
+            # Not a card (e.g. the drag-reorder placeholder) -- always show it.
+            return True
+        return self._query in display_name.lower()
+
+    def set_query(self, query: str) -> None:
+        """Filter this section's cards by `query` (case-insensitive substring
+        of the card's display name). Self-hides the whole section (heading
+        included) when nothing matches, so an empty group never lingers."""
+        self._query = query.strip().lower()
+        self.flow.invalidate_filter()
+        child = self.flow.get_first_child()
+        any_match = False
+        while child is not None:
+            if self._filter_child(child):
+                any_match = True
+                break
+            child = child.get_next_sibling()
+        self.set_visible(not self._query or any_match)
 
 
 class MyComputerColumnRow(Gtk.ListBoxRow):

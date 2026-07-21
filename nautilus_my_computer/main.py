@@ -27,6 +27,7 @@ from nautilus_my_computer import (
     bookmarks,
     column_view,
     file_view_menu,
+    location_filter,
     my_computer_view,
     nautilus_prefs,
     preferred_folders,
@@ -80,6 +81,7 @@ DEBUG_SIDEBAR_MODE = _sidebar_mode(
 )  # inner-wrapper default | native-list | native-list-bottom | outer-wrapper
 DEBUG_PATHBAR_ACTIVE = _flag("MC_PATHBAR")  # top URL bar: chip icon pinning
 DEBUG_SORT_WATCH_ACTIVE = _flag("MC_SORT_WATCH")  # top view-mode/sort buttons: sort metadata watch
+DEBUG_LOCATION_FILTER_ACTIVE = _flag("MC_LOCATION_FILTER")  # address bar: card filter watch
 DEBUG_SELFTEST = _flag("MC_SELFTEST", default=False)  # in-process navigation self-test driver
 DETACH_SETTINGS_WINDOW = False  # testing toggle: True opens settings as a standalone window
 
@@ -649,6 +651,12 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
     def _attach_sort_button_watch(self, nautilus_win: Gtk.Window) -> None:
         my_computer_view._attach_sort_button_watch(self, nautilus_win)
 
+    def _apply_card_filter(self, nautilus_win: Gtk.Window, query: str) -> None:
+        my_computer_view.apply_card_filter(self, nautilus_win, query)
+
+    def _attach_location_filter_watch(self, nautilus_win: Gtk.Window) -> None:
+        location_filter.attach_location_filter_watch(self, nautilus_win)
+
     def _read_view_mode(self) -> None:
         my_computer_view._read_view_mode(self)
 
@@ -962,6 +970,12 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         if column_panel is not None:
             column_panel.set_visible(name == VIEW_COLUMN)
 
+        if state.get("visible_view") == VIEW_DISKINFO and name != VIEW_DISKINFO:
+            # Leaving the panel — drop any active address-bar filter so a
+            # stale query can't linger and hide cards on the next visit
+            # (the address bar itself may still be mid-navigation, not
+            # necessarily cleared, so we can't rely on its own "changed").
+            state["filter_query"] = ""
         state["visible_view"] = name
         column_view.set_native_cut_observer_active(self, state["window"], name == VIEW_COLUMN)
         # While the panel is shown, hide the vanilla computer:/// contents
@@ -1350,6 +1364,8 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
             "selected_mount_key": None,
             "selected_folder_key": None,
             "header_motion": None,  # Gtk.EventControllerMotion on the header bar
+            "location_filter_watch_attached": False,
+            "filter_query": "",
             "native_hide_model": None,  # observe_children() model of native listbox
             "native_hide_handler": None,  # items-changed handler id on that model
             "native_hide_pending": False,  # coalesces re-hide bursts into one idle pass
@@ -1413,7 +1429,7 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         # Without this the printable-char swallow below eats them first.
         if keyval in _LOCATION_ENTRY_KEYVALS:
             return False
-        # Only swallow printable characters (>= space). Control keys — arrows,
+        # Only handle printable characters (>= space). Control keys — arrows,
         # Tab, Enter, Esc, function keys — map to unicode < 0x20 and pass through.
         if Gdk.keyval_to_unicode(keyval) < 0x20:
             return False
@@ -1422,6 +1438,15 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         focused = win.get_focus()
         if focused is not None and isinstance(focused, Gtk.Editable):
             return False
+        # Plain printable, address bar not open yet: reveal it (same
+        # toolbar.edit-location action Ctrl+L uses) and seed it with this
+        # character, so typing filters the panel's cards live instead of
+        # triggering Nautilus's own type-ahead search. See location_filter.py.
+        # Gated by the same flag as the watch so MC_LOCATION_FILTER=0 fully
+        # restores the plain type-ahead swallow (no keystroke hijack).
+        if DEBUG_LOCATION_FILTER_ACTIVE:
+            char = chr(Gdk.keyval_to_unicode(keyval))
+            location_filter.reveal_and_seed(self, win, char)
         return True
 
     # ── Location change handler ───────────────────────────────────────────────
@@ -1485,6 +1510,8 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
                 GLib.idle_add(lambda w=win: self._fix_pathbar_icon(w) or False)
             if DEBUG_SORT_WATCH_ACTIVE:
                 GLib.idle_add(lambda w=win: self._attach_sort_button_watch(w) or False)
+            if DEBUG_LOCATION_FILTER_ACTIVE:
+                GLib.idle_add(lambda w=win: self._attach_location_filter_watch(w) or False)
         elif (
             not in_view
             and current == VIEW_COLUMN
