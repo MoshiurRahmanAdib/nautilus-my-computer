@@ -1455,7 +1455,13 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         # restores the plain type-ahead swallow (no keystroke hijack).
         if DEBUG_LOCATION_FILTER_ACTIVE:
             char = chr(Gdk.keyval_to_unicode(keyval))
-            state["location_filter_owned"] = location_filter.reveal_and_seed(self, win, char)
+            # Must be set before reveal_and_seed(): entry.set_text() inside it
+            # fires "changed" synchronously, before this call even returns, so
+            # setting the flag from the return value would miss that first
+            # keystroke's filter application entirely.
+            state["location_filter_owned"] = True
+            if not location_filter.reveal_and_seed(self, win, char):
+                state["location_filter_owned"] = False
         return True
 
     # ── Location change handler ───────────────────────────────────────────────
