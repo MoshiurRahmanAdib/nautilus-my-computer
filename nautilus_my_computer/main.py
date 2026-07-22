@@ -976,6 +976,7 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
             # (the address bar itself may still be mid-navigation, not
             # necessarily cleared, so we can't rely on its own "changed").
             state["filter_query"] = ""
+            state["location_filter_owned"] = False
         state["visible_view"] = name
         column_view.set_native_cut_observer_active(self, state["window"], name == VIEW_COLUMN)
         # While the panel is shown, hide the vanilla computer:/// contents
@@ -1365,6 +1366,7 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
             "selected_folder_key": None,
             "header_motion": None,  # Gtk.EventControllerMotion on the header bar
             "location_filter_watch_attached": False,
+            "location_filter_owned": False,
             "filter_query": "",
             "native_hide_model": None,  # observe_children() model of native listbox
             "native_hide_handler": None,  # items-changed handler id on that model
@@ -1423,11 +1425,18 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         if gtk_state & (
             Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.ALT_MASK | Gdk.ModifierType.SUPER_MASK
         ):
+            # Ctrl+L opens the address bar for real navigation, not card
+            # filtering -- disown it so _on_location_text_changed ignores
+            # the resulting "changed" signals. See location_filter_owned.
+            state["location_filter_owned"] = False
             return False
         # Address-bar trigger keys must reach the toolbar's MANAGED shortcut
         # controller (nautilus-toolbar.c): "/" -> root, "~" -> home, like native.
         # Without this the printable-char swallow below eats them first.
+        # These open the bar for real navigation, not card filtering, so
+        # disown it the same way Ctrl+L does above.
         if keyval in _LOCATION_ENTRY_KEYVALS:
+            state["location_filter_owned"] = False
             return False
         # Only handle printable characters (>= space). Control keys — arrows,
         # Tab, Enter, Esc, function keys — map to unicode < 0x20 and pass through.
@@ -1446,7 +1455,7 @@ class MyComputerExtension(GObject.GObject, Nautilus.MenuProvider):
         # restores the plain type-ahead swallow (no keystroke hijack).
         if DEBUG_LOCATION_FILTER_ACTIVE:
             char = chr(Gdk.keyval_to_unicode(keyval))
-            location_filter.reveal_and_seed(self, win, char)
+            state["location_filter_owned"] = location_filter.reveal_and_seed(self, win, char)
         return True
 
     # ── Location change handler ───────────────────────────────────────────────

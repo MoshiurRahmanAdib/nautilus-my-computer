@@ -67,6 +67,12 @@ def _on_location_text_changed(ext, entry: Gtk.Editable, nautilus_win: Gtk.Window
         return
     if state.get("visible_view") != VIEW_DISKINFO:
         return
+    # "/", "~" and Ctrl+L open this same entry for real navigation, not card
+    # filtering -- _on_window_key_capture disowns the entry (see
+    # location_filter_owned) whenever one of those opens it, so typing a
+    # path there navigates instead of filtering the panel to nothing.
+    if not state.get("location_filter_owned"):
+        return
     # Nautilus keeps this entry's text primed with the current location even
     # while it's hidden/unfocused (so it's ready next time "/" or "~" opens
     # it) -- only treat a "changed" as a live filter edit while the user is
@@ -88,6 +94,7 @@ def _on_location_cancel(ext, _entry: Gtk.Editable, nautilus_win: Gtk.Window) -> 
     if not state or not ext._has_live_overlay(state, "location filter cancel"):
         return
     _log("location filter cancelled -> reset to default view")
+    state["location_filter_owned"] = False
     ext._apply_card_filter(nautilus_win, "")
 
 
