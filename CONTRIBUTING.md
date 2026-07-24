@@ -21,14 +21,36 @@ pull request's "Edit" button on GitHub.
 
 Adding or improving a translation is the easiest way to contribute.
 
-1. Find your language's `.po` file under `po/`. If it doesn't exist yet, copy `po/fr.po`
-   (our reference, kept fully up to date) as a starting point, rename it to your language
-   code (e.g. `po/hu.po` for Hungarian), and update the header fields (`Language`,
-   `Language-Team`, `Last-Translator`, `PO-Revision-Date`).
-2. Translate each `msgstr` below its matching `msgid`. Leave `msgid` lines untouched.
+The canonical list of translatable strings lives in `po/nautilus-my-computer.pot`,
+generated from the source with `make pot`. Don't copy an existing `.po` file as a
+starting point, `.po` files can lag behind the source strings between releases, and a
+copy just carries that gap forward.
+
+You'll need `gettext` installed to run the `make` targets below:
+```bash
+# Arch:           sudo pacman -S gettext
+# Fedora:         sudo dnf install gettext
+# Debian/Ubuntu:  sudo apt install gettext
+```
+
+**New language:**
+1. `make pot` to (re)generate `po/nautilus-my-computer.pot`.
+2. Copy it to `po/<lang>.po` (e.g. `po/hu.po` for Hungarian), and fill in the header
+   fields (`Language`, `Language-Team`, `Last-Translator`, `PO-Revision-Date`).
+3. Translate each `msgstr` below its matching `msgid`. Leave `msgid` lines untouched.
+4. Open a pull request with just the `.po` file change.
+
+**Updating an existing language after source strings changed:**
+1. `make po-update` regenerates the `.pot` and merges it into every `po/*.po` via
+   `msgmerge`, adding new strings, marking removed ones as obsolete (`#~`), and
+   flagging uncertain matches as `#, fuzzy` for review.
+2. Fix or clear any `#, fuzzy` entries for your language, translate new empty `msgstr`s,
+   and remove any `#~` (obsolete) entries for your language.
 3. Open a pull request with just the `.po` file change.
 
-You don't need to compile `.mo` files or update the version, that's handled at release time.
+You don't need to compile `.mo` files or update the version, that's handled at release
+time. CI checks that each `.po` file's strings match the current `.pot`, so run
+`make po-update` before opening a PR if source strings have changed since your last sync.
 
 ## Code contributions
 
