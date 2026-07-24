@@ -2,7 +2,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: nautilus-my-computer\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-01 00:00+0200\n"
+"POT-Creation-Date: 2026-07-24 12:50-0700\n"
 "PO-Revision-Date: 2026-06-22 00:17+0300\n"
 "Last-Translator: Taylan Tatlı\n"
 "Language-Team: Turkish\n"
@@ -14,148 +14,410 @@ msgstr ""
 "X-Generator: Poedit 3.9\n"
 
 # ——————————————————————————————
-# Panel - Group labels
+# Sidebar - Bookmark icon
 # ——————————————————————————————
-msgid "On this Computer"
-msgstr "Bu Bilgisayarda"
+#: nautilus_my_computer/bookmarks.py
+msgid "Change Icon"
+msgstr ""
 
-msgid "System"
-msgstr "Sistem"
+#: nautilus_my_computer/bookmarks.py
+msgid "Icon"
+msgstr ""
 
-msgid "Removable"
-msgstr "Çıkarılabilir"
+#: nautilus_my_computer/bookmarks.py
+msgid "Search icons…"
+msgstr ""
 
-msgid "Disc"
-msgstr "Disk"
+#: nautilus_my_computer/bookmarks.py
+msgid "Reset"
+msgstr ""
 
-# Previous translation (before rename from "Network Volumes"): Ağ Birimleri
-msgid "Network"
-msgstr "Ağ"
+#: nautilus_my_computer/column_view.py
+msgid "New Folder"
+msgstr ""
 
-# ——————————————————————————————
-# Panel - Disk card
-# ——————————————————————————————
-msgid "{free} free of {total}"
-msgstr "{total} alanda {free} boş"
-
-msgid "Not mounted"
-msgstr "Bağlanmamış"
+#: nautilus_my_computer/column_view.py
+#, fuzzy, python-format
+msgid "Open With %s"
+msgstr "Birlikte Aç…"
 
 # ——————————————————————————————
 # Panel - Disk card actions
 # ——————————————————————————————
+#: nautilus_my_computer/column_view.py nautilus_my_computer/context_menu.py
+#: nautilus_my_computer/main.py
 msgid "Open"
 msgstr "Aç"
 
+#: nautilus_my_computer/column_view.py
+msgid "Select Move Destination"
+msgstr ""
+
+#: nautilus_my_computer/column_view.py
+msgid "Select Copy Destination"
+msgstr ""
+
+#: nautilus_my_computer/column_view.py
+msgid "Select"
+msgstr ""
+
+#: nautilus_my_computer/column_view.py
+msgid "Beta"
+msgstr ""
+
+#: nautilus_my_computer/column_view.py
+msgid "Early access feature. It may contain bugs or inconsistencies."
+msgstr ""
+
+#: nautilus_my_computer/column_view.py
+msgid "Grid View"
+msgstr ""
+
+#: nautilus_my_computer/column_view.py
+msgid "List View"
+msgstr ""
+
+#: nautilus_my_computer/column_view.py
+msgid "Column View"
+msgstr ""
+
+# ——————————————————————————————
+# Preferences - Preferred Folders
+# ——————————————————————————————
+#: nautilus_my_computer/column_view.py
+msgid "View Options"
+msgstr ""
+
+# ——————————————————————————————
+# Panel - Preferred Folders - Captions
+# ——————————————————————————————
+#: nautilus_my_computer/common.py
+#, python-brace-format
+msgid "{n} item"
+msgid_plural "{n} items"
+msgstr[0] "{n} öge"
+msgstr[1] "{n} öge"
+
+# ——————————————————————————————
+# General - Relative Dates
+# ——————————————————————————————
+#: nautilus_my_computer/common.py
+msgid "Today"
+msgstr "Bugün"
+
+#: nautilus_my_computer/common.py
+msgid "Yesterday"
+msgstr "Dün"
+
+#: nautilus_my_computer/common.py
+msgid "Tomorrow"
+msgstr "Yarın"
+
+#: nautilus_my_computer/common.py
+#, python-brace-format
+msgid "{n} day ago"
+msgid_plural "{n} days ago"
+msgstr[0] "{n} gün önce"
+msgstr[1] "{n} gün önce"
+
+#: nautilus_my_computer/common.py
+#, python-brace-format
+msgid "In {n} day"
+msgid_plural "In {n} days"
+msgstr[0] "{n} gün sonra"
+msgstr[1] "{n} gün sonra"
+
+#: nautilus_my_computer/common.py
+msgid "This week"
+msgstr "Bu hafta"
+
+#: nautilus_my_computer/common.py
+msgid "Last week"
+msgstr "Geçen hafta"
+
+#: nautilus_my_computer/common.py
+msgid "Next week"
+msgstr "Gelecek hafta"
+
+#: nautilus_my_computer/common.py
+#, python-brace-format
+msgid "{n} week ago"
+msgid_plural "{n} weeks ago"
+msgstr[0] "{n} hafta önce"
+msgstr[1] "{n} hafta önce"
+
+#: nautilus_my_computer/common.py
+#, python-brace-format
+msgid "In {n} week"
+msgid_plural "In {n} weeks"
+msgstr[0] "{n} hafta sonra"
+msgstr[1] "{n} hafta sonra"
+
+#: nautilus_my_computer/common.py
+msgid "This month"
+msgstr "Bu ay"
+
+#: nautilus_my_computer/common.py
+msgid "Last month"
+msgstr "Geçen ay"
+
+#: nautilus_my_computer/common.py
+msgid "Next month"
+msgstr "Gelecek ay"
+
+#: nautilus_my_computer/common.py
+#, python-brace-format
+msgid "{n} month ago"
+msgid_plural "{n} months ago"
+msgstr[0] "{n} ay önce"
+msgstr[1] "{n} ay önce"
+
+#: nautilus_my_computer/common.py
+#, python-brace-format
+msgid "In {n} month"
+msgid_plural "In {n} months"
+msgstr[0] "{n} ay sonra"
+msgstr[1] "{n} ay sonra"
+
+#: nautilus_my_computer/common.py
+msgid "This year"
+msgstr "Bu yıl"
+
+#: nautilus_my_computer/common.py
+msgid "Last year"
+msgstr "Geçen yıl"
+
+#: nautilus_my_computer/common.py
+msgid "Next year"
+msgstr "Gelecek yıl"
+
+#: nautilus_my_computer/common.py
+#, python-brace-format
+msgid "{n} year ago"
+msgid_plural "{n} years ago"
+msgstr[0] "{n} yıl önce"
+msgstr[1] "{n} yıl önce"
+
+#: nautilus_my_computer/common.py
+#, python-brace-format
+msgid "In {n} year"
+msgid_plural "In {n} years"
+msgstr[0] "{n} yıl sonra"
+msgstr[1] "{n} yıl sonra"
+
+# ——————————————————————————————
+# Panel - Preferred Folders
+# ——————————————————————————————
+#: nautilus_my_computer/components.py
+msgid "Rename Folder"
+msgstr ""
+
+#: nautilus_my_computer/components.py
+msgid "Rename File"
+msgstr ""
+
+#: nautilus_my_computer/components.py
+msgid "Rename"
+msgstr ""
+
+#: nautilus_my_computer/context_menu.py
 msgid "Open in New Tab"
 msgstr "Yeni Sekmede Aç"
 
+#: nautilus_my_computer/context_menu.py
 msgid "Open in New Window"
 msgstr "Yeni Pencerede Aç"
 
+#: nautilus_my_computer/context_menu.py
 msgid "Open With…"
 msgstr "Birlikte Aç…"
 
-msgid "Mount"
-msgstr "Bağla"
+#: nautilus_my_computer/context_menu.py
+msgid "Remove from Bookmarks"
+msgstr ""
 
-msgid "Unmount"
-msgstr "Bağlantıyı Kes"
+#: nautilus_my_computer/context_menu.py
+msgid "Add to Bookmarks"
+msgstr ""
 
-msgid "Eject"
-msgstr "Çıkar"
+#: nautilus_my_computer/context_menu.py
+#: nautilus_my_computer/preferred_folders.py
+msgid "Unpin from My Computer"
+msgstr ""
 
+#: nautilus_my_computer/context_menu.py
+#: nautilus_my_computer/preferred_folders.py
+msgid "Pin to My Computer"
+msgstr ""
+
+#: nautilus_my_computer/context_menu.py
+msgid "Cut"
+msgstr ""
+
+#: nautilus_my_computer/context_menu.py
+msgid "Copy"
+msgstr ""
+
+#: nautilus_my_computer/context_menu.py
+msgid "Paste"
+msgstr ""
+
+#: nautilus_my_computer/context_menu.py
+msgid "Move to…"
+msgstr ""
+
+#: nautilus_my_computer/context_menu.py
+msgid "Copy to…"
+msgstr ""
+
+#: nautilus_my_computer/context_menu.py
+msgid "New Folder…"
+msgstr ""
+
+#: nautilus_my_computer/context_menu.py
+msgid "New Document"
+msgstr ""
+
+#: nautilus_my_computer/context_menu.py
+msgid "Open in Terminal"
+msgstr ""
+
+#: nautilus_my_computer/context_menu.py
+msgid "Rename…"
+msgstr ""
+
+#: nautilus_my_computer/context_menu.py
+msgid "Compress…"
+msgstr ""
+
+#: nautilus_my_computer/context_menu.py
+msgid "Email…"
+msgstr ""
+
+#: nautilus_my_computer/context_menu.py
+msgid "Move to Trash"
+msgstr ""
+
+#: nautilus_my_computer/context_menu.py
 msgid "Properties"
 msgstr "Özellikler"
-
-msgid "Format…"
-msgstr "Biçimlendir..."
 
 # ——————————————————————————————
 # Sidebar
 # ——————————————————————————————
+#: nautilus_my_computer/main.py
 msgid "Computer"
 msgstr "Bilgisayar"
-
-msgid "Open My Computer"
-msgstr "Bilgisayarımı Aç"
-
-# ——————————————————————————————
-# Sidebar - Places
-# ——————————————————————————————
-msgid "Home"
-msgstr "Ev"
-
-msgid "Recent"
-msgstr "Son"
-
-msgid "Starred"
-msgstr "Yıldızlı"
-
-msgid "Trash"
-msgstr "Çöp"
-
-# ——————————————————————————————
-# Preferences - Tabs
-# ——————————————————————————————
-
-msgid "Computer view"
-msgstr "Bilgisayar görünümü"
-
-msgid "Sidebar"
-msgstr "Kenar çubuğu"
 
 # ——————————————————————————————
 # Preferences - General
 # ——————————————————————————————
+#: nautilus_my_computer/main.py
 msgid "My Computer Settings"
 msgstr "Bilgisayarım Ayarları"
 
+# ——————————————————————————————
+# Sidebar - Places
+# ——————————————————————————————
+#: nautilus_my_computer/main.py
+msgid "Home"
+msgstr "Ev"
+
+#: nautilus_my_computer/main.py
+msgid "Loading…"
+msgstr ""
+
+#: nautilus_my_computer/main.py
+msgid "Open My Computer"
+msgstr "Bilgisayarımı Aç"
+
+#: nautilus_my_computer/main.py
+msgid "Recent"
+msgstr "Son"
+
+#: nautilus_my_computer/main.py
+msgid "Starred"
+msgstr "Yıldızlı"
+
+# Previous translation (before rename from "Network Volumes"): Ağ Birimleri
+#: nautilus_my_computer/main.py nautilus_my_computer/my_computer_view.py
+msgid "Network"
+msgstr "Ağ"
+
+#: nautilus_my_computer/main.py
+msgid "Trash"
+msgstr "Çöp"
+
+#: nautilus_my_computer/main.py
+msgid "Open Folder"
+msgstr ""
+
+# ——————————————————————————————
+# Panel - Disk card actions
+# ——————————————————————————————
+#: nautilus_my_computer/main.py
+msgid "Open File"
+msgstr ""
+
+#: nautilus_my_computer/main.py
+msgid "Cancel"
+msgstr ""
+
+#: nautilus_my_computer/main.py
+#, python-format
+msgid "Choose an app to open <b>%s</b>"
+msgstr ""
+
+#: nautilus_my_computer/main.py
+msgid "Recommended Apps"
+msgstr ""
+
+#: nautilus_my_computer/main.py
+msgid "Other Apps"
+msgstr ""
+
+#: nautilus_my_computer/main.py
+msgid "No applications found."
+msgstr ""
+
+#: nautilus_my_computer/main.py
 msgid "General"
 msgstr "Genel"
 
+# ——————————————————————————————
+# Preferences - Tabs
+# ——————————————————————————————
+#: nautilus_my_computer/main.py
+msgid "Computer view"
+msgstr "Bilgisayar görünümü"
+
+#: nautilus_my_computer/main.py
+msgid "Sidebar"
+msgstr "Kenar çubuğu"
+
+# ——————————————————————————————
+# Preferences - About
+# ——————————————————————————————
+#: nautilus_my_computer/main.py
+msgid "About"
+msgstr "Hakkında"
+
+#: nautilus_my_computer/main.py
 msgid "Start on the Computer view"
 msgstr "Bilgisayar görünümünde başlat"
 
+#: nautilus_my_computer/main.py
 msgid "Launch directly to the Computer view instead of Home"
 msgstr "Ev yerine doğrudan Bilgisayar görünümünü aç"
 
 # ——————————————————————————————
-# Preferences - Bar Color
-# ——————————————————————————————
-msgid "Bar Color"
-msgstr "Çubuk Rengi"
-
-msgid "Select or customize the bar color."
-msgstr "Çubuk rengini seçin veya özelleştirin."
-
-msgid "Color mode"
-msgstr "Renk modu"
-
-msgid "System accent"
-msgstr "Sistem vurgu rengi"
-
-msgid "Custom color"
-msgstr "Özel renk"
-
-msgid "Custom gradient"
-msgstr "Özel gradyan"
-
-msgid "Color"
-msgstr "Renk"
-
-msgid "Start color"
-msgstr "Başlangıç rengi"
-
-msgid "End color"
-msgstr "Bitiş rengi"
-
-# ——————————————————————————————
 # Preferences - Panel visibility
 # ——————————————————————————————
+#: nautilus_my_computer/main.py
 msgid "Panel visibility"
 msgstr "Panel görünürlüğü"
 
+#: nautilus_my_computer/main.py
 msgid ""
 "Choose how each group appears. Visible: shows the group as a normal "
 "separated section. Merged: folds the group into the On this Computer group. "
@@ -165,184 +427,187 @@ msgstr ""
 "olarak gösterir. Birleştirilmiş: grubu Bu Bilgisayarda grubunun içine "
 "toplar. Gizli: grubu tamamen gizler."
 
+#: nautilus_my_computer/main.py
 msgid "Visible"
 msgstr "Görünür"
 
+#: nautilus_my_computer/main.py
 msgid "Merged"
 msgstr "Birleştirilmiş"
 
+#: nautilus_my_computer/main.py
 msgid "Hidden"
 msgstr "Gizli"
 
 # ——————————————————————————————
+# Panel - Preferred Folders
+# ——————————————————————————————
+#: nautilus_my_computer/main.py nautilus_my_computer/my_computer_view.py
+msgid "Preferred Folders"
+msgstr "Tercih Edilen Klasörler"
+
+# ——————————————————————————————
 # Preferences - System
 # ——————————————————————————————
+#: nautilus_my_computer/main.py
 msgid "Show system partitions"
 msgstr "Sistem bölümlerini göster"
 
+#: nautilus_my_computer/main.py
 msgid "Include boot and EFI partitions in the System group"
 msgstr "Önyükleme ve EFI bölümlerini Sistem grubuna dahil et"
 
 # ——————————————————————————————
 # Preferences - Sidebar visibility
 # ——————————————————————————————
+#: nautilus_my_computer/main.py
 msgid "Sidebar visibility"
 msgstr "Kenar çubuğu görünürlüğü"
 
+#: nautilus_my_computer/main.py
 msgid "Choose which locations appear on the sidebar."
 msgstr "Kenar çubuğunda hangi konumların görüneceğini seçin."
 
 # ——————————————————————————————
+# Preferences - Bar Color
+# ——————————————————————————————
+#: nautilus_my_computer/main.py
+msgid "Bar Color"
+msgstr "Çubuk Rengi"
+
+#: nautilus_my_computer/main.py
+msgid "Select or customize the bar color."
+msgstr "Çubuk rengini seçin veya özelleştirin."
+
+#: nautilus_my_computer/main.py
+msgid "Color mode"
+msgstr "Renk modu"
+
+#: nautilus_my_computer/main.py
+msgid "System accent"
+msgstr "Sistem vurgu rengi"
+
+#: nautilus_my_computer/main.py
+msgid "Custom color"
+msgstr "Özel renk"
+
+#: nautilus_my_computer/main.py
+msgid "Custom gradient"
+msgstr "Özel gradyan"
+
+#: nautilus_my_computer/main.py
+msgid "Color"
+msgstr "Renk"
+
+#: nautilus_my_computer/main.py
+msgid "Start color"
+msgstr "Başlangıç rengi"
+
+#: nautilus_my_computer/main.py
+msgid "End color"
+msgstr "Bitiş rengi"
+
+# ——————————————————————————————
 # Preferences - Preferred Folders
 # ——————————————————————————————
-
+#: nautilus_my_computer/main.py
 msgid "Show captions"
 msgstr "Açıklamaları göster"
 
+#: nautilus_my_computer/main.py
 msgid "Shows or hides the caption lines already configured in Nautilus"
-msgstr "Nautilus'ta zaten yapılandırılmış açıklama satırlarını gösterir veya gizler"
+msgstr ""
+"Nautilus'ta zaten yapılandırılmış açıklama satırlarını gösterir veya gizler"
 
-# ——————————————————————————————
-# Preferences - About
-# ——————————————————————————————
-msgid "About"
-msgstr "Hakkında"
-
+#: nautilus_my_computer/main.py
 msgid "Extension"
 msgstr "Eklenti"
 
+#: nautilus_my_computer/main.py
 msgid "Version"
 msgstr "Sürüm"
 
+#: nautilus_my_computer/main.py
 msgid "Author"
 msgstr "Yazar"
 
+#: nautilus_my_computer/main.py
 msgid "License"
 msgstr "Lisans"
 
+#: nautilus_my_computer/main.py
 msgid "Source code"
 msgstr "Kaynak kodu"
 
+#: nautilus_my_computer/main.py
 msgid "GitHub"
 msgstr "GitHub"
 
-#——————————————————————————————
-# Sidebar - Bookmark icon
-#——————————————————————————————
+#: nautilus_my_computer/main.py nautilus_my_computer/my_computer_view.py
+msgid "Unmount"
+msgstr "Bağlantıyı Kes"
 
-msgid "Change Icon"
+#: nautilus_my_computer/my_computer_view.py
+msgid "Mount"
+msgstr "Bağla"
+
+#: nautilus_my_computer/my_computer_view.py
+msgid "Eject"
+msgstr "Çıkar"
+
+#: nautilus_my_computer/my_computer_view.py
+msgid "Format…"
+msgstr "Biçimlendir..."
+
+#: nautilus_my_computer/my_computer_view.py
+msgid "System"
+msgstr "Sistem"
+
+# ——————————————————————————————
+# Panel - Group labels
+# ——————————————————————————————
+#: nautilus_my_computer/my_computer_view.py
+msgid "On this Computer"
+msgstr "Bu Bilgisayarda"
+
+#: nautilus_my_computer/my_computer_view.py
+msgid "Removable"
+msgstr "Çıkarılabilir"
+
+#: nautilus_my_computer/my_computer_view.py
+msgid "Disc"
+msgstr "Disk"
+
+#: nautilus_my_computer/widgets.py
+msgid "Not mounted"
+msgstr "Bağlanmamış"
+
+# ——————————————————————————————
+# Panel - Disk card
+# ——————————————————————————————
+#: nautilus_my_computer/widgets.py
+#, python-brace-format
+msgid "{free} free of {total}"
+msgstr "{total} alanda {free} boş"
+
+#: nautilus_my_computer/widgets.py
+msgid "Folder is Empty"
 msgstr ""
 
-msgid "Icon"
+#: nautilus_my_computer/widgets.py
+msgid "Created"
 msgstr ""
 
-msgid "Search icons…"
+#: nautilus_my_computer/widgets.py
+msgid "Modified"
 msgstr ""
 
-msgid "Reset"
+#: nautilus_my_computer/widgets.py
+msgid "Dimensions"
 msgstr ""
 
-#——————————————————————————————
-# Panel - Preferred Folders
-#——————————————————————————————
+#~ msgid "Show the Preferred Folders group at the top of the view"
+#~ msgstr "Görünümün üst kısmında Tercih Edilen Klasörler grubunu göster"
 
-msgid "Preferred Folders"
-msgstr "Tercih Edilen Klasörler"
-
-msgid "Show the Preferred Folders group at the top of the view"
-msgstr "Görünümün üst kısmında Tercih Edilen Klasörler grubunu göster"
-
-msgid "Add to Preferred"
-msgstr "Tercihlere ekle"
-
-msgid "Remove from Preferred"
-msgstr "Tercihlerden kaldır"
-
-#——————————————————————————————
-# Panel - Preferred Folders - Captions
-#——————————————————————————————
-
-msgid "{n} item"
-msgid_plural "{n} items"
-msgstr[0] "{n} öge"
-msgstr[1] "{n} öge"
-
-#——————————————————————————————
-# General - Relative Dates
-#——————————————————————————————
-
-msgid "Today"
-msgstr "Bugün"
-
-msgid "Yesterday"
-msgstr "Dün"
-
-msgid "Tomorrow"
-msgstr "Yarın"
-
-msgid "This week"
-msgstr "Bu hafta"
-
-msgid "Last week"
-msgstr "Geçen hafta"
-
-msgid "Next week"
-msgstr "Gelecek hafta"
-
-msgid "This month"
-msgstr "Bu ay"
-
-msgid "Last month"
-msgstr "Geçen ay"
-
-msgid "Next month"
-msgstr "Gelecek ay"
-
-msgid "This year"
-msgstr "Bu yıl"
-
-msgid "Last year"
-msgstr "Geçen yıl"
-
-msgid "Next year"
-msgstr "Gelecek yıl"
-
-msgid "{n} day ago"
-msgid_plural "{n} days ago"
-msgstr[0] "{n} gün önce"
-msgstr[1] "{n} gün önce"
-
-msgid "In {n} day"
-msgid_plural "In {n} days"
-msgstr[0] "{n} gün sonra"
-msgstr[1] "{n} gün sonra"
-
-msgid "{n} week ago"
-msgid_plural "{n} weeks ago"
-msgstr[0] "{n} hafta önce"
-msgstr[1] "{n} hafta önce"
-
-msgid "In {n} week"
-msgid_plural "In {n} weeks"
-msgstr[0] "{n} hafta sonra"
-msgstr[1] "{n} hafta sonra"
-
-msgid "{n} month ago"
-msgid_plural "{n} months ago"
-msgstr[0] "{n} ay önce"
-msgstr[1] "{n} ay önce"
-
-msgid "In {n} month"
-msgid_plural "In {n} months"
-msgstr[0] "{n} ay sonra"
-msgstr[1] "{n} ay sonra"
-
-msgid "{n} year ago"
-msgid_plural "{n} years ago"
-msgstr[0] "{n} yıl önce"
-msgstr[1] "{n} yıl önce"
-
-msgid "In {n} year"
-msgid_plural "In {n} years"
-msgstr[0] "{n} yıl sonra"
-msgstr[1] "{n} yıl sonra"
+#~ msgid "Add to Preferred"
+#~ msgstr "Tercihlere ekle"
