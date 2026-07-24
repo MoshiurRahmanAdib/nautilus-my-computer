@@ -1,0 +1,42 @@
+name: i18n
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - "**/*.py"
+      - "po/**"
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - "**/*.py"
+      - "po/**"
+
+jobs:
+  po-sync:
+    name: Check .po files are in sync
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7.0.0
+
+      - name: Install gettext
+        run: sudo apt-get update && sudo apt-get install -y gettext
+
+      - name: Regenerate .pot from source
+        run: make pot
+
+      - name: Compare each .po against the current .pot
+        run: |
+          status=0
+          for po in po/*.po; do
+            if ! msgcmp --use-fuzzy --use-untranslated "$po" po/nautilus-my-computer.pot; then
+              echo "::error file=$po::out of sync with source strings"
+              status=1
+            fi
+          done
+          if [ "$status" -ne 0 ]; then
+            echo "One or more .po files are out of sync with the source strings."
+            echo "Run 'make po-update', resolve any fuzzy/obsolete entries, and commit the result."
+            exit 1
+          fi
