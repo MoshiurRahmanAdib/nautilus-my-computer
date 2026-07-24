@@ -40,6 +40,7 @@ from nautilus_my_computer.common import (
     _FOLDER_CARD_ROW_SPACING,
     _FOLDER_CARD_SPACING,
     _FOLDER_FLOW_COLS_GRID,
+    N_,
     _,
     _all_widgets,
     _find_widget,
@@ -414,11 +415,11 @@ def _get_local_mount_tier(m: MountInfo) -> tuple[int, str]:
 # Ordered group spec: (key, display_label, gsettings_key)
 # "local" is the merge target for other groups -- always visible, no gsettings key
 _GROUP_SPEC: list[tuple[str, str, str | None]] = [
-    ("system", "System", "visibility-system"),
-    ("local", "On this Computer", None),
-    ("removable", "Removable", "visibility-removable"),
-    ("disc", "Disc", "visibility-disc"),
-    ("network", "Network", "visibility-network"),
+    ("system", N_("System"), "visibility-system"),
+    ("local", N_("On this Computer"), None),
+    ("removable", N_("Removable"), "visibility-removable"),
+    ("disc", N_("Disc"), "visibility-disc"),
+    ("network", N_("Network"), "visibility-network"),
 ]
 
 

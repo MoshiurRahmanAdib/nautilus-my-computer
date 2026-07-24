@@ -55,6 +55,14 @@ def _nautilus_string(text: str) -> str:
     return text
 
 
+def N_(text: str) -> str:
+    """No-op marker for module-level string tables (e.g. _GROUP_SPEC, _SEGMENTS)
+    whose entries are translated later via _(variable) at render time, a form
+    xgettext cannot see. Wrapping the literal here makes it extractable while
+    leaving the value unchanged; add --keyword=N_ wherever xgettext runs."""
+    return text
+
+
 def _n(singular: str, plural: str, n: int) -> str:
     if _custom_translation is not None:
         val = _custom_translation.ngettext(singular, plural, n)
