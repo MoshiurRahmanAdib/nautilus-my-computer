@@ -14,6 +14,14 @@ My Computer for Nautilus, what GNOME Files should have always been
 
 *"GNOME dropped the Other Locations view and left nothing in its place. I built what should have always been there, and the GNOME community made it even better with ❤️"*
 
+<br>
+
+<a href="https://itsfoss.com/nautilus-my-computer/" target="_blank" rel="noopener noreferrer">
+  <img src="https://itsfoss.com/assets/images/badges/itsfoss-linux-app-of-the-week-badge-dark.png"
+       alt="It's FOSS Linux App of the Week"
+       style="max-width: 40%; height: auto; border: 0;">
+</a>
+
 </div>
 
 ## Installation
