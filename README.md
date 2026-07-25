@@ -270,9 +270,11 @@ My Computer is fully localised. The UI language is picked up automatically from 
 
 Both left-to-right (LTR) and right-to-left (RTL) layouts are supported. The panel mirrors its layout direction automatically when a RTL language is active.
 
-English `en` *(default)* · Arabic `ar` · Catalan `ca` · French `fr` · German `de` · Hungarian `hu` · Italian `it` · Korean `ko` · Portuguese `pt` · Russian `ru` · Spanish `es` · Turkish `tr`
+Translations are managed on [Weblate](https://hosted.weblate.org/projects/nautilus-my-computer/):
 
-Want to add your language? Contributions are welcome, open a PR with a new `.po` file under `po/`.
+[![Translation status](https://hosted.weblate.org/widget/nautilus-my-computer/matrix-auto.svg)](https://hosted.weblate.org/engage/nautilus-my-computer/)
+
+Want to add your language or improve an existing translation? Join the project on Weblate, no `.po` editing or pull request needed.
 
 ## About
 
