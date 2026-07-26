@@ -47,7 +47,7 @@ My Computer for Nautilus, what GNOME Files should have always been
 Pick your distribution below and expand it for the commands. No native package? Use the universal script. Nothing is written outside your home directory.
 
 <details>
-<summary><b>Ubuntu</b> (PPA)</summary>
+<summary><img src="https://img.shields.io/badge/-E95420?style=flat&logo=ubuntu&logoColor=white" alt="Ubuntu" height="18" style="vertical-align: middle;"> <b>Ubuntu</b> (PPA)</summary>
 
 ```bash
 sudo add-apt-repository ppa:yannmasoch/nautilus-my-computer
@@ -59,7 +59,7 @@ only get about 9 months of support, so this list moves forward as older series r
 </details>
 
 <details>
-<summary><b>Fedora</b> (COPR)</summary>
+<summary><img src="https://img.shields.io/badge/-3C6EB4?style=flat&logo=fedora&logoColor=white" alt="Fedora" height="18" style="vertical-align: middle;"> <b>Fedora</b> (COPR)</summary>
 
 ```bash
 sudo dnf copr enable yannmasoch/nautilus-my-computer
@@ -68,7 +68,7 @@ sudo dnf install nautilus-my-computer
 </details>
 
 <details>
-<summary><b>openSUSE</b> (OBS)</summary>
+<summary><img src="https://img.shields.io/badge/-73BA25?style=flat&logo=opensuse&logoColor=white" alt="openSUSE" height="18" style="vertical-align: middle;"> <b>openSUSE</b> (OBS)</summary>
 
 **Tumbleweed**
 ```bash
@@ -85,7 +85,7 @@ sudo zypper install nautilus-my-computer
 </details>
 
 <details>
-<summary><b>Arch Linux</b> (AUR)</summary>
+<summary><img src="https://img.shields.io/badge/-1793D1?style=flat&logo=archlinux&logoColor=white" alt="Arch" height="18" style="vertical-align: middle;"> <b>Arch Linux</b> (AUR)</summary>
 
 ```bash
 yay -S nautilus-my-computer
@@ -93,7 +93,7 @@ yay -S nautilus-my-computer
 </details>
 
 <details>
-<summary><b>Nix / NixOS</b></summary>
+<summary><img src="https://img.shields.io/badge/-5277C3?style=flat&logo=nixos&logoColor=white" alt="NixOS" height="18" style="vertical-align: middle;"> <b>Nix / NixOS</b></summary>
 
 ```bash
 nix profile install "github:yannmasoch/nautilus-my-computer?dir=packaging/nix"
@@ -101,7 +101,7 @@ nix profile install "github:yannmasoch/nautilus-my-computer?dir=packaging/nix"
 </details>
 
 <details>
-<summary><b>Universal install script</b> (any distro)</summary>
+<summary><img src="https://img.shields.io/badge/-555555?style=flat&logo=git&logoColor=white" alt="Git" height="18" style="vertical-align: middle;"> <b>Universal install script</b> (any distro)</summary>
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/yannmasoch/nautilus-my-computer/main/install.sh | sh
@@ -113,7 +113,7 @@ curl -fsSL https://raw.githubusercontent.com/yannmasoch/nautilus-my-computer/mai
 </details>
 
 <details>
-<summary><b>Manual install</b> (from source)</summary>
+<summary><img src="https://img.shields.io/badge/-555555?style=flat&logo=github&logoColor=white" alt="GitHub" height="18" style="vertical-align: middle;"> <b>Manual install</b> (from source)</summary>
 
 Clone the repo and run the installer locally. This installs from the local files
 with no downloads, so it avoids GitHub rate-limits:
