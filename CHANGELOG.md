@@ -4,6 +4,39 @@ All notable changes to this project are documented here.
 
 ---
 
+## v0.12.5
+Publish to the AUR, move translations to Weblate, start on the Computer view by default, and add
+Greek plus updated German translations.
+
+### Added
+- Published to the [AUR](https://aur.archlinux.org/packages/nautilus-my-computer) - Arch and
+  Manjaro users can now install with an AUR helper instead of the manual script.
+- Preferred Folders paths starting with `~/` now expand to the home directory.
+- Greek translation.
+- README now documents where the extension is available (stillOS, AUR, and other package repos),
+  in a new "Availability" section.
+
+### Changed
+- Nautilus now opens the Computer view by default instead of the regular file view.
+- Trash is now included in the default Preferred Folders, ordered to match Nautilus's own
+  sidebar: Home, Recent, Starred, Network, then Downloads, Documents, Music, Pictures, Videos,
+  and Trash.
+- Translations are now managed on [Weblate](https://hosted.weblate.org/projects/nautilus-my-computer/)
+  instead of hand-edited `.po` files, and source strings are kept in sync automatically.
+- Updated German translation.
+
+### Fixed
+- The sidebar icon in Preferences no longer breaks on icon themes (like Yaru) that name their
+  right-to-left variants differently.
+
+Thanks to @MoshiurRahmanAdib for the defaults-changed proposal in #87; to @PizzaLovingNerd for
+the `~` expansion fix in #88; to @crian for updating the German translation in #90 and to
+@mendres82 for the sidebar icon fix in #95 and the German translation update in #94; to
+@yioannides for the Greek translation in #98; and to @abhishekpc for the It's FOSS shoutout in
+#89.
+
+---
+
 ## v0.12.4
 Filter My Computer cards by typing, fix a Preferred Folders drag glitch, and correct virtual folder icons.
 

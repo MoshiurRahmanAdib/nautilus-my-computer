@@ -1,3 +1,17 @@
+nautilus-my-computer (0.12.5-1) UNRELEASED; urgency=medium
+
+  * Publish to the AUR (Arch User Repository)
+  * Expand ~/ to the home directory in Preferred Folders paths
+  * Add Greek translation
+  * Update German translation
+  * Document extension availability (stillOS, AUR, and other package repos) in the README
+  * Move translation management to Weblate and automate .po/.pot syncing
+  * Start Nautilus on the Computer view by default
+  * Add Trash to the default Preferred Folders, ordered to match the Nautilus sidebar
+  * Fix the sidebar icon in Preferences breaking on Yaru and other icon themes
+
+ -- Yann Masoch <231734284+yannmasoch@users.noreply.github.com>  Sun, 26 Jul 2026 16:36:07 -0700
+
 nautilus-my-computer (0.12.4-1) UNRELEASED; urgency=medium
 
   * Add card filtering in My Computer: type any letter to filter cards live
