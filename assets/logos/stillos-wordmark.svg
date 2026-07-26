@@ -99,6 +99,7 @@
        y="-48"
        width="1089"
        height="320"
+       rx="16"
        fill="#fafafa" />
     <path
        id="path1"

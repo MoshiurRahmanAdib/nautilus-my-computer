@@ -16,11 +16,7 @@ My Computer for Nautilus, what GNOME Files should have always been
 
 <br>
 
-<a href="https://itsfoss.com/nautilus-my-computer/" target="_blank" rel="noopener noreferrer">
-  <img src="https://itsfoss.com/assets/images/badges/itsfoss-linux-app-of-the-week-badge-dark.png"
-       alt="It's FOSS Linux App of the Week"
-       width="40%">
-</a>
+<a href="https://itsfoss.com/nautilus-my-computer/" target="_blank" rel="noopener noreferrer"><img src="https://itsfoss.com/assets/images/badges/itsfoss-linux-app-of-the-week-badge-dark.png" alt="It's FOSS Linux App of the Week" width="40%"></a>
 
 </div>
 
@@ -30,9 +26,7 @@ My Computer for Nautilus, what GNOME Files should have always been
 
 **Shipped by default in stillOS**
 
-<a href="https://stillhq.io" target="_blank" rel="noopener noreferrer">
-  <img src="assets/logos/stillos-wordmark.svg" alt="stillOS" height="48" style="border-radius: 3px">
-</a>
+<a href="https://stillhq.io" target="_blank" rel="noopener noreferrer"><img src="assets/logos/stillos-wordmark.svg" alt="stillOS" height="48"></a>
 
 *"Maintenance-Free Linux"*
 
@@ -40,21 +34,11 @@ My Computer for Nautilus, what GNOME Files should have always been
 
 **Packaged for**
 
-<a href="https://launchpad.net/~yannmasoch/+archive/ubuntu/nautilus-my-computer" target="_blank" rel="noopener noreferrer">
-  <img src="https://img.shields.io/badge/Ubuntu%20PPA-E95420?style=for-the-badge&logo=ubuntu&logoColor=white" alt="Ubuntu PPA" height="24" style="border-radius: 3px; margin: 1px;">
-</a>
-<a href="https://copr.fedorainfracloud.org/coprs/yannmasoch/nautilus-my-computer/" target="_blank" rel="noopener noreferrer">
-  <img src="https://img.shields.io/badge/Fedora%20COPR-3C6EB4?style=for-the-badge&logo=fedora&logoColor=white" alt="Fedora COPR" height="25" style="border-radius: 3px; margin: 1px;">
-</a>
-<a href="https://build.opensuse.org/package/show/home:yannmasoch/nautilus-my-computer" target="_blank" rel="noopener noreferrer">
-  <img src="https://img.shields.io/badge/openSUSE%20OBS-73BA25?style=for-the-badge&logo=opensuse&logoColor=white" alt="openSUSE OBS" height="24" style="border-radius: 3px; margin: 1px;">
-</a>
-<a href="https://aur.archlinux.org/packages/nautilus-my-computer" target="_blank" rel="noopener noreferrer">
-  <img src="https://img.shields.io/badge/Arch%20AUR-1793D1?style=for-the-badge&logo=archlinux&logoColor=white" alt="Arch AUR" height="24" style="border-radius: 3px; margin: 1px;">
-</a>
-<a href="https://github.com/yannmasoch/nautilus-my-computer/tree/main/packaging/nix" target="_blank" rel="noopener noreferrer">
-  <img src="https://img.shields.io/badge/Nix%2FNixOS-5277C3?style=for-the-badge&logo=nixos&logoColor=white" alt="Nix / NixOS" height="24" style="border-radius: 3px; margin: 1px;">
-</a>
+<a href="https://launchpad.net/~yannmasoch/+archive/ubuntu/nautilus-my-computer" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Ubuntu%20PPA-E95420?style=flat&logo=ubuntu&logoColor=white" alt="Ubuntu PPA" height="22"></a>
+<a href="https://copr.fedorainfracloud.org/coprs/yannmasoch/nautilus-my-computer/" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Fedora%20COPR-3C6EB4?style=flat&logo=fedora&logoColor=white" alt="Fedora COPR" height="22"></a>
+<a href="https://build.opensuse.org/package/show/home:yannmasoch/nautilus-my-computer" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/openSUSE%20OBS-73BA25?style=flat&logo=opensuse&logoColor=white" alt="openSUSE OBS" height="22"></a>
+<a href="https://aur.archlinux.org/packages/nautilus-my-computer" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Arch%20AUR-1793D1?style=flat&logo=archlinux&logoColor=white" alt="Arch AUR" height="22"></a>
+<a href="https://github.com/yannmasoch/nautilus-my-computer/tree/main/packaging/nix" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Nix%2FNixOS-5277C3?style=flat&logo=nixos&logoColor=white" alt="Nix / NixOS" height="22"></a>
 
 </div>
 
