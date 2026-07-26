@@ -1,44 +1,48 @@
+#
+# yiannis ioannides <git@yioannides.com>, 2026.
+#
 msgid ""
 msgstr ""
 "Project-Id-Version: nautilus-my-computer\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-07-24 12:50-0700\n"
-"PO-Revision-Date: 2026-06-01 00:00+0200\n"
-"Last-Translator: Unai Lomas\n"
-"Language-Team: Portuguese\n"
-"Language: pt\n"
+"PO-Revision-Date: 2026-07-25 17:22+0000\n"
+"Last-Translator: yiannis ioannides <git@yioannides.com>\n"
+"Language-Team: Greek\n"
+"Language: el\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=2; plural=n != 1;\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+"X-Generator: Gtranslator 50.0\n"
 
 # ——————————————————————————————
 # Sidebar - Bookmark icon
 # ——————————————————————————————
 #: nautilus_my_computer/bookmarks.py
 msgid "Change Icon"
-msgstr ""
+msgstr "Αλαγή εικονιδίου"
 
 #: nautilus_my_computer/bookmarks.py
 msgid "Icon"
-msgstr ""
+msgstr "Εικονίδιο"
 
 #: nautilus_my_computer/bookmarks.py
 msgid "Search icons…"
-msgstr ""
+msgstr "Εύρεση εικονιδίων…"
 
 #: nautilus_my_computer/bookmarks.py
 msgid "Reset"
-msgstr ""
+msgstr "Επαναφορά"
 
 #: nautilus_my_computer/column_view.py
 msgid "New Folder"
-msgstr ""
+msgstr "Νέος φάκελος"
 
 #: nautilus_my_computer/column_view.py
-#, fuzzy, python-format
+#, python-format
 msgid "Open With %s"
-msgstr "Abrir Com…"
+msgstr "Άνοιγμα με %s"
 
 # ——————————————————————————————
 # Panel - Disk card actions
@@ -46,46 +50,47 @@ msgstr "Abrir Com…"
 #: nautilus_my_computer/column_view.py nautilus_my_computer/context_menu.py
 #: nautilus_my_computer/main.py
 msgid "Open"
-msgstr "Abrir"
+msgstr "Άνοιγμα"
 
 #: nautilus_my_computer/column_view.py
 msgid "Select Move Destination"
-msgstr ""
+msgstr "Επιλέξτε προορισμό μετακίνησης"
 
 #: nautilus_my_computer/column_view.py
 msgid "Select Copy Destination"
-msgstr ""
+msgstr "Επιλέξτε προορισμό αντιγραφής"
 
 #: nautilus_my_computer/column_view.py
 msgid "Select"
-msgstr ""
+msgstr "Επιλογή"
 
 #: nautilus_my_computer/column_view.py
 msgid "Beta"
-msgstr ""
+msgstr "Beta"
 
 #: nautilus_my_computer/column_view.py
 msgid "Early access feature. It may contain bugs or inconsistencies."
 msgstr ""
+"Λειτουργία πρόωρης πρόσβασης. Μπορεί να περιέχει σφάλματα ή ανακρίβειες."
 
 #: nautilus_my_computer/column_view.py
 msgid "Grid View"
-msgstr ""
+msgstr "Προβολή πλέγματος"
 
 #: nautilus_my_computer/column_view.py
 msgid "List View"
-msgstr ""
+msgstr "Προβολή λίστας"
 
 #: nautilus_my_computer/column_view.py
 msgid "Column View"
-msgstr ""
+msgstr "Προβολή κολώνας"
 
 # ——————————————————————————————
 # Preferences - Preferred Folders
 # ——————————————————————————————
 #: nautilus_my_computer/column_view.py
 msgid "View Options"
-msgstr ""
+msgstr "Επιλογές προβολής"
 
 # ——————————————————————————————
 # Panel - Preferred Folders - Captions
@@ -94,326 +99,326 @@ msgstr ""
 #, python-brace-format
 msgid "{n} item"
 msgid_plural "{n} items"
-msgstr[0] "{n} item"
-msgstr[1] "{n} itens"
+msgstr[0] "{n} αντικείμενο"
+msgstr[1] "{n} αντικείμενα"
 
 # ——————————————————————————————
 # General - Relative Dates
 # ——————————————————————————————
 #: nautilus_my_computer/common.py
 msgid "Today"
-msgstr "Hoje"
+msgstr "Σήμερα"
 
 #: nautilus_my_computer/common.py
 msgid "Yesterday"
-msgstr "Ontem"
+msgstr "Χθές"
 
 #: nautilus_my_computer/common.py
 msgid "Tomorrow"
-msgstr "Amanhã"
+msgstr "Αύριο"
 
 #: nautilus_my_computer/common.py
 #, python-brace-format
 msgid "{n} day ago"
 msgid_plural "{n} days ago"
-msgstr[0] "há {n} dia"
-msgstr[1] "há {n} dias"
+msgstr[0] "Πριν {n} ημέρα"
+msgstr[1] "Πριν {n} ημέρες"
 
 #: nautilus_my_computer/common.py
 #, python-brace-format
 msgid "In {n} day"
 msgid_plural "In {n} days"
-msgstr[0] "daqui a {n} dia"
-msgstr[1] "daqui a {n} dias"
+msgstr[0] "Σε {n} ημέρα"
+msgstr[1] "Σε {n} ημέρες"
 
 #: nautilus_my_computer/common.py
 msgid "This week"
-msgstr "Esta semana"
+msgstr "Αυτήν την εβδομάδα"
 
 #: nautilus_my_computer/common.py
 msgid "Last week"
-msgstr "Semana passada"
+msgstr "Την περασμένη εβδομάδα"
 
 #: nautilus_my_computer/common.py
 msgid "Next week"
-msgstr "Próxima semana"
+msgstr "Την επόμενη εβδομάδα"
 
 #: nautilus_my_computer/common.py
 #, python-brace-format
 msgid "{n} week ago"
 msgid_plural "{n} weeks ago"
-msgstr[0] "há {n} semana"
-msgstr[1] "há {n} semanas"
+msgstr[0] "Πριν {n} εβδομάδα"
+msgstr[1] "Πριν {n} εβδομάδες"
 
 #: nautilus_my_computer/common.py
 #, python-brace-format
 msgid "In {n} week"
 msgid_plural "In {n} weeks"
-msgstr[0] "daqui a {n} semana"
-msgstr[1] "daqui a {n} semanas"
+msgstr[0] "Σε {n} εβδομάδα"
+msgstr[1] "Σε {n} εβδομάδες"
 
 #: nautilus_my_computer/common.py
 msgid "This month"
-msgstr "Este mês"
+msgstr "Αυτόν τον μήνα"
 
 #: nautilus_my_computer/common.py
 msgid "Last month"
-msgstr "Mês passado"
+msgstr "Τον περασμένο μήνα"
 
 #: nautilus_my_computer/common.py
 msgid "Next month"
-msgstr "Próximo mês"
+msgstr "Τον επόμενο μήνα"
 
 #: nautilus_my_computer/common.py
 #, python-brace-format
 msgid "{n} month ago"
 msgid_plural "{n} months ago"
-msgstr[0] "há {n} mês"
-msgstr[1] "há {n} meses"
+msgstr[0] "Πριν {n} μήνα"
+msgstr[1] "Πριν {n} μήνες"
 
 #: nautilus_my_computer/common.py
 #, python-brace-format
 msgid "In {n} month"
 msgid_plural "In {n} months"
-msgstr[0] "daqui a {n} mês"
-msgstr[1] "daqui a {n} meses"
+msgstr[0] "Σε {n} μήνα"
+msgstr[1] "Σε {n} μήνες"
 
 #: nautilus_my_computer/common.py
 msgid "This year"
-msgstr "Este ano"
+msgstr "Φέτος"
 
 #: nautilus_my_computer/common.py
 msgid "Last year"
-msgstr "Ano passado"
+msgstr "Πέρισυ"
 
 #: nautilus_my_computer/common.py
 msgid "Next year"
-msgstr "Próximo ano"
+msgstr "Τον επόμενο χρόνο"
 
 #: nautilus_my_computer/common.py
 #, python-brace-format
 msgid "{n} year ago"
 msgid_plural "{n} years ago"
-msgstr[0] "há {n} ano"
-msgstr[1] "há {n} anos"
+msgstr[0] "Πριν {n} χρόνο"
+msgstr[1] "Πριν {n} χρόνια"
 
 #: nautilus_my_computer/common.py
 #, python-brace-format
 msgid "In {n} year"
 msgid_plural "In {n} years"
-msgstr[0] "daqui a {n} ano"
-msgstr[1] "daqui a {n} anos"
+msgstr[0] "Σε {n} χρόνο"
+msgstr[1] "Σε {n} χρόνια"
 
 # ——————————————————————————————
 # Panel - Preferred Folders
 # ——————————————————————————————
 #: nautilus_my_computer/components.py
 msgid "Rename Folder"
-msgstr ""
+msgstr "Μετονομασία φακέλου"
 
 #: nautilus_my_computer/components.py
 msgid "Rename File"
-msgstr ""
+msgstr "Μετονομασία αρχείου"
 
 #: nautilus_my_computer/components.py
 msgid "Rename"
-msgstr ""
+msgstr "Μετονομασία"
 
 #: nautilus_my_computer/context_menu.py
 msgid "Open in New Tab"
-msgstr "Abrir em Nova Aba"
+msgstr "Άνοιγμα σε νέα καρτέλα"
 
 #: nautilus_my_computer/context_menu.py
 msgid "Open in New Window"
-msgstr "Abrir em Nova Janela"
+msgstr "Άνοιγμα σε νέο παράθυρο"
 
 #: nautilus_my_computer/context_menu.py
 msgid "Open With…"
-msgstr "Abrir Com…"
+msgstr "Άνοιγμα με…"
 
 #: nautilus_my_computer/context_menu.py
 msgid "Remove from Bookmarks"
-msgstr ""
+msgstr "Αφαίρεση από Σελιδοδείκτες"
 
 #: nautilus_my_computer/context_menu.py
 msgid "Add to Bookmarks"
-msgstr ""
+msgstr "Πρόσθεση σε Σελιδοδείκτες"
 
 #: nautilus_my_computer/context_menu.py
 #: nautilus_my_computer/preferred_folders.py
 msgid "Unpin from My Computer"
-msgstr ""
+msgstr "Ξεκαρφίτσωμα από Ο Υπολογιστής Mου"
 
 #: nautilus_my_computer/context_menu.py
 #: nautilus_my_computer/preferred_folders.py
 msgid "Pin to My Computer"
-msgstr ""
+msgstr "Καρφίτσωμα στο Ο Υπολογιστής Μου"
 
 #: nautilus_my_computer/context_menu.py
 msgid "Cut"
-msgstr ""
+msgstr "Αποκοπή"
 
 #: nautilus_my_computer/context_menu.py
 msgid "Copy"
-msgstr ""
+msgstr "Αντιγραφή"
 
 #: nautilus_my_computer/context_menu.py
 msgid "Paste"
-msgstr ""
+msgstr "Επικόλληση"
 
 #: nautilus_my_computer/context_menu.py
 msgid "Move to…"
-msgstr ""
+msgstr "Μετακίνηση προς…"
 
 #: nautilus_my_computer/context_menu.py
 msgid "Copy to…"
-msgstr ""
+msgstr "Αντιγραφή προς…"
 
 #: nautilus_my_computer/context_menu.py
 msgid "New Folder…"
-msgstr ""
+msgstr "Νέος φάκελος…"
 
 #: nautilus_my_computer/context_menu.py
 msgid "New Document"
-msgstr ""
+msgstr "Νέο έγγραφο"
 
 #: nautilus_my_computer/context_menu.py
 msgid "Open in Terminal"
-msgstr ""
+msgstr "Άνοιγμα σε Κονσόλα"
 
 #: nautilus_my_computer/context_menu.py
 msgid "Rename…"
-msgstr ""
+msgstr "Μετονομασία…"
 
 #: nautilus_my_computer/context_menu.py
 msgid "Compress…"
-msgstr ""
+msgstr "Συμπίεση…"
 
 #: nautilus_my_computer/context_menu.py
 msgid "Email…"
-msgstr ""
+msgstr "Ηλεκτρονική αλληλογραφία…"
 
 #: nautilus_my_computer/context_menu.py
 msgid "Move to Trash"
-msgstr ""
+msgstr "Μετακίνηση προς Απορρίμματα"
 
 #: nautilus_my_computer/context_menu.py
 msgid "Properties"
-msgstr "Propriedades"
+msgstr "Ιδιότητες"
 
 # ——————————————————————————————
 # Sidebar
 # ——————————————————————————————
 #: nautilus_my_computer/main.py
 msgid "Computer"
-msgstr "Computador"
+msgstr "Υπολογιστής"
 
 # ——————————————————————————————
 # Preferences - General
 # ——————————————————————————————
 #: nautilus_my_computer/main.py
 msgid "My Computer Settings"
-msgstr "Configurações de Meu Computador"
+msgstr "Ρυθμίσεις του Ο Υπολογιστής Μου"
 
 # ——————————————————————————————
 # Sidebar - Places
 # ——————————————————————————————
 #: nautilus_my_computer/main.py
 msgid "Home"
-msgstr "Pasta pessoal"
+msgstr "Προσωπικός φάκελος"
 
 #: nautilus_my_computer/main.py
 msgid "Loading…"
-msgstr ""
+msgstr "Φόρτωση…"
 
 #: nautilus_my_computer/main.py
 msgid "Open My Computer"
-msgstr "Abrir Meu Computador"
+msgstr "Άνοιγμα του Ο Υπολογιστής Μου"
 
 #: nautilus_my_computer/main.py
 msgid "Recent"
-msgstr "Recentes"
+msgstr "Πρόσφατα"
 
 #: nautilus_my_computer/main.py
 msgid "Starred"
-msgstr "Favoritos"
+msgstr "Αγαπημένα"
 
 #: nautilus_my_computer/main.py nautilus_my_computer/my_computer_view.py
 msgid "Network"
-msgstr "Rede"
+msgstr "Δίκτυο"
 
 #: nautilus_my_computer/main.py
 msgid "Trash"
-msgstr "Lixo"
+msgstr "Απορρίμματα"
 
 #: nautilus_my_computer/main.py
 msgid "Open Folder"
-msgstr ""
+msgstr "Άνοιγμα φακέλου"
 
 # ——————————————————————————————
 # Panel - Disk card actions
 # ——————————————————————————————
 #: nautilus_my_computer/main.py
 msgid "Open File"
-msgstr ""
+msgstr "Άνοιγμα αρχείου"
 
 #: nautilus_my_computer/main.py
 msgid "Cancel"
-msgstr ""
+msgstr "Ακύρωση"
 
 #: nautilus_my_computer/main.py
 #, python-format
 msgid "Choose an app to open <b>%s</b>"
-msgstr ""
+msgstr "Επιλέξτε εφαρμογή για άνοιγμα <b>%s</b>"
 
 #: nautilus_my_computer/main.py
 msgid "Recommended Apps"
-msgstr ""
+msgstr "Προτεινόμενες εφαρμογές"
 
 #: nautilus_my_computer/main.py
 msgid "Other Apps"
-msgstr ""
+msgstr "Άλλες εφαρμογές"
 
 #: nautilus_my_computer/main.py
 msgid "No applications found."
-msgstr ""
+msgstr "Δεν βρέθηκαν εφαρμογές."
 
 #: nautilus_my_computer/main.py
 msgid "General"
-msgstr "Geral"
+msgstr "Γενικά"
 
 # ——————————————————————————————
 # Preferences - Tabs
 # ——————————————————————————————
 #: nautilus_my_computer/main.py
 msgid "Computer view"
-msgstr "Vista Computador"
+msgstr "Προβολή Υπολογιστή"
 
 #: nautilus_my_computer/main.py
 msgid "Sidebar"
-msgstr "Barra lateral"
+msgstr "Πλευρική μπάρα"
 
 # ——————————————————————————————
 # Preferences - About
 # ——————————————————————————————
 #: nautilus_my_computer/main.py
 msgid "About"
-msgstr "Sobre"
+msgstr "Σχετικά"
 
 #: nautilus_my_computer/main.py
 msgid "Start on the Computer view"
-msgstr "Iniciar na vista Computador"
+msgstr "Εκκίνηση σε προβολή Υπολογιστή"
 
 #: nautilus_my_computer/main.py
 msgid "Launch directly to the Computer view instead of Home"
-msgstr "Abrir diretamente na vista Computador em vez da Pasta pessoal"
+msgstr "Εκκίνηση απευθείας στο Ο Υπολογιστής μου αντί για το προσωπικό φάκελο"
 
 # ——————————————————————————————
 # Preferences - Panel visibility
 # ——————————————————————————————
 #: nautilus_my_computer/main.py
 msgid "Panel visibility"
-msgstr "Visibilidade do painel"
+msgstr "Ορατότητα καταχωρίσεων"
 
 #: nautilus_my_computer/main.py
 msgid ""
@@ -421,120 +426,120 @@ msgid ""
 "separated section. Merged: folds the group into the On this Computer group. "
 "Hidden: hides the group entirely."
 msgstr ""
-"Escolha como cada grupo aparece. Visível: mostra o grupo como uma secção "
-"separada normal. Integrado: integra o grupo no grupo Neste computador. "
-"Oculto: esconde o grupo completamente."
+"Επιλέξτε την ορατότητα του κάθε γκρούπ. Ορατό: προβολή διαχωρισμένου γκρούπ. "
+"Συγχωνευμένο: συγχωνεύει το γκρούπ με το γκρούπ Ο Υπολογιστής μου. Κρυμμένο: "
+"κρύβει το γκρούπ."
 
 #: nautilus_my_computer/main.py
 msgid "Visible"
-msgstr "Visível"
+msgstr "Ορατό"
 
 #: nautilus_my_computer/main.py
 msgid "Merged"
-msgstr "Integrado"
+msgstr "Συγχωνευμένο"
 
 #: nautilus_my_computer/main.py
 msgid "Hidden"
-msgstr "Oculto"
+msgstr "Κρυμμένο"
 
 # ——————————————————————————————
 # Panel - Preferred Folders
 # ——————————————————————————————
 #: nautilus_my_computer/main.py nautilus_my_computer/my_computer_view.py
 msgid "Preferred Folders"
-msgstr "Pastas preferidas"
+msgstr "Αγαπημένοι φάκελοι"
 
 # ——————————————————————————————
 # Preferences - System
 # ——————————————————————————————
 #: nautilus_my_computer/main.py
 msgid "Show system partitions"
-msgstr "Mostrar partições do sistema"
+msgstr "Προβολή διαμερισμάτων συστήματος"
 
 #: nautilus_my_computer/main.py
 msgid "Include boot and EFI partitions in the System group"
-msgstr "Incluir as partições de arranque e EFI no grupo Sistema"
+msgstr "Προσθήκη διαμερισμάτων boot και EFI στο γκρούπ Σύστημα"
 
 # ——————————————————————————————
 # Preferences - Sidebar visibility
 # ——————————————————————————————
 #: nautilus_my_computer/main.py
 msgid "Sidebar visibility"
-msgstr "Visibilidade da barra lateral"
+msgstr "Ορατότητα πλευρικής μπάρας"
 
 #: nautilus_my_computer/main.py
 msgid "Choose which locations appear on the sidebar."
-msgstr "Escolha quais localizações aparecem na barra lateral."
+msgstr "Επιλέξτε ποιοί προορισμοί να είναι ορατοί στη πλευρική μπάρα."
 
 # ——————————————————————————————
 # Preferences - Bar Color
 # ——————————————————————————————
 #: nautilus_my_computer/main.py
 msgid "Bar Color"
-msgstr "Cor da barra"
+msgstr "Χρώμα μπάρας"
 
 #: nautilus_my_computer/main.py
 msgid "Select or customize the bar color."
-msgstr "Selecione ou personalize a cor da barra."
+msgstr "Επιλογή ή διαμόρφωση του χρώματος μπάρας."
 
 #: nautilus_my_computer/main.py
 msgid "Color mode"
-msgstr "Modo de cor"
+msgstr "Τύπος χρώματος"
 
 #: nautilus_my_computer/main.py
 msgid "System accent"
-msgstr "Destaque do sistema"
+msgstr "Χρώμα συστήματος"
 
 #: nautilus_my_computer/main.py
 msgid "Custom color"
-msgstr "Cor personalizada"
+msgstr "Επιλογή χρώματος"
 
 #: nautilus_my_computer/main.py
 msgid "Custom gradient"
-msgstr "Gradiente personalizado"
+msgstr "Επιλογή διαβάθμισης χρώματος"
 
 #: nautilus_my_computer/main.py
 msgid "Color"
-msgstr "Cor"
+msgstr "Χρώμα"
 
 #: nautilus_my_computer/main.py
 msgid "Start color"
-msgstr "Cor inicial"
+msgstr "Χρώμα αρχής"
 
 #: nautilus_my_computer/main.py
 msgid "End color"
-msgstr "Cor final"
+msgstr "Χρώμα τέλους"
 
 # ——————————————————————————————
 # Preferences - Preferred Folders
 # ——————————————————————————————
 #: nautilus_my_computer/main.py
 msgid "Show captions"
-msgstr "Mostrar legendas"
+msgstr "Προβολή υπότιτλων"
 
 #: nautilus_my_computer/main.py
 msgid "Shows or hides the caption lines already configured in Nautilus"
-msgstr "Mostra ou oculta as linhas de legenda já configuradas no Nautilus"
+msgstr "Προβολή ή απόκρυψη διαρυθμισμένων υποτίτλων στο Nautilus"
 
 #: nautilus_my_computer/main.py
 msgid "Extension"
-msgstr "Extensão"
+msgstr "Επέκταση"
 
 #: nautilus_my_computer/main.py
 msgid "Version"
-msgstr "Versão"
+msgstr "Έκδοση"
 
 #: nautilus_my_computer/main.py
 msgid "Author"
-msgstr "Autor"
+msgstr "Δημιουργός"
 
 #: nautilus_my_computer/main.py
 msgid "License"
-msgstr "Licença"
+msgstr "Άδεια"
 
 #: nautilus_my_computer/main.py
 msgid "Source code"
-msgstr "Código-fonte"
+msgstr "Πηγή κώδικα"
 
 #: nautilus_my_computer/main.py
 msgid "GitHub"
@@ -542,42 +547,42 @@ msgstr "GitHub"
 
 #: nautilus_my_computer/main.py nautilus_my_computer/my_computer_view.py
 msgid "Unmount"
-msgstr "Desmontar"
+msgstr "Αποπροσάρτηση"
 
 #: nautilus_my_computer/my_computer_view.py
 msgid "Mount"
-msgstr "Montar"
+msgstr "Προσάρτηση"
 
 #: nautilus_my_computer/my_computer_view.py
 msgid "Eject"
-msgstr "Ejetar"
+msgstr "Αποσύνδεση"
 
 #: nautilus_my_computer/my_computer_view.py
 msgid "Format…"
-msgstr "Formatar…"
+msgstr "Διαμόρφωση…"
 
 #: nautilus_my_computer/my_computer_view.py
 msgid "System"
-msgstr "Sistema"
+msgstr "Σύστημα"
 
 # ——————————————————————————————
 # Panel - Group labels
 # ——————————————————————————————
 #: nautilus_my_computer/my_computer_view.py
 msgid "On this Computer"
-msgstr "Neste computador"
+msgstr "Σ'αυτόν τον υπολογιστή"
 
 #: nautilus_my_computer/my_computer_view.py
 msgid "Removable"
-msgstr "Removível"
+msgstr "Αφαιρέσιμο"
 
 #: nautilus_my_computer/my_computer_view.py
 msgid "Disc"
-msgstr "Disco"
+msgstr "Δίσκος"
 
 #: nautilus_my_computer/widgets.py
 msgid "Not mounted"
-msgstr "Não montado"
+msgstr "Αμοντάριστος"
 
 # ——————————————————————————————
 # Panel - Disk card
@@ -585,26 +590,26 @@ msgstr "Não montado"
 #: nautilus_my_computer/widgets.py
 #, python-brace-format
 msgid "{free} free of {total}"
-msgstr "{free} livre de {total}"
+msgstr "{free} διαθέσιμο από {total}"
 
 #: nautilus_my_computer/widgets.py
 msgid "Folder is Empty"
-msgstr ""
+msgstr "Άδειος φάκελος"
 
 #: nautilus_my_computer/widgets.py
 msgid "Created"
-msgstr ""
+msgstr "Δημιουργήθηκε"
 
 #: nautilus_my_computer/widgets.py
 msgid "Modified"
-msgstr ""
+msgstr "Τροποποιήθηκε"
 
 #: nautilus_my_computer/widgets.py
 msgid "Dimensions"
-msgstr ""
+msgstr "Διαστάσεις"
 
 #~ msgid "Show the Preferred Folders group at the top of the view"
-#~ msgstr "Mostrar o grupo Pastas preferidas no topo da vista"
+#~ msgstr "Προβολή του γκρούπ Αγαπημένοι Φάκελοι στο πάνω μέρος"
 
 #~ msgid "Add to Preferred"
-#~ msgstr "Adicionar às preferidas"
+#~ msgstr "Προσθήκη στα Αγαπημένα"

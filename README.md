@@ -14,6 +14,32 @@ My Computer for Nautilus, what GNOME Files should have always been
 
 *"GNOME dropped the Other Locations view and left nothing in its place. I built what should have always been there, and the GNOME community made it even better with ❤️"*
 
+<br>
+
+<a href="https://itsfoss.com/nautilus-my-computer/" target="_blank" rel="noopener noreferrer"><img src="https://itsfoss.com/assets/images/badges/itsfoss-linux-app-of-the-week-badge-dark.png" alt="It's FOSS Linux App of the Week" width="40%"></a>
+
+</div>
+
+## Availability
+
+<div align="center">
+
+**Shipped by default in stillOS**
+
+<a href="https://stillhq.io" target="_blank" rel="noopener noreferrer"><img src="assets/logos/stillos-wordmark.svg" alt="stillOS" height="48"></a>
+
+*"Maintenance-Free Linux"*
+
+<br>
+
+**Packaged for**
+
+<a href="https://launchpad.net/~yannmasoch/+archive/ubuntu/nautilus-my-computer" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Ubuntu%20PPA-E95420?style=flat&logo=ubuntu&logoColor=white" alt="Ubuntu PPA" height="22"></a>
+<a href="https://copr.fedorainfracloud.org/coprs/yannmasoch/nautilus-my-computer/" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Fedora%20COPR-3C6EB4?style=flat&logo=fedora&logoColor=white" alt="Fedora COPR" height="22"></a>
+<a href="https://build.opensuse.org/package/show/home:yannmasoch/nautilus-my-computer" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/openSUSE%20OBS-73BA25?style=flat&logo=opensuse&logoColor=white" alt="openSUSE OBS" height="22"></a>
+<a href="https://aur.archlinux.org/packages/nautilus-my-computer" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Arch%20AUR-1793D1?style=flat&logo=archlinux&logoColor=white" alt="Arch AUR" height="22"></a>
+<a href="https://github.com/yannmasoch/nautilus-my-computer/tree/main/packaging/nix" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Nix%2FNixOS-5277C3?style=flat&logo=nixos&logoColor=white" alt="Nix / NixOS" height="22"></a>
+
 </div>
 
 ## Installation
@@ -21,7 +47,7 @@ My Computer for Nautilus, what GNOME Files should have always been
 Pick your distribution below and expand it for the commands. No native package? Use the universal script. Nothing is written outside your home directory.
 
 <details>
-<summary><b>Ubuntu</b> (PPA)</summary>
+<summary><img src="https://img.shields.io/badge/-E95420?style=flat&logo=ubuntu&logoColor=white" alt="Ubuntu" height="18" style="vertical-align: middle;"> <b>Ubuntu</b> (PPA)</summary>
 
 ```bash
 sudo add-apt-repository ppa:yannmasoch/nautilus-my-computer
@@ -33,7 +59,7 @@ only get about 9 months of support, so this list moves forward as older series r
 </details>
 
 <details>
-<summary><b>Fedora</b> (COPR)</summary>
+<summary><img src="https://img.shields.io/badge/-3C6EB4?style=flat&logo=fedora&logoColor=white" alt="Fedora" height="18" style="vertical-align: middle;"> <b>Fedora</b> (COPR)</summary>
 
 ```bash
 sudo dnf copr enable yannmasoch/nautilus-my-computer
@@ -42,7 +68,7 @@ sudo dnf install nautilus-my-computer
 </details>
 
 <details>
-<summary><b>openSUSE</b> (OBS)</summary>
+<summary><img src="https://img.shields.io/badge/-73BA25?style=flat&logo=opensuse&logoColor=white" alt="openSUSE" height="18" style="vertical-align: middle;"> <b>openSUSE</b> (OBS)</summary>
 
 **Tumbleweed**
 ```bash
@@ -59,7 +85,15 @@ sudo zypper install nautilus-my-computer
 </details>
 
 <details>
-<summary><b>Nix / NixOS</b></summary>
+<summary><img src="https://img.shields.io/badge/-1793D1?style=flat&logo=archlinux&logoColor=white" alt="Arch" height="18" style="vertical-align: middle;"> <b>Arch Linux</b> (AUR)</summary>
+
+```bash
+yay -S nautilus-my-computer
+```
+</details>
+
+<details>
+<summary><img src="https://img.shields.io/badge/-5277C3?style=flat&logo=nixos&logoColor=white" alt="NixOS" height="18" style="vertical-align: middle;"> <b>Nix / NixOS</b></summary>
 
 ```bash
 nix profile install "github:yannmasoch/nautilus-my-computer?dir=packaging/nix"
@@ -67,23 +101,7 @@ nix profile install "github:yannmasoch/nautilus-my-computer?dir=packaging/nix"
 </details>
 
 <details>
-<summary><b>Arch Linux</b> (AUR)</summary>
-
-Not yet published on the AUR - AUR is currently blocking submissions from new accounts due to a
-recent spam wave. Will be added as soon as that's lifted.
-
-In the meantime, install it the usual AUR way, straight from the repo:
-```bash
-git clone https://github.com/yannmasoch/nautilus-my-computer.git
-cd nautilus-my-computer/packaging/aur
-makepkg -si
-```
-You'll need to `git pull` and re-run `makepkg -si` manually for each new version. Once the AUR
-submission block is lifted, this will be updated automatically with your usual AUR updates.
-</details>
-
-<details>
-<summary><b>Universal install script</b> (any distro)</summary>
+<summary><img src="https://img.shields.io/badge/-555555?style=flat&logo=git&logoColor=white" alt="Git" height="18" style="vertical-align: middle;"> <b>Universal install script</b> (any distro)</summary>
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/yannmasoch/nautilus-my-computer/main/install.sh | sh
@@ -95,7 +113,7 @@ curl -fsSL https://raw.githubusercontent.com/yannmasoch/nautilus-my-computer/mai
 </details>
 
 <details>
-<summary><b>Manual install</b> (from source)</summary>
+<summary><img src="https://img.shields.io/badge/-555555?style=flat&logo=github&logoColor=white" alt="GitHub" height="18" style="vertical-align: middle;"> <b>Manual install</b> (from source)</summary>
 
 Clone the repo and run the installer locally. This installs from the local files
 with no downloads, so it avoids GitHub rate-limits:
@@ -270,9 +288,11 @@ My Computer is fully localised. The UI language is picked up automatically from 
 
 Both left-to-right (LTR) and right-to-left (RTL) layouts are supported. The panel mirrors its layout direction automatically when a RTL language is active.
 
-English `en` *(default)* · Arabic `ar` · Catalan `ca` · French `fr` · German `de` · Hungarian `hu` · Italian `it` · Korean `ko` · Portuguese `pt` · Russian `ru` · Spanish `es` · Turkish `tr`
+Translations are managed on [Weblate](https://hosted.weblate.org/projects/nautilus-my-computer/):
 
-Want to add your language? Contributions are welcome, open a PR with a new `.po` file under `po/`.
+[![Translation status](https://hosted.weblate.org/widget/nautilus-my-computer/matrix-auto.svg)](https://hosted.weblate.org/engage/nautilus-my-computer/)
+
+Want to add your language or improve an existing translation? Join the project on Weblate, no `.po` editing or pull request needed.
 
 ## About
 

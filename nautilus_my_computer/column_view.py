@@ -15,6 +15,7 @@ from nautilus_my_computer.common import (
     _COLUMN_MAX_WIDTH,
     _COLUMN_PREVIEW_WIDTH,
     _COLUMN_WIDTH,
+    N_,
     _,
     _all_widgets,
     _icon_name_renders,
@@ -2122,9 +2123,9 @@ def populate_column_view(ext, win: Gtk.Window) -> None:
 
 
 _SEGMENTS = (
-    ("grid", _ICON_TARGET_GRID, "Grid View"),
-    ("list", _ICON_TARGET_LIST, "List View"),
-    ("column", _COLUMN_ICON_NAME, "Column View"),
+    ("grid", _ICON_TARGET_GRID, N_("Grid View")),
+    ("list", _ICON_TARGET_LIST, N_("List View")),
+    ("column", _COLUMN_ICON_NAME, N_("Column View")),
 )
 
 

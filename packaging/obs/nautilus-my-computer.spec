@@ -1,5 +1,5 @@
 Name:           nautilus-my-computer
-Version:        0.12.4
+Version:        0.12.5
 Release:        0
 Summary:        My Computer for Nautilus, what GNOME Files should have always been
 
@@ -42,6 +42,17 @@ make build
 %{_datadir}/glib-2.0/schemas/io.github.yannmasoch.nautilus-my-computer.gschema.xml
 
 %changelog
+* Sun Jul 26 2026 Yann Masoch <231734284+yannmasoch@users.noreply.github.com> - 0.12.5-0
+- Publish to the AUR (Arch User Repository)
+- Expand ~/ to the home directory in Preferred Folders paths
+- Add Greek translation
+- Update German translation
+- Document extension availability (stillOS, AUR, and other package repos) in the README
+- Move translation management to Weblate and automate .po/.pot syncing
+- Start Nautilus on the Computer view by default
+- Add Trash to the default Preferred Folders, ordered to match the Nautilus sidebar
+- Fix the sidebar icon in Preferences breaking on Yaru and other icon themes
+
 * Tue Jul 21 2026 Yann Masoch <231734284+yannmasoch@users.noreply.github.com> - 0.12.4-0
 - Add card filtering in My Computer: type any letter to filter cards live
 - Fix custom folder icons updating instantly instead of on a poll timer

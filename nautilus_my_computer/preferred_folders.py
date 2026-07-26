@@ -62,7 +62,7 @@ class PreferredFolder:
     """Typed representation of one Preferred Folders card. Parallel to MountInfo,
     but with no mount/usage state -- folders are always navigable."""
 
-    key: str  # logical token (e.g. "home") or raw URI for user-added folders
+    key: str  # logical token or exact URI entry persisted in GSettings
     display_name: str
     nav_uri: str
     icon_name: str = "folder"
@@ -101,6 +101,21 @@ PREFERRED_TOKENS: dict[str, dict] = {
         "icon": "folder-network",
         "uri": lambda: "x-network-view:///",
     },
+    # The one token whose icon is not folder-shaped. Nautilus shows a bin in its
+    # own sidebar, so a folder icon here would both diverge from native and hide
+    # which card is the Trash ("folder-trash" exists in some third-party themes
+    # but not in Adwaita, so it cannot be a default). Kept last in
+    # DEFAULT_PREFERRED_FOLDERS so the odd silhouette sits at the grid boundary.
+    # "gio_icon" defers the icon to GIO like a real folder token: trash:/// has a
+    # real standard::icon that GIO already flips between user-trash and
+    # user-trash-full, so the empty/full state needs no watching of our own.
+    # "icon" is only the first-frame placeholder until that query resolves.
+    "trash": {
+        "label": _nautilus_string("Trash"),
+        "icon": "user-trash",
+        "uri": lambda: "trash:///",
+        "gio_icon": True,
+    },
     # Not wrapped in _(): the real xdg-user-dirs name always overwrites this
     # within one async GIO query (see _refresh_folder_icon_async), so it's
     # only ever visible for a single frame -- translating it would be
@@ -127,24 +142,54 @@ PREFERRED_TOKENS: dict[str, dict] = {
     },
 }
 
+# Mirrors Nautilus' own sidebar: its built-in places in source order
+# (Home, Recent, Starred, Network -- see nautilus-sidebar.c), then the XDG user
+# directories in /etc/xdg/user-dirs.defaults order. Those five are not built-in
+# sidebar places at all: Nautilus reads them from the user's GTK bookmarks, so
+# there is no native sidebar order to copy and the xdg-user-dirs order is the
+# closest canonical one. Trash is the exception to the mirror -- native keeps it
+# with the built-in places, but it is the only non-folder icon, so it goes last
+# where the odd silhouette breaks the grid least. Users can reorder by drag and
+# drop and unpin anything, so this is only a starting point.
 DEFAULT_PREFERRED_FOLDERS: list[str] = [
     "home",
     "recent",
     "starred",
-    "documents",
-    "downloads",
-    "music",
-    "videos",
-    "pictures",
     "network",
+    "downloads",
+    "documents",
+    "music",
+    "pictures",
+    "videos",
+    "trash",
 ]
+
+
+def resolve_preferred_uri(entry: str) -> str:
+    """Resolve portable URI forms used in the preferred-folders setting.
+
+    ``file://~/…`` is intentionally supported as a distro-friendly way to
+    name a folder below the current user's home directory without knowing the
+    account name when a GSettings default is written.  Keep the remainder as
+    URI text so already-escaped path components are not escaped a second time.
+    """
+    if entry == "file://~":
+        return GLib.filename_to_uri(GLib.get_home_dir(), None)
+    if entry.startswith("file://~/"):
+        home_uri = GLib.filename_to_uri(GLib.get_home_dir(), None)
+        relative_uri = entry.removeprefix("file://~/")
+        if not relative_uri:
+            return home_uri
+        separator = "" if home_uri.endswith("/") else "/"
+        return f"{home_uri}{separator}{relative_uri}"
+    return entry
 
 
 def load_preferred_folders(gsettings) -> list[PreferredFolder]:
     """Resolve the ordered preferred-folders list into PreferredFolder objects.
 
-    Entries are either logical tokens (resolved via PREFERRED_TOKENS) or raw
-    URIs added by the user via "Pin to My Computer" (resolved via Gio.File).
+    Entries are either logical tokens (resolved via PREFERRED_TOKENS) or URI
+    entries (including portable file://~/… paths) resolved via Gio.File.
     """
     if gsettings is not None:
         entries = list(gsettings.get_value("preferred-folders").unpack())
@@ -185,15 +230,15 @@ def load_preferred_folders(gsettings) -> list[PreferredFolder]:
             )
             continue
 
-        # Raw URI added by the user via "Pin to My Computer". Display-name/icon are
+        # URI added by the user or supplied as a default. Display-name/icon are
         # resolved with a free, zero-I/O fallback here; the real metadata is fetched
         # asynchronously by the caller (see _refresh_folder_metadata_async) so a slow
         # or unreachable URI never blocks panel population or menu opening.
-        uri = entry
+        uri = resolve_preferred_uri(entry)
         gfile = Gio.File.new_for_uri(uri)
         folders.append(
             PreferredFolder(
-                key=uri,
+                key=entry,
                 display_name=gfile.get_basename() or uri,
                 nav_uri=uri,
                 icon_name="folder",

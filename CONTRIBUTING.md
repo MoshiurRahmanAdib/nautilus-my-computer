@@ -21,14 +21,14 @@ pull request's "Edit" button on GitHub.
 
 Adding or improving a translation is the easiest way to contribute.
 
-1. Find your language's `.po` file under `po/`. If it doesn't exist yet, copy `po/fr.po`
-   (our reference, kept fully up to date) as a starting point, rename it to your language
-   code (e.g. `po/hu.po` for Hungarian), and update the header fields (`Language`,
-   `Language-Team`, `Last-Translator`, `PO-Revision-Date`).
-2. Translate each `msgstr` below its matching `msgid`. Leave `msgid` lines untouched.
-3. Open a pull request with just the `.po` file change.
+Translations are managed on [Weblate](https://hosted.weblate.org/projects/nautilus-my-computer/),
+not through direct pull requests. Sign up for a free Weblate account, join the project, pick
+your language, and translate directly in the web editor. Approved changes are synced back to
+this repository automatically as a pull request, you don't need to touch `po/*.po` files
+yourself.
 
-You don't need to compile `.mo` files or update the version, that's handled at release time.
+If your language isn't listed yet, use Weblate's "start new translation" option on the
+project page.
 
 ## Code contributions
 
@@ -46,7 +46,7 @@ You don't need to compile `.mo` files or update the version, that's handled at r
    nautilus -q; sleep 1 && nautilus
    ```
 5. Commit messages follow `<type>: <short description>` (e.g. `fix: ...`, `feat: ...`,
-   `i18n: ...`), imperative mood, max 72 characters.
+   `i18n: ...`, `l10n: ...`), imperative mood, max 72 characters.
 
 ## Reporting bugs
 

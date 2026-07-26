@@ -17,6 +17,7 @@ PKG_DIR      := nautilus_my_computer
 SCHEMA_ID    := io.github.yannmasoch.nautilus-my-computer
 SCHEMA_FILE  := $(SCHEMA_ID).gschema.xml
 GETTEXT_DOMAIN := nautilus-my-computer
+VERSION      := $(shell sed -n 's/^version = "\(.*\)"/\1/p' pyproject.toml)
 
 NAUTILUS_EXT_DIR := $(DESTDIR)$(PREFIX)/share/nautilus-python/extensions
 SCHEMA_DIR       := $(DESTDIR)$(PREFIX)/share/glib-2.0/schemas
@@ -25,8 +26,9 @@ LOCALE_DIR       := $(DESTDIR)$(PREFIX)/share/locale
 PY_FILES := $(EXT_FILE) $(wildcard $(PKG_DIR)/*.py)
 PO_FILES := $(wildcard po/*.po)
 MO_FILES := $(patsubst po/%.po,build/locale/%/LC_MESSAGES/$(GETTEXT_DOMAIN).mo,$(PO_FILES))
+POT_FILE := po/$(GETTEXT_DOMAIN).pot
 
-.PHONY: all build check install uninstall clean
+.PHONY: all build check install uninstall clean pot po-update
 
 all: build
 
@@ -38,6 +40,21 @@ check:
 build/locale/%/LC_MESSAGES/$(GETTEXT_DOMAIN).mo: po/%.po
 	@mkdir -p "$(dir $@)"
 	msgfmt "$<" -o "$@"
+
+pot:
+	xgettext --language=Python --from-code=UTF-8 \
+		--keyword=_ --keyword=_n:1,2 --keyword=N_ \
+		--add-comments=TRANSLATORS \
+		--add-location=file \
+		--package-name="My Computer for Nautilus" \
+		--package-version="$(VERSION)" \
+		-o $(POT_FILE) \
+		$(PY_FILES)
+
+po-update: pot
+	@for po in $(PO_FILES); do \
+		msgmerge --update --backup=none --add-location=file "$$po" $(POT_FILE); \
+	done
 
 install: build
 	install -Dm644 $(EXT_FILE) "$(NAUTILUS_EXT_DIR)/$(EXT_FILE)"

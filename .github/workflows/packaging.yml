@@ -34,10 +34,30 @@ jobs:
           test -f /tmp/fakeroot/usr/share/nautilus-python/extensions/nautilus-my-computer.py
           make DESTDIR=/tmp/fakeroot PREFIX=/usr uninstall
 
-  # aur-validate is disabled while the AUR account is blocked (see
-  # aur-publish.yml's aur-publish job, gated `&& false`). It failed on every
-  # release because .SRCINFO was never kept in sync for a package that isn't
-  # actually being published. Re-enable both together once AUR is unblocked.
+  aur-validate:
+    name: Validate AUR PKGBUILD
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+
+    steps:
+      - uses: actions/checkout@v7.0.0
+
+      - name: Create unprivileged build user
+        run: |
+          useradd -m builder
+          chown -R builder:builder .
+
+      - name: Install namcap
+        run: pacman -Sy --noconfirm namcap
+
+      - name: Check .SRCINFO is up to date
+        run: |
+          cd packaging/aur
+          su builder -c "makepkg --printsrcinfo" > /tmp/SRCINFO.generated
+          diff -u .SRCINFO /tmp/SRCINFO.generated
+
+      - name: namcap PKGBUILD
+        run: namcap packaging/aur/PKGBUILD
 
   fedora-validate:
     name: Validate Fedora spec
