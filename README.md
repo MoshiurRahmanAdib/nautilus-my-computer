@@ -31,7 +31,7 @@ My Computer for Nautilus, what GNOME Files should have always been
 **Shipped by default in stillOS**
 
 <a href="https://stillhq.io" target="_blank" rel="noopener noreferrer">
-  <img src="assets/logos/stillos-wordmark.svg" alt="stillOS" height="32" style="background-color: #fafafa; padding: 8px; border-radius: 3px;">
+  <img src="assets/logos/stillos-wordmark.svg" alt="stillOS" height="48" style="border-radius: 3px">
 </a>
 
 *"Maintenance-Free Linux"*
