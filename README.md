@@ -10,7 +10,7 @@ My Computer for Nautilus, what GNOME Files should have always been
 
 <br>
 
-**My Computer** is a custom view for GNOME Files (Nautilus), showing all your drives, volumes, and network mounts with usage levels in one clean panel.
+**My Computer** is a custom view for Nautilus (GNOME Files), showing all your drives, volumes, and network mounts with usage levels in one clean panel.
 
 *"GNOME dropped the Other Locations view and left nothing in its place. I built what should have always been there, and the GNOME community made it even better with ❤️"*
 
@@ -153,7 +153,7 @@ See tested distributions/Nautilus versions [here](#tested-on).
 
 ## Features
 
-My Computer adds a native-feeling "Computer" panel to GNOME Files (Nautilus) that shows drives, volumes, removable media, and network mounts grouped by type; including usage bars, mount/eject controls, and a "Preferred Folders" section where you can pin folders and other locations. It also adds customizable visibility and sidebar options, custom bookmark icon options, and a new Column View (Beta).
+My Computer adds a native-feeling "Computer" panel to GNOME Files that shows drives, volumes, removable media, and network mounts grouped by type; including usage bars, mount/eject controls, and a "Preferred Folders" section where you can pin folders and other locations. It also adds customizable visibility and sidebar options, custom bookmark icon options, and a new Column View (Beta).
 
 ### Sidebar integration
 
@@ -185,7 +185,7 @@ My Computer organizes your storage into five groups:
 
 Each group (except **On this Computer**) has three visibility settings, configurable from the right-click menu on the Computer button:
 
-- **Visible**: shown as its own labelled section
+- **Visible**: shown as its own labeled section
 - **Hidden**: removed from the panel entirely
 - **Merged**: folded into **On this Computer**, keeping everything in one flat list
 
@@ -287,7 +287,7 @@ My Computer uses native GNOME visuals throughout. The panel follows the system l
 
 My Computer is fully localized. The UI language is picked up automatically from your GNOME locale settings.
 
-Both left-to-right (LTR) and right-to-left (RTL) layouts are supported; the panel mirrors its layout direction automatically when a RTL language is active.
+Both left-to-right (LTR) and right-to-left (RTL) layouts are supported; the panel mirrors its layout direction automatically when an RTL language is active.
 
 Translations are managed on [Weblate](https://hosted.weblate.org/projects/nautilus-my-computer/):
 
