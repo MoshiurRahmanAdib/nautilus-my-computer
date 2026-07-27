@@ -141,9 +141,9 @@ nix profile install "github:yannmasoch/nautilus-my-computer?dir=packaging/nix"
   ./install.sh --uninstall
   ```
 
-  > ![NOTE]  
-  > Run it as `./install.sh` (not `bash install.sh`) so it installs from your l
-  > oc al clone instead of downloading.
+  > [!NOTE]  
+  >
+  > Run it as `./install.sh` (not `bash install.sh`) so it installs from your local clone instead of downloading.
 
 </details>
 
