@@ -4,7 +4,7 @@
 
 My Computer for Nautilus, what GNOME Files should have always been
 
-<br>
+<>
 
 <img width="1366" alt="My Computer for Nautilus" src="assets/images/screenshot.png" />
 
@@ -157,7 +157,7 @@ My Computer adds a native-feeling "Computer" panel to GNOME Files that shows dri
 
 ### Sidebar integration
 
-Computer sits at the top of the GNOME Files sidebar, click to open the panel and right-click for more options.
+Computer sits at the top of the GNOME Files sidebar; click to open the panel and right-click for more options.
 
 ![Computer button](assets/images/computer-button.png)
 
@@ -165,11 +165,11 @@ Computer sits at the top of the GNOME Files sidebar, click to open the panel and
 
 A "Preferred Folders" group sits at the top of the Computer view, giving you one-click access to your everyday folders without digging through the sidebar.
 
-This group can be hidden if you'd rather not see it.  Pin or unpin any folder as you want. You can drag the Preferred Folders to reorder them.
+This group can be hidden if you'd rather not see it. Pin or unpin any folder as you want. You can drag the Preferred Folders to reorder them.
 
 ![Preferred Folders](assets/images/preferred-folders.png)
 
-Captions follow native Nautilus captions, show or hide them per your preference.
+Captions follow native Nautilus captions; show or hide them per your preference.
 
 ![Preferred Folders captions](assets/images/preferred-folders-captions.png)
 
@@ -179,7 +179,7 @@ My Computer organizes your storage into five groups:
 
 - **System:** root, boot, EFI, and swap partitions
 - **On this Computer:** your internal drives and partitions
-- **Removable:** - USB drives, phones, cameras, and removable media
+- **Removable:** USB drives, phones, cameras, and removable media
 - **Disc:** optical drives and mounted ISO images
 - **Network:** network shares and remote filesystems
 
@@ -313,7 +313,7 @@ My Computer is community-built. These people have shaped what it is today.
 
 [![Contributors](https://contrib.rocks/image?repo=yannmasoch/nautilus-my-computer)](https://github.com/yannmasoch/nautilus-my-computer/graphs/contributors)
 
-Thanks also go to everyone who opened issues, reported bugs, and shared feedback on GitHub and social media, this project owes just as much to them as it does to the code.
+Thanks also go to everyone who opened issues, reported bugs, and shared feedback on GitHub and social media. This project owes just as much to them as it does to the code.
 
 Want to contribute? Check out [CONTRIBUTING.md](CONTRIBUTING.md).
 
