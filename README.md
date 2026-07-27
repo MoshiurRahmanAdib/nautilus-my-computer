@@ -4,7 +4,7 @@
 
 My Computer for Nautilus, what GNOME Files should have always been
 
-<>
+<br>
 
 <img width="1366" alt="My Computer for Nautilus" src="assets/images/screenshot.png" />
 
